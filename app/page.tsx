@@ -36,6 +36,12 @@ import {
   type ProfileInput,
   type PublicProfile,
 } from "@/lib/profile";
+import {
+  Accompaniments,
+  RatingSummary,
+  RequestAccompaniment,
+} from "./components/accompaniments";
+const DISCORD_GROUP = "https://discord.gg/SRVs9Y5ze";
 type View = "home" | "directory" | "guide" | "profile";
 const views: Record<View, string> = {
   home: "Accueil",
@@ -173,6 +179,16 @@ export default function App() {
             ))}
           </nav>
           <div className="nav-actions">
+            <a
+              className="discord-nav"
+              aria-label="Rejoindre le groupe Discord"
+              href={DISCORD_GROUP}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <MessageCircle size={17} />
+              <span>Notre Discord</span>
+            </a>
             {session ? (
               <button className="account" onClick={() => go("profile")}>
                 <span className="avatar small">
@@ -610,11 +626,31 @@ export default function App() {
                     }}
                   />
                 </div>
+                <Accompaniments />
               </>
             )}
           </section>
         )}
       </main>
+      <section className="wrap discord-community">
+        <div>
+          <span className="eyebrow">ON SE RETROUVE SUR DISCORD</span>
+          <h2>La communauté t’attend.</h2>
+          <p>
+            Rejoins le groupe pour échanger avec les membres et retrouver ton
+            binôme.
+          </p>
+        </div>
+        <a
+          className="btn"
+          href={DISCORD_GROUP}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <MessageCircle size={19} /> Rejoindre le groupe Discord{" "}
+          <ArrowUpRight size={17} />
+        </a>
+      </section>
       <footer className="footer wrap">
         <a className="brand" href="#home" onClick={() => go("home")}>
           <span className="brand-mark">
@@ -1375,6 +1411,9 @@ function ProfileCard({
           ? `Parrain · ${p.experience} mois d’expérience`
           : "À la recherche d’un coup de pouce"}
       </p>
+      {p.role === "mentor" && !own && (
+        <RatingSummary average={p.ratingAverage} count={p.ratingCount} />
+      )}
       <div className="mini-tags">
         <span>{p.specialty}</span>
         {p.references && <span>{p.references.split(",")[0].slice(0, 25)}</span>}
@@ -1730,6 +1769,12 @@ function Directory({
               {selected.specialty}
             </span>
             <h2 id="member-title">{selected.name}</h2>
+            {selected.role === "mentor" && (
+              <RatingSummary
+                average={selected.ratingAverage}
+                count={selected.ratingCount}
+              />
+            )}
             <p>{selected.bio}</p>
             <div className="detail-grid">
               <div>
@@ -1844,6 +1889,12 @@ function Directory({
                       ? "Compléter mon profil pour échanger"
                       : "Voir le contact Discord"}
               </button>
+            )}
+            {selected.role === "mentor" && own?.role === "beginner" && (
+              <RequestAccompaniment
+                key={selected.id}
+                mentorProfileId={selected.id}
+              />
             )}
             {contactError && (
               <p role="alert" className="error">
@@ -1967,6 +2018,25 @@ function Guide({ onJoin }: { onJoin: () => void }) {
           );
         })}
       </div>
+      <section className="guide-intro">
+        <div>
+          <h2>Une note après l’accompagnement</h2>
+          <p>
+            Dans l’annuaire, le débutant clique sur « Choisir ce parrain ». Le
+            parrain accepte depuis « Mon profil », dans « Mes accompagnements ».
+            À la fin, l’un des deux clique sur « Terminer l’accompagnement ». Le
+            débutant peut alors publier une note de 1 à 5 étoiles, une seule
+            fois pour ce binôme. La moyenne et le nombre de notes apparaissent
+            sur la fiche du parrain.
+          </p>
+          <p>
+            Les notes proviennent de binômes confirmés sur Relais. Elles
+            reflètent l’expérience des membres, sans vérifier le contenu de
+            leurs échanges sur Discord. Un profil masqué reste absent de
+            l’annuaire.
+          </p>
+        </div>
+      </section>
       <section className="charter">
         <span className="eyebrow">LA CHARTE RELAIS</span>
         <h2>

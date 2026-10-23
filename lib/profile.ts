@@ -105,7 +105,11 @@ export const profileSchema = z
       });
   });
 export type ProfileInput = z.infer<typeof profileSchema>;
-export type Profile = Omit<ProfileInput, "consent"> & { id: string };
+export type Profile = Omit<ProfileInput, "consent"> & {
+  id: string;
+  ratingAverage?: number;
+  ratingCount?: number;
+};
 export type PublicProfile = Omit<Profile, "discord" | "discordId">;
 export const initialProfile: ProfileInput = {
   role: "beginner",

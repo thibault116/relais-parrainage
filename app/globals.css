@@ -2191,8 +2191,175 @@ textarea {
   }
 }
 @media (max-width: 800px) {
-  .hero { grid-template-columns: minmax(0, 1fr); }
-  .hero-copy { min-width: 0; }
-  .hero-art { width: 100%; max-width: 460px; min-width: 0; }
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .hero-copy {
+    min-width: 0;
+  }
+  .hero-art {
+    width: 100%;
+    max-width: 460px;
+    min-width: 0;
+  }
 }
-@media (max-width: 520px) { .orbit { transform: none; } }
+@media (max-width: 520px) {
+  .orbit {
+    transform: none;
+  }
+}
+.discord-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--purple);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.discord-community {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 25px;
+  background: #f0e8fb;
+  border: 1px solid #e5d9f5;
+  border-radius: 18px;
+  padding: 30px 35px;
+  margin-bottom: 45px;
+}
+.discord-community h2 {
+  font-size: 27px;
+  margin-top: 10px;
+}
+.discord-community p {
+  font-size: 12px;
+  margin-bottom: 0;
+}
+.discord-community .btn {
+  flex-shrink: 0;
+}
+.rating-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  font-size: 11px;
+  color: #8662be;
+  margin: 12px 0;
+}
+.rating-summary span {
+  color: #8a7d97;
+  font-size: 10px;
+}
+.accompaniments {
+  margin-top: 45px;
+  border-top: 1px solid var(--line);
+  padding-top: 35px;
+}
+.accompaniments .section-top {
+  margin-bottom: 15px;
+}
+.accompaniments h2 {
+  font-size: 28px;
+}
+.accompaniments > p {
+  font-size: 13px;
+  max-width: 780px;
+}
+.pair-list {
+  display: grid;
+  gap: 16px;
+}
+.pair-card {
+  padding: 25px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+.pair-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+.pair-heading h3 {
+  font-size: 22px;
+  margin-top: 9px;
+}
+.pair-card p {
+  font-size: 12px;
+}
+.pair-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.pair-card h4 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 15px 0;
+}
+.stars-input {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--purple);
+}
+.stars-input button {
+  padding: 7px;
+  display: grid;
+  place-items: center;
+  color: inherit;
+}
+.stars-input span {
+  font-size: 12px;
+  margin-left: 10px;
+}
+.pair-request {
+  border-top: 1px solid var(--line);
+  margin-top: 25px;
+  padding-top: 10px;
+}
+.pair-request p {
+  font-size: 12px;
+}
+.pair-card .btn {
+  font-size: 12px;
+  padding: 12px 18px;
+}
+@media (max-width: 1100px) {
+  .discord-nav span {
+    display: none;
+  }
+}
+@media (max-width: 650px) {
+  .discord-community {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 25px;
+  }
+  .discord-community .btn {
+    font-size: 11px;
+    gap: 8px;
+    max-width: 100%;
+  }
+  .pair-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .pair-card {
+    padding: 20px;
+  }
+  .accompaniments .section-top {
+    flex-wrap: wrap;
+  }
+  .accompaniments h2 {
+    font-size: 25px;
+  }
+  .stars-input button {
+    padding: 4px;
+  }
+}

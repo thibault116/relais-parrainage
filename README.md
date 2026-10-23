@@ -49,7 +49,13 @@ Les tests créent puis suppriment des comptes temporaires. Ils vérifient l’in
 
 - Les profils et résultats financiers sont déclaratifs, sans vérification d’appartenance à la formation.
 - Pas de messagerie intégrée : les conversations et demandes d’amis ont lieu sur Discord.
-- Les places et la durée sont gérées par les membres ; pas de suivi automatique des binômes.
+- Les places et la durée sont gérées par les membres. Les binômes sont confirmés sur Relais et peuvent être marqués terminés par l’un des participants. Une note unique de 1 à 5 est alors possible pour le débutant. La réalité des échanges Discord n’est pas contrôlée.
 - Aucun service d’envoi d’e-mails configuré : pas de vérification d’adresse ni de récupération automatique du mot de passe pour cette première version.
 - Les membres peuvent supprimer leur profil ; les comptes sont conservés tant qu’ils ne sont pas supprimés séparément. L’API Better Auth de suppression de compte exige une authentification récente / mot de passe et efface aussi le profil.
 - Avant une diffusion à grande échelle, ajouter la modération propre à la communauté, l’identité et les coordonnées de l’exploitant ainsi qu’un service d’e-mails pour la récupération de compte.
+
+## Accompagnements et notes
+
+Le débutant demande un accompagnement depuis la fiche d’un parrain visible. Le parrain accepte ou refuse dans Mon profil. Seuls les deux participants peuvent terminer un accompagnement accepté. Seul le débutant de ce binôme terminé peut donner une note. L’écriture conditionnelle en base empêche les doublons, y compris simultanés. Un binôme ne peut être créé qu’une fois pour les mêmes comptes. Les notes sont conservées lors du masquage d’un profil, mais retirées lors de la suppression du compte concerné. Aucune note ne donne accès au contact d’un profil masqué.
+
+Le groupe Discord est accessible depuis l’en-tête et le bloc communautaire : https://discord.gg/SRVs9Y5ze.

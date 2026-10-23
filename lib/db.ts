@@ -38,3 +38,12 @@ export async function migrateProfiles() {
     "CREATE INDEX IF NOT EXISTS profiles_visibility ON profiles (visible, role)",
   );
 }
+
+export async function migrateAccompaniments() {
+  await query(
+    `CREATE TABLE IF NOT EXISTS accompaniments (id TEXT PRIMARY KEY, beginner_id TEXT NOT NULL, mentor_id TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('pending','active','completed','declined','cancelled')), created_at TEXT NOT NULL, completed_at TEXT, rating INTEGER CHECK(rating BETWEEN 1 AND 5), rated_at TEXT, UNIQUE(beginner_id,mentor_id), CHECK(beginner_id <> mentor_id), CHECK(rating IS NULL OR status='completed'))`,
+  );
+  await query(
+    "CREATE INDEX IF NOT EXISTS accompaniments_mentor ON accompaniments (mentor_id,status)",
+  );
+}

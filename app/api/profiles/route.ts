@@ -33,11 +33,15 @@ export async function GET(request: Request) {
     const role =
       url.searchParams.get("role") === "beginner" ? "beginner" : "mentor";
     const rows = await query(
-      "SELECT * FROM profiles WHERE visible=1 AND role=$1 ORDER BY updated_at DESC",
+      "SELECT p.*, (SELECT AVG(a.rating * 1.0) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed') AS rating_average, (SELECT COUNT(a.rating) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed') AS rating_count FROM profiles p WHERE visible=1 AND role=$1 ORDER BY updated_at DESC",
       [role],
     );
     let profiles = rows
-      .map(decode)
+      .map((row) => ({
+        ...decode(row),
+        ratingAverage: Number(row.rating_average) || 0,
+        ratingCount: Number(row.rating_count) || 0,
+      }))
       .filter((p) => p.role !== "mentor" || p.capacity > 0)
       .map(publicProfile);
     const search = (url.searchParams.get("q") || "").toLocaleLowerCase("fr");

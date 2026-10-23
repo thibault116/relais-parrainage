@@ -29,6 +29,10 @@ function createAuth() {
       deleteUser: {
         enabled: true,
         beforeDelete: async (user) => {
+          await query(
+            "DELETE FROM accompaniments WHERE beginner_id=$1 OR mentor_id=$1",
+            [user.id],
+          );
           await query("DELETE FROM profiles WHERE user_id=$1", [user.id]);
         },
       },
