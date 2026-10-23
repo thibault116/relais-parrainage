@@ -2190,3 +2190,9 @@ textarea {
     transition: none !important;
   }
 }
+@media (max-width: 800px) {
+  .hero { grid-template-columns: minmax(0, 1fr); }
+  .hero-copy { min-width: 0; }
+  .hero-art { width: 100%; max-width: 460px; min-width: 0; }
+}
+@media (max-width: 520px) { .orbit { transform: none; } }
