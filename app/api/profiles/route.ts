@@ -1,3 +1,4 @@
+import { getPublicVerifications } from "@/lib/verification";
 import { query } from "@/lib/db";
 import { decode, publicProfile } from "@/lib/profile";
 import { json, user } from "@/lib/http";
@@ -36,9 +37,13 @@ export async function GET(request: Request) {
       "SELECT p.*, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='active') AS active_count, (SELECT AVG(a.rating * 1.0) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed') AS rating_average, (SELECT COUNT(a.rating) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed') AS rating_count FROM profiles p WHERE visible=1 AND role=$1 ORDER BY updated_at DESC",
       [role],
     );
+    const verifications = await getPublicVerifications(
+      rows.map((r) => String(r.user_id)),
+    );
     let profiles = rows
       .map((row) => ({
         ...decode(row),
+        verification: verifications.get(String(row.user_id)) || null,
         activeCount: Number(row.active_count) || 0,
         ratingAverage: Number(row.rating_average) || 0,
         ratingCount: Number(row.rating_count) || 0,

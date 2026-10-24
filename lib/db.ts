@@ -47,3 +47,33 @@ export async function migrateAccompaniments() {
     "CREATE INDEX IF NOT EXISTS accompaniments_mentor ON accompaniments (mentor_id,status)",
   );
 }
+
+export async function migrateVerifications() {
+  await query(
+    `CREATE TABLE IF NOT EXISTS verifications (user_id TEXT PRIMARY KEY, revision TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('pending','approved','changes')), dossier TEXT NOT NULL, feedback TEXT NOT NULL DEFAULT '', verified_sales INTEGER, verified_specialties TEXT, submitted_at TEXT NOT NULL, reviewed_at TEXT, reviewer_id TEXT)`,
+  );
+  await query(
+    "CREATE TABLE IF NOT EXISTS moderators (user_id TEXT PRIMARY KEY, email TEXT UNIQUE)",
+  );
+  // Bind access to existing account IDs, never to an unverified email at login.
+  const emails = (process.env.MENTORA_MODERATOR_EMAILS || "")
+    .split(",")
+    .map((v) => v.trim().toLowerCase())
+    .filter(Boolean);
+  for (const email of emails) {
+    if (
+      (await query("SELECT user_id FROM moderators WHERE email=$1", [email]))
+        .length
+    )
+      continue;
+    const users = await query('SELECT id FROM "user" WHERE LOWER(email)=$1', [
+      email,
+    ]);
+    if (!users.length)
+      throw new Error("Le compte de modération configuré doit déjà exister.");
+    await query(
+      "INSERT INTO moderators (user_id,email) VALUES ($1,$2) ON CONFLICT(user_id) DO NOTHING",
+      [String(users[0].id), email],
+    );
+  }
+}

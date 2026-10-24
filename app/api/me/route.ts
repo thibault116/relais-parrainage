@@ -1,3 +1,4 @@
+import { isModerator, getPublicVerifications } from "@/lib/verification";
 import { query } from "@/lib/db";
 import { decode, profileSchema } from "@/lib/profile";
 import { guard, json, user } from "@/lib/http";
@@ -11,9 +12,15 @@ export async function GET(request: Request) {
       "SELECT p.*, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='active') AS active_count FROM profiles p WHERE user_id=$1",
       [u.id],
     );
+    const verifications = await getPublicVerifications([u.id]);
     return json({
+      isModerator: await isModerator(u.id),
       profile: rows[0]
-        ? { ...decode(rows[0]), activeCount: Number(rows[0].active_count) || 0 }
+        ? {
+            ...decode(rows[0]),
+            verification: verifications.get(u.id) || null,
+            activeCount: Number(rows[0].active_count) || 0,
+          }
         : null,
     });
   } catch {
@@ -91,6 +98,7 @@ export async function DELETE(request: Request) {
     if (blocked) return blocked;
     const u = await user(request);
     if (!u) return json({ error: "Connexion requise." }, 401);
+    await query("DELETE FROM verifications WHERE user_id=$1", [u.id]);
     await query("DELETE FROM profiles WHERE user_id=$1", [u.id]);
     return json({ ok: true });
   } catch {

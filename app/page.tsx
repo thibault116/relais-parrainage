@@ -41,14 +41,20 @@ import {
   RatingSummary,
   RequestAccompaniment,
 } from "./components/accompaniments";
+import {
+  VerificationBadge,
+  VerificationForm,
+  Moderation,
+} from "./components/verification";
 const DISCORD_GROUP = "https://discord.gg/SRVs9Y5ze";
-type View = "home" | "directory" | "guide" | "faq" | "profile";
+type View = "home" | "directory" | "guide" | "faq" | "profile" | "moderation";
 const views: Record<View, string> = {
   home: "Accueil",
   directory: "Trouver mon binôme",
   guide: "Comment ça marche",
   faq: "FAQ",
   profile: "Mon profil",
+  moderation: "Modération",
 };
 const Icon = ({ children }: { children: React.ReactNode }) => (
   <span className="icon-box">{children}</span>
@@ -81,15 +87,20 @@ export default function App() {
   const [requestedView, setView] = useState<View>("home");
   const [mobile, setMobile] = useState(false);
   const { data: session, isPending } = authClient.useSession();
+  const [moderator, setModerator] = useState(false);
   const view: View = session
-    ? requestedView === "profile"
-      ? "profile"
-      : "directory"
+    ? requestedView === "moderation" && moderator
+      ? "moderation"
+      : requestedView === "profile"
+        ? "profile"
+        : "directory"
     : ["home", "guide", "faq"].includes(requestedView)
       ? requestedView
       : "home";
   const navigation: View[] = session
-    ? ["directory", "profile"]
+    ? moderator
+      ? ["directory", "profile", "moderation"]
+      : ["directory", "profile"]
     : ["home", "guide", "faq"];
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -129,7 +140,9 @@ export default function App() {
     setProfileLoading(true);
     setProfileError("");
     try {
-      setProfile((await api("/api/me")).profile);
+      const data = await api("/api/me");
+      setProfile(data.profile);
+      setModerator(!!data.isModerator);
     } catch (e) {
       setProfileError((e as Error).message);
     } finally {
@@ -138,7 +151,10 @@ export default function App() {
   }, []);
   useEffect(() => {
     if (session) void loadMe();
-    else setProfile(null);
+    else {
+      setProfile(null);
+      setModerator(false);
+    }
   }, [session, loadMe]);
   const refreshProfile = useCallback(async () => {
     setProfile((await api("/api/me")).profile);
@@ -242,6 +258,9 @@ export default function App() {
         </div>
       </header>
       <main>
+        {!isPending && session && moderator && view === "moderation" && (
+          <Moderation />
+        )}
         {isPending && (
           <div className="empty">
             <LoaderCircle className="spin" /> Chargement…
@@ -274,7 +293,8 @@ export default function App() {
                   Et si tu avais enfin <strong>
                     ta personne de confiance
                   </strong>{" "}
-                  pour avancer dans l’achat-revente ?
+                  pour choisir tes achats, améliorer tes annonces Vinted et
+                  comprendre ce qui bloque tes ventes ?
                 </p>
                 <div className="hero-buttons">
                   <Button
@@ -368,6 +388,47 @@ export default function App() {
                   Un binôme. Des échanges. De vraies avancées.
                 </span>
               </div>
+            </section>
+            <section className="wrap concrete-help">
+              <span className="eyebrow">
+                CONCRÈTEMENT, TON PARRAIN PEUT T’AIDER À…
+              </span>
+              <h2>Des réponses à tes vraies questions.</h2>
+              <div className="help-grid">
+                {[
+                  [
+                    "01",
+                    "Choisir entre bot et fournisseur",
+                    "Comparer les méthodes de sourcing selon ton budget, ton temps disponible et les pièces que tu veux vendre. Tu comprends les coûts et les contraintes avant de te lancer.",
+                  ],
+                  [
+                    "02",
+                    "Améliorer tes annonces Vinted",
+                    "Revoir tes photos, ton titre, ta description et ton prix avec un regard expérimenté. Tu repars avec des modifications concrètes à appliquer.",
+                  ],
+                  [
+                    "03",
+                    "Débloquer une pièce qui ne se vend pas",
+                    "Comprendre ce qui freine la vente : prix, saison, demande, présentation… Puis décider quoi ajuster, sans promesse de vente garantie.",
+                  ],
+                  [
+                    "04",
+                    "Apprendre à vérifier tes articles",
+                    "Apprendre à observer étiquettes, coutures, références et finitions, puis chercher les bons points de comparaison. Pour devenir autonome et savoir quand demander une expertise spécialisée.",
+                  ],
+                ].map(([n, title, description]) => (
+                  <article key={n}>
+                    <span>{n}</span>
+                    <h3>{title}</h3>
+                    <p>{description}</p>
+                  </article>
+                ))}
+              </div>
+              <p className="small-text">
+                Selon ses spécialités, ton parrain t’explique sa démarche par
+                messages. Il t’aide à apprendre ; il ne certifie pas
+                l’authenticité de tes pièces.
+              </p>
             </section>
             <section className="promise-strip">
               <div className="wrap promise-inner">
@@ -660,6 +721,9 @@ export default function App() {
                   />
                 </div>
                 <Accompaniments onChange={refreshProfile} />
+                {profile.role === "mentor" && (
+                  <VerificationForm onChange={refreshProfile} />
+                )}
               </>
             )}
           </section>
@@ -1450,6 +1514,7 @@ function ProfileCard({
         </span>
       </div>
       <h3>{p.name}</h3>
+      <VerificationBadge profile={p} />
       {p.role === "mentor" && <MentorAvailability profile={p} />}
       <p className="member-subtitle">
         {p.role === "mentor"
@@ -1676,7 +1741,8 @@ function Directory({
             : `${total} ${role === "mentor" ? "parrain" : "débutant"}${total > 1 ? "s" : ""} disponible${total > 1 ? "s" : ""}`}
         </span>
         <span>
-          <ShieldCheck size={14} /> Profils et expériences déclaratifs
+          <ShieldCheck size={14} /> Badges vérifiés après examen · autres
+          informations déclaratives
         </span>
       </div>
       {error ? (
@@ -1814,6 +1880,7 @@ function Directory({
               {selected.specialty}
             </span>
             <h2 id="member-title">{selected.name}</h2>
+            <VerificationBadge profile={selected} />
             {selected.role === "mentor" && (
               <RatingSummary
                 average={selected.ratingAverage}
@@ -2135,6 +2202,21 @@ function Guide({ onJoin }: { onJoin: () => void }) {
           ))}
         </div>
       </section>
+      <section className="verification-panel">
+        <h2>Un badge fondé sur un dossier, pas seulement sur l’ancienneté.</h2>
+        <p>
+          Les 6 mois de pratique permettent de proposer son aide, mais ne
+          donnent aucun badge. Pour obtenir « Dossier vérifié », un parrain doit
+          présenter au moins 20 ventes documentées, ses spécialités et un cas
+          pratique. La modération examine ces éléments de façon confidentielle.
+        </p>
+        <p>
+          Le badge affiche le volume de ventes documenté et les spécialités
+          examinées. Sans validation, le profil indique « Expérience déclarée ·
+          non vérifiée ». Ce contrôle ne garantit pas les résultats, la
+          pédagogie ou l’authenticité d’un article.
+        </p>
+      </section>
       <FAQ />
       <div className="bottom-cta">
         <div>
@@ -2173,7 +2255,7 @@ function FAQ() {
       {[
         [
           "Dois-je avoir un certain chiffre d’affaires pour être parrain ?",
-          "Non. Les 6 mois d’expérience sont le seuil prévu, mais la pédagogie et la disponibilité comptent aussi. Le chiffre d’affaires aide à comprendre un parcours : ce n’est ni une certification ni une promesse de résultat.",
+          "Non. Les 6 mois de pratique permettent de proposer son aide, sans obtenir automatiquement un badge. Le badge exige au moins 20 ventes documentées, une spécialité examinée et un cas pratique validé par la modération. Le chiffre d’affaires déclaré ne constitue pas une preuve à lui seul.",
         ],
         [
           "Est-ce que Mentora envoie une demande d’amis automatiquement ?",

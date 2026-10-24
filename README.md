@@ -59,3 +59,14 @@ Les tests créent puis suppriment des comptes temporaires. Ils vérifient l’in
 Le débutant demande un accompagnement depuis la fiche d’un parrain visible. Le parrain accepte ou refuse dans Mon profil. Seuls les deux participants peuvent terminer un accompagnement accepté. Seul le débutant de ce binôme terminé peut donner une note. L’écriture conditionnelle en base empêche les doublons, y compris simultanés. Un binôme ne peut être créé qu’une fois pour les mêmes comptes. Les notes sont conservées lors du masquage d’un profil, mais retirées lors de la suppression du compte concerné. Aucune note ne donne accès au contact d’un profil masqué.
 
 Le groupe Discord est accessible depuis l’en-tête et le bloc communautaire : https://discord.gg/SRVs9Y5ze.
+
+
+## Vérification des parrains
+
+Les dossiers sont conservés dans `verifications`, séparément des profils publics. Ils contiennent le volume déclaré, les spécialités, un cas pratique et 1 à 5 liens HTTPS vers des justificatifs anonymisés. Aucun fichier n’est téléversé et le serveur ne récupère pas le contenu de ces liens. Le propriétaire et les modérateurs peuvent consulter le dossier ; les API publiques ne renvoient que le volume validé, les spécialités examinées et la date d’examen. Le retrait, la suppression du profil ou du compte supprime le dossier. Un renvoi retire le badge jusqu’au nouvel examen.
+
+La règle initiale du badge est : au moins 6 mois de pratique, 20 ventes documentées, une spécialité démontrée et un cas pratique examiné humainement. Cela ne certifie ni les résultats ni l’authenticité d’un article. Les badges sont impossibles à attribuer via l’édition d’un profil. Un modérateur ne peut pas valider son propre dossier.
+
+Configurer `MENTORA_MODERATOR_EMAILS` côté serveur, avec les adresses de comptes **déjà existants**, séparées par des virgules. La migration associe une fois chaque adresse à l’identifiant immuable du compte dans `moderators` (sans accorder l’accès dynamiquement sur une adresse non vérifiée). Cette liaison est conservée si le compte est supprimé pour éviter qu’une réinscription récupère l’accès. Pour retirer un accès, supprimer sa ligne dans `moderators` et retirer l’adresse de la configuration avant la prochaine migration. Si aucun modérateur actif n’est configuré, les dépôts sont fermés et l’interface le précise. Aucun utilisateur n’est nommé modérateur par défaut.
+
+Test local : `node --import tsx scripts/test-verification.ts` avec l’application sur `http://127.0.0.1:3001`. Le script crée et supprime ses comptes temporaires et teste les accès, la confidentialité, les décisions concurrentes, les seuils, le renvoi et le retrait.

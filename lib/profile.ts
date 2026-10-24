@@ -107,6 +107,11 @@ export const profileSchema = z
 export type ProfileInput = z.infer<typeof profileSchema>;
 export type Profile = Omit<ProfileInput, "consent"> & {
   id: string;
+  verification?: {
+    sales: number;
+    specialties: string[];
+    reviewedAt: string;
+  } | null;
   activeCount?: number;
   ratingAverage?: number;
   ratingCount?: number;
