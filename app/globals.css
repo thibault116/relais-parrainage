@@ -2445,7 +2445,7 @@ textarea {
   gap: 8px;
   font-weight: 600;
 }
-.verification-form input:not([type="checkbox"]),
+.verification-form input:not([type="checkbox"]):not([type="radio"]),
 .verification-form textarea {
   width: 100%;
   padding: 12px;
@@ -2469,7 +2469,11 @@ textarea {
   font-weight: 400;
   margin: 8px 0;
 }
-.verification-check input {
+.verification-form .verification-check input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  padding: 0;
   margin-top: 4px;
   accent-color: #7951ab;
 }
