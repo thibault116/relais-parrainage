@@ -103,7 +103,11 @@ export function RequestAccompaniment({
     </div>
   );
 }
-export function Accompaniments() {
+export function Accompaniments({
+  onChange,
+}: {
+  onChange: () => Promise<void>;
+}) {
   const [items, setItems] = useState<Accompaniment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -111,12 +115,13 @@ export function Accompaniments() {
     setError("");
     try {
       setItems((await request("/api/accompaniments")).accompaniments);
+      await onChange();
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [onChange]);
   useEffect(() => {
     void load();
   }, [load]);

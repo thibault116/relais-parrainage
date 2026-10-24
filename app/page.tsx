@@ -125,6 +125,9 @@ export default function App() {
     if (session) void loadMe();
     else setProfile(null);
   }, [session, loadMe]);
+  const refreshProfile = useCallback(async () => {
+    setProfile((await api("/api/me")).profile);
+  }, []);
   const join = (r: "mentor" | "beginner") => {
     setRole(r);
     if (session) {
@@ -626,7 +629,7 @@ export default function App() {
                     }}
                   />
                 </div>
-                <Accompaniments />
+                <Accompaniments onChange={refreshProfile} />
               </>
             )}
           </section>
@@ -1287,7 +1290,7 @@ function ProfileForm({
               </Field>
               {draft.role === "mentor" && (
                 <Field
-                  label="Nombre de places disponibles"
+                  label="Nombre maximum de débutants en même temps"
                   hint="De 0 à 10. Avec 0 place, tu ne figures pas dans l’annuaire."
                 >
                   <input
@@ -1396,7 +1399,10 @@ function ProfileCard({
           {p.role === "mentor" ? (
             <>
               <span className="status-dot" />
-              {p.capacity} place{p.capacity > 1 ? "s" : ""}
+              {Math.max(0, p.capacity - (p.activeCount ?? 0))} place
+              {Math.max(0, p.capacity - (p.activeCount ?? 0)) > 1 ? "s" : ""}{" "}
+              libre
+              {Math.max(0, p.capacity - (p.activeCount ?? 0)) > 1 ? "s" : ""}
             </>
           ) : (
             <>
@@ -1406,6 +1412,7 @@ function ProfileCard({
         </span>
       </div>
       <h3>{p.name}</h3>
+      {p.role === "mentor" && <MentorAvailability profile={p} />}
       <p className="member-subtitle">
         {p.role === "mentor"
           ? `Parrain · ${p.experience} mois d’expérience`
@@ -1775,6 +1782,9 @@ function Directory({
                 count={selected.ratingCount}
               />
             )}
+            {selected.role === "mentor" && (
+              <MentorAvailability profile={selected} />
+            )}
             <p>{selected.bio}</p>
             <div className="detail-grid">
               <div>
@@ -2101,7 +2111,7 @@ function Guide({ onJoin }: { onJoin: () => void }) {
           ],
           [
             "Puis-je accompagner plusieurs débutants ?",
-            "Oui. Indique le nombre de places disponibles sur ton profil, jusqu’à 10. Mets-le à jour quand tu accueilles quelqu’un. Avec 0 place, ton profil ne figure plus dans l’annuaire.",
+            "Oui. Indique le nombre maximum de débutants que tu peux accompagner en même temps, jusqu’à 10. Les accompagnements acceptés et en cours sont déduits automatiquement. Une place se libère à la fin de chaque accompagnement. Avec une capacité réglée sur 0, ton profil ne figure plus dans l’annuaire.",
           ],
           [
             "Qui peut voir mes informations ?",
@@ -2134,5 +2144,18 @@ function Guide({ onJoin }: { onJoin: () => void }) {
         </Button>
       </div>
     </section>
+  );
+}
+
+function MentorAvailability({ profile }: { profile: PublicProfile }) {
+  const active = profile.activeCount ?? 0;
+  const remaining = Math.max(0, profile.capacity - active);
+  return (
+    <p className="mentor-availability">
+      <strong>{active} en cours</strong>
+      <span> · </span>
+      {remaining} place{remaining > 1 ? "s" : ""} libre
+      {remaining > 1 ? "s" : ""} restante{remaining > 1 ? "s" : ""}
+    </p>
   );
 }

@@ -33,12 +33,13 @@ export async function GET(request: Request) {
     const role =
       url.searchParams.get("role") === "beginner" ? "beginner" : "mentor";
     const rows = await query(
-      "SELECT p.*, (SELECT AVG(a.rating * 1.0) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed') AS rating_average, (SELECT COUNT(a.rating) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed') AS rating_count FROM profiles p WHERE visible=1 AND role=$1 ORDER BY updated_at DESC",
+      "SELECT p.*, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='active') AS active_count, (SELECT AVG(a.rating * 1.0) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed') AS rating_average, (SELECT COUNT(a.rating) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed') AS rating_count FROM profiles p WHERE visible=1 AND role=$1 ORDER BY updated_at DESC",
       [role],
     );
     let profiles = rows
       .map((row) => ({
         ...decode(row),
+        activeCount: Number(row.active_count) || 0,
         ratingAverage: Number(row.rating_average) || 0,
         ratingCount: Number(row.rating_count) || 0,
       }))

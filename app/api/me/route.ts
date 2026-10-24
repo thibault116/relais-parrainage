@@ -7,8 +7,15 @@ export async function GET(request: Request) {
     const u = await user(request);
     if (!u)
       return json({ error: "Connecte-toi pour accéder à ton profil." }, 401);
-    const rows = await query("SELECT * FROM profiles WHERE user_id=$1", [u.id]);
-    return json({ profile: rows[0] ? decode(rows[0]) : null });
+    const rows = await query(
+      "SELECT p.*, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='active') AS active_count FROM profiles p WHERE user_id=$1",
+      [u.id],
+    );
+    return json({
+      profile: rows[0]
+        ? { ...decode(rows[0]), activeCount: Number(rows[0].active_count) || 0 }
+        : null,
+    });
   } catch {
     return json(
       { error: "Impossible de charger ton profil pour le moment." },

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { UpdateBanner } from "./components/update-banner";
 export const metadata: Metadata = {
   title: "Relais — On avance mieux ensemble.",
   description:
@@ -8,7 +9,10 @@ export const metadata: Metadata = {
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
-      <body>{children}</body>
+      <body>
+        <UpdateBanner />
+        {children}
+      </body>
     </html>
   );
 }
