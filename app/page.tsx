@@ -86,20 +86,21 @@ export default function App() {
   const { data: session, isPending } = authClient.useSession();
   const [moderator, setModerator] = useState(false);
   const [moderationBlock, setModerationBlock] = useState<string | null>(null);
-  const view: View = session
-    ? requestedView === "moderation" && moderator
-      ? "moderation"
-      : requestedView === "profile"
-        ? "profile"
-        : "directory"
-    : ["home", "guide", "faq"].includes(requestedView)
-      ? requestedView
+  const publicView = ["home", "guide", "faq"].includes(requestedView);
+  const view: View = publicView
+    ? requestedView
+    : session
+      ? requestedView === "moderation" && !moderator
+        ? "directory"
+        : requestedView
       : "home";
-  const navigation: View[] = session
-    ? moderator
-      ? ["directory", "profile", "moderation"]
-      : ["directory", "profile"]
-    : ["home", "guide", "faq"];
+  const inWorkspace = ["directory", "profile", "moderation"].includes(view);
+  const navigation: View[] =
+    inWorkspace && session
+      ? moderator
+        ? ["directory", "profile", "moderation"]
+        : ["directory", "profile"]
+      : ["home", "guide", "faq"];
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState("");
@@ -128,7 +129,7 @@ export default function App() {
   useEffect(() => {
     const read = () => {
       const v = window.location.hash.slice(1);
-      if (v in views) setView(v as View);
+      setView(v in views ? (v as View) : "home");
     };
     read();
     window.addEventListener("hashchange", read);
@@ -187,10 +188,10 @@ export default function App() {
       <header className="header">
         <div className="nav-wrap">
           <a
-            href={session ? "#directory" : "#home"}
+            href="#home"
             className="brand"
-            aria-label={session ? "Mentora, espace membre" : "Mentora, accueil"}
-            onClick={() => go(session ? "directory" : "home")}
+            aria-label="Mentora, accueil"
+            onClick={() => go("home")}
           >
             <span className="brand-mark">
               <HeartHandshake size={25} />
@@ -223,11 +224,14 @@ export default function App() {
               <span>Notre Discord</span>
             </a>
             {session ? (
-              <button className="account" onClick={() => go("profile")}>
+              <button
+                className="account"
+                onClick={() => go(inWorkspace ? "profile" : "directory")}
+              >
                 <span className="avatar small">
                   {session.user.name.slice(0, 1).toUpperCase()}
                 </span>
-                <span>Mon profil</span>
+                <span>{inWorkspace ? "Mon profil" : "Mon espace"}</span>
               </button>
             ) : (
               <>
@@ -265,7 +269,7 @@ export default function App() {
             <LoaderCircle className="spin" /> Chargement…
           </div>
         )}
-        {!isPending && !session && view === "home" && (
+        {!isPending && view === "home" && (
           <>
             <section className="hero wrap">
               <div className="hero-copy">
@@ -581,10 +585,10 @@ export default function App() {
             notify={notify}
           />
         )}
-        {!isPending && !session && view === "guide" && (
+        {!isPending && view === "guide" && (
           <Guide onJoin={() => join("beginner")} />
         )}
-        {!isPending && !session && view === "faq" && (
+        {!isPending && view === "faq" && (
           <section className="wrap guide">
             <div className="page-heading">
               <h1>Tes questions, nos réponses.</h1>
@@ -733,7 +737,7 @@ export default function App() {
           </section>
         )}
       </main>
-      {!session && !isPending && (
+      {!inWorkspace && !isPending && (
         <>
           <section className="wrap discord-community">
             <div>
