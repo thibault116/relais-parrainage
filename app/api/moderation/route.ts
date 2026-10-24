@@ -1,7 +1,6 @@
 import { query } from "@/lib/db";
 import { guard, json, user } from "@/lib/http";
 import { isModerator } from "@/lib/verification";
-import { specialties } from "@/lib/profile";
 import { z } from "zod";
 export const runtime = "nodejs";
 export async function GET(request: Request) {
@@ -37,7 +36,7 @@ export async function PATCH(request: Request) {
         revision: z.string().uuid(),
         action: z.enum(["approve", "changes"]),
         sales: z.number().int().min(0).max(1000000),
-        specialties: z.array(z.enum(specialties)).max(8),
+        specialties: z.array(z.string()).max(12),
         feedback: z.string().trim().min(15).max(1500),
         checked: z.literal(true),
       })
@@ -50,14 +49,6 @@ export async function PATCH(request: Request) {
     const d = input.data;
     if (d.userId === u.id)
       return json({ error: "Tu ne peux pas valider ton propre dossier." }, 403);
-    if (d.action === "approve" && (d.sales < 20 || !d.specialties.length))
-      return json(
-        {
-          error:
-            "La validation exige au moins 20 ventes documentées et une spécialité examinée.",
-        },
-        400,
-      );
     const existing = await query(
       "SELECT v.dossier,p.details FROM verifications v JOIN profiles p ON p.user_id=v.user_id WHERE v.user_id=$1 AND v.revision=$2 AND p.role='mentor'",
       [d.userId, d.revision],
@@ -65,16 +56,22 @@ export async function PATCH(request: Request) {
     if (!existing.length)
       return json({ error: "Le dossier a changé. Actualise la liste." }, 409);
     const original = JSON.parse(String(existing[0].dossier));
+    const allowed =
+      original.version === 2
+        ? original.helpAreas.map((v: string) =>
+            v === "Autre" ? original.otherHelp : v,
+          )
+        : original.specialties;
     if (
       d.action === "approve" &&
-      (d.sales > original.sales ||
-        d.specialties.some((s) => !original.specialties.includes(s)) ||
-        Number(JSON.parse(String(existing[0].details)).experience) < 6)
+      (!d.specialties.length ||
+        d.specialties.some((s) => !allowed.includes(s)) ||
+        (original.version !== 2 && (d.sales < 20 || d.sales > original.sales)))
     )
       return json(
         {
           error:
-            "La validation doit correspondre au dossier soumis et au profil.",
+            "Sélectionne les domaines réellement examinés dans le dossier.",
         },
         400,
       );
@@ -83,7 +80,7 @@ export async function PATCH(request: Request) {
       [
         d.action === "approve" ? "approved" : "changes",
         d.feedback,
-        d.action === "approve" ? d.sales : null,
+        d.action === "approve" && original.version !== 2 ? d.sales : null,
         d.action === "approve" ? JSON.stringify(d.specialties) : null,
         new Date().toISOString(),
         u.id,

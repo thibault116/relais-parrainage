@@ -12,21 +12,22 @@
     "test": "tsx scripts/test.ts"
   },
   "dependencies": {
+    "@vercel/blob": "^2.8.2",
+    "better-auth": "^1.7.0",
+    "lucide-react": "^0.468.0",
     "next": "^16.0.0",
+    "pg": "^8.16.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "better-auth": "^1.7.0",
-    "pg": "^8.16.3",
-    "lucide-react": "^0.468.0",
     "zod": "^4.1.0"
   },
   "devDependencies": {
-    "typescript": "^5.9.2",
     "@types/node": "^24.0.0",
+    "@types/pg": "^8.15.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "@types/pg": "^8.15.5",
-    "tsx": "^4.20.5"
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
   },
   "engines": {
     "node": "24.x"

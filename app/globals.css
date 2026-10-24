@@ -2758,3 +2758,14 @@ textarea {
   color: #776a86;
   line-height: 1.5;
 }
+
+.verification-form .proof-questionnaire { border: 0; padding: 0; display: grid; gap: 24px; min-width: 0; }
+.proof-questionnaire legend { font-weight: 700; padding: 0 8px; }
+.proof-category { border-top: 1px solid #e5d9ef; padding: 16px 0; margin-top: 10px; }
+.proof-inputs { display: grid; gap: 14px; padding: 12px 0 6px 22px; }
+.proof-upload { border: 1px dashed #aa89ca; background: #f6effd; padding: 18px; border-radius: 12px; }
+.proof-cleanup { margin-top: 20px; }
+.proof-cleanup summary { cursor: pointer; font-weight: 600; }
+.review-answers dt { font-weight: 700; margin-top: 18px; }
+.review-answers dd { margin: 5px 0 12px; overflow-wrap: anywhere; }
+.free-answer { white-space: pre-wrap; }

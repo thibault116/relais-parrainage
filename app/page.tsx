@@ -2292,16 +2292,16 @@ function Guide({ onJoin }: { onJoin: () => void }) {
       <section className="verification-panel">
         <h2>Un badge fondé sur un dossier, pas seulement sur l’ancienneté.</h2>
         <p>
-          Les 6 mois de pratique permettent de proposer son aide, mais ne
-          donnent aucun badge. Pour obtenir « Dossier vérifié », un parrain doit
-          présenter au moins 20 ventes documentées, ses spécialités et un cas
-          pratique. La modération examine ces éléments de façon confidentielle.
+          Pour demander le badge « Dossier vérifié », le parrain renseigne son
+          expérience, ses plateformes, son volume de ventes, ses domaines d’aide
+          et sa motivation. La modération examine ses justificatifs de façon
+          confidentielle avant de prendre une décision.
         </p>
         <p>
-          Le badge affiche le volume de ventes documenté et les spécialités
-          examinées. Sans validation, le profil indique « Expérience déclarée ·
-          non vérifiée ». Ce contrôle ne garantit pas les résultats, la
-          pédagogie ou l’authenticité d’un article.
+          Le badge affiche les domaines examinés et la date de vérification.
+          Sans validation, le profil indique « Expérience déclarée · non
+          vérifiée ». Ce contrôle ne garantit pas les résultats, la pédagogie ou
+          l’authenticité d’un article.
         </p>
       </section>
       <FAQ />
@@ -2342,7 +2342,7 @@ function FAQ() {
       {[
         [
           "Dois-je avoir un certain chiffre d’affaires pour être parrain ?",
-          "Non. Les 6 mois de pratique permettent de proposer son aide, sans obtenir automatiquement un badge. Le badge exige au moins 20 ventes documentées, une spécialité examinée et un cas pratique validé par la modération. Le chiffre d’affaires déclaré ne constitue pas une preuve à lui seul.",
+          "Non. Le badge est attribué après un examen confidentiel du questionnaire et des justificatifs par la modération. Deux types de justificatifs différents sont conseillés si possible. L’ancienneté et le chiffre d’affaires déclarés ne suffisent pas à obtenir un badge.",
         ],
         [
           "Est-ce que Mentora envoie une demande d’amis automatiquement ?",

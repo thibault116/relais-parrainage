@@ -1,26 +1,5 @@
 import { query } from "./db";
-import { z } from "zod";
-import { specialties } from "./profile";
-export const dossierSchema = z.object({
-  sales: z.number().int().min(1).max(1000000),
-  specialties: z.array(z.enum(specialties)).min(1).max(8),
-  experience: z.string().trim().min(50).max(2000),
-  example: z.string().trim().min(80).max(2000),
-  evidence: z
-    .array(
-      z
-        .string()
-        .url()
-        .max(1000)
-        .refine(
-          (v) => new URL(v).protocol === "https:",
-          "Utilise un lien HTTPS.",
-        ),
-    )
-    .min(1)
-    .max(5),
-  consent: z.literal(true),
-});
+export { dossierSchema } from "./verification-form";
 export async function isModerator(id: string) {
   return (
     (await query("SELECT user_id FROM moderators WHERE user_id=$1", [id]))
@@ -30,7 +9,7 @@ export async function isModerator(id: string) {
 export function publicVerification(row: Record<string, unknown> | undefined) {
   if (!row || row.status !== "approved") return null;
   return {
-    sales: Number(row.verified_sales),
+    sales: row.verified_sales === null ? null : Number(row.verified_sales),
     specialties: JSON.parse(
       String(row.verified_specialties || "[]"),
     ) as string[],

@@ -119,3 +119,12 @@ export async function migrateAdministration() {
       ]);
   }
 }
+
+export async function migrateVerificationFiles() {
+  await query(
+    `CREATE TABLE IF NOT EXISTS verification_files (id TEXT PRIMARY KEY,user_id TEXT NOT NULL,name TEXT NOT NULL,mime TEXT NOT NULL,size INTEGER NOT NULL,stored_path TEXT NOT NULL,created_at TEXT NOT NULL)`,
+  );
+  await query(
+    "CREATE INDEX IF NOT EXISTS verification_files_owner ON verification_files (user_id)",
+  );
+}

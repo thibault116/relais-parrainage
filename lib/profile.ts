@@ -110,7 +110,7 @@ export type ProfileInput = z.infer<typeof profileSchema>;
 export type Profile = Omit<ProfileInput, "consent"> & {
   id: string;
   verification?: {
-    sales: number;
+    sales: number | null;
     specialties: string[];
     reviewedAt: string;
   } | null;

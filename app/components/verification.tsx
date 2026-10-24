@@ -1,7 +1,15 @@
 "use client";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { specialties, type PublicProfile } from "@/lib/profile";
-import { ShieldCheck } from "lucide-react";
+import type { PublicProfile } from "@/lib/profile";
+import {
+  experienceOptions,
+  platformOptions,
+  salesOptions,
+  helpOptions,
+  proofOptions,
+  type Dossier,
+} from "@/lib/verification-form";
+import { ShieldCheck, Upload } from "lucide-react";
 async function call(path: string, method = "GET", body?: unknown) {
   const r = await fetch(path, {
     method,
@@ -9,30 +17,44 @@ async function call(path: string, method = "GET", body?: unknown) {
     headers: { "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
   });
-  const data = await r.json();
-  if (!r.ok) throw Error(data.error || "Une erreur est survenue.");
-  return data;
+  const d = await r.json();
+  if (!r.ok) throw Error(d.error || "Une erreur est survenue.");
+  return d;
 }
-type Dossier = {
+type FileInfo = { id: string; name: string; size: number; mime: string };
+type Legacy = {
+  version?: 1;
   sales: number;
   specialties: string[];
   experience: string;
   example: string;
   evidence: string[];
-  consent: boolean;
 };
 type Review = {
   user_id: string;
   name: string;
   revision: string;
   status: string;
-  dossier: Dossier;
+  dossier: Dossier | Legacy;
   feedback: string;
   verified_sales: number | null;
   verified_specialties: string | null;
   submitted_at: string;
-  profile: { experience: number };
 };
+function isNew(d: Dossier | Legacy): d is Dossier {
+  return d.version === 2;
+}
+const empty = (): Dossier => ({
+  version: 2,
+  experience: "" as Dossier["experience"],
+  platforms: [],
+  salesRange: "" as Dossier["salesRange"],
+  helpAreas: [],
+  otherHelp: "",
+  motivation: "",
+  proofs: [],
+  consent: true,
+});
 export function VerificationBadge({ profile }: { profile: PublicProfile }) {
   if (profile.role !== "mentor") return null;
   if (!profile.verification)
@@ -48,7 +70,8 @@ export function VerificationBadge({ profile }: { profile: PublicProfile }) {
         <ShieldCheck size={17} /> Dossier vérifié
       </span>
       <small>
-        {v.sales} ventes documentées · {v.specialties.join(", ")}
+        {v.sales !== null && <>{v.sales} ventes documentées · </>}
+        {v.specialties.join(", ")}
         <br />
         Examiné le {new Date(v.reviewedAt).toLocaleDateString("fr-FR")}. Ce
         badge ne garantit ni les résultats ni l’authenticité d’un article.
@@ -61,31 +84,27 @@ export function VerificationForm({
 }: {
   onChange: () => Promise<void>;
 }) {
-  const [moderationOpen, setModerationOpen] = useState(false);
   const [record, setRecord] = useState<Review | null>(null),
-    [busy, setBusy] = useState(false),
+    [draft, setDraft] = useState<Dossier>(empty),
+    [files, setFiles] = useState<FileInfo[]>([]),
+    [open, setOpen] = useState(false),
     [loading, setLoading] = useState(true),
+    [busy, setBusy] = useState(false),
+    [uploading, setUploading] = useState(false),
     [error, setError] = useState(""),
-    [message, setMessage] = useState("");
-  const [sales, setSales] = useState(""),
-    [skills, setSkills] = useState<string[]>([]),
-    [experience, setExperience] = useState(""),
-    [example, setExample] = useState(""),
-    [evidence, setEvidence] = useState(""),
+    [message, setMessage] = useState(""),
     [consent, setConsent] = useState(false);
   const load = useCallback(async () => {
     try {
-      const d = await call("/api/verification");
+      const [d, f] = await Promise.all([
+        call("/api/verification"),
+        call("/api/verification-files"),
+      ]);
       setRecord(d.verification);
-      setModerationOpen(d.moderationOpen);
-      if (d.verification) {
-        const v = d.verification.dossier;
-        setSales(String(v.sales));
-        setSkills(v.specialties);
-        setExperience(v.experience);
-        setExample(v.example);
-        setEvidence(v.evidence.join("\n"));
-      }
+      setOpen(d.moderationOpen);
+      setFiles(f.files);
+      if (d.verification && isNew(d.verification.dossier))
+        setDraft(d.verification.dossier);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -95,6 +114,59 @@ export function VerificationForm({
   useEffect(() => {
     void load();
   }, [load]);
+  function toggle<K extends "platforms" | "helpAreas">(
+    key: K,
+    value: Dossier[K][number],
+  ) {
+    setDraft((d) => ({
+      ...d,
+      [key]: (d[key] as string[]).includes(value)
+        ? d[key].filter((v) => v !== value)
+        : [...d[key], value],
+    }));
+  }
+  function updateProof(
+    type: Dossier["proofs"][number]["type"],
+    change: Partial<Dossier["proofs"][number]>,
+  ) {
+    setDraft((d) => ({
+      ...d,
+      proofs: d.proofs.map((p) => (p.type === type ? { ...p, ...change } : p)),
+    }));
+  }
+  async function upload(
+    type: Dossier["proofs"][number]["type"],
+    list: FileList | null,
+  ) {
+    if (!list) return;
+    setUploading(true);
+    setError("");
+    for (const file of Array.from(list)) {
+      try {
+        if (file.size > 4 * 1024 * 1024)
+          throw Error(`${file.name} : limite de 4 Mo par fichier.`);
+        const form = new FormData();
+        form.append("file", file);
+        const r = await fetch("/api/verification-files", {
+          method: "POST",
+          body: form,
+        });
+        const d = await r.json();
+        if (!r.ok) throw Error(d.error || "Import impossible.");
+        setFiles((f) => [...f, d.file]);
+        setDraft((old) => ({
+          ...old,
+          proofs: old.proofs.map((p) =>
+            p.type === type ? { ...p, files: [...p.files, d.file.id] } : p,
+          ),
+        }));
+      } catch (e) {
+        setError((e as Error).message);
+        break;
+      }
+    }
+    setUploading(false);
+  }
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -102,20 +174,17 @@ export function VerificationForm({
     setMessage("");
     try {
       await call("/api/verification", "POST", {
-        sales: Number(sales),
-        specialties: skills,
-        experience,
-        example,
-        evidence: evidence
-          .split("\n")
-          .map((v) => v.trim())
-          .filter(Boolean),
+        ...draft,
+        proofs: draft.proofs.map((p) => ({
+          ...p,
+          links: p.links.map((v) => v.trim()).filter(Boolean),
+        })),
         consent,
       });
       await load();
       await onChange();
       setMessage(
-        "Dossier envoyé. Aucun badge n’est attribué avant l’examen par la modération.",
+        "Ton dossier a été envoyé. L’équipe examinera tes réponses et tes justificatifs de façon confidentielle.",
       );
     } catch (e) {
       setError((e as Error).message);
@@ -126,7 +195,7 @@ export function VerificationForm({
   async function withdraw() {
     if (
       !window.confirm(
-        "Retirer le dossier et ses justificatifs ? Le badge éventuel sera supprimé.",
+        "Retirer ton dossier, tous les fichiers importés et ton badge éventuel ?",
       )
     )
       return;
@@ -135,14 +204,11 @@ export function VerificationForm({
     try {
       await call("/api/verification", "DELETE");
       setRecord(null);
-      setSales("");
-      setSkills([]);
-      setExperience("");
-      setExample("");
-      setEvidence("");
+      setFiles([]);
+      setDraft(empty());
       setConsent(false);
       await onChange();
-      setMessage("Ton dossier et ton badge ont été retirés.");
+      setMessage("Dossier et fichiers retirés.");
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -151,145 +217,316 @@ export function VerificationForm({
   }
   return (
     <section className="verification-panel">
-      <span className="eyebrow">AU-DELÀ DE L’ANCIENNETÉ</span>
-      <h2>Faire vérifier mon expérience</h2>
+      <span className="eyebrow">FAISONS CONNAISSANCE</span>
+      <h2>Vérifier mon profil parrain</h2>
       <p>
-        Au moins 6 mois de pratique, 20 ventes documentées, une spécialité
-        démontrée et un cas pratique examiné : le badge est attribué après
-        validation humaine. L’ancienneté seule ne suffit pas.
-      </p>
-      <p>
-        Ton dossier et tes liens restent accessibles uniquement à toi et aux
-        modérateurs autorisés. Seuls le nombre de ventes documentées, les
-        spécialités validées et la date d’examen sont publics. Tu peux retirer
-        le dossier à tout moment.
+        Présente ton parcours et les domaines dans lesquels tu peux aider. Tes
+        réponses et tes justificatifs sont réservés à toi et à l’administration.
+        Le badge est attribué après un examen humain.
       </p>
       {loading ? (
-        <p>Chargement du dossier…</p>
-      ) : !moderationOpen ? (
-        <p className="info-box">
-          L’examen des dossiers ouvrira dès que l’équipe de modération sera
-          configurée. Aucun justificatif n’est collecté pour le moment.
+        <p>Chargement…</p>
+      ) : !open ? (
+        <p>
+          L’examen des dossiers sera disponible dès que l’administration sera
+          configurée.
         </p>
       ) : (
         <>
-          <p className="badge">
-            {record
-              ? {
-                  pending: "En attente d’examen",
-                  approved: "Dossier vérifié",
-                  changes: "Compléments demandés",
-                }[record.status] || record.status
-              : "Pas encore de dossier"}
-          </p>
-          {record?.feedback && (
-            <p className="info-box">
-              Retour de la modération : {record.feedback}
+          {record && (
+            <p className="badge">
+              {record.status === "approved"
+                ? "Dossier vérifié"
+                : record.status === "changes"
+                  ? "Compléments demandés"
+                  : "En attente d’examen"}
             </p>
           )}
-          <form onSubmit={submit} className="verification-form">
-            <label>
-              Nombre total de ventes réalisées
-              <input
-                type="number"
-                min="1"
-                max="1000000"
-                required
-                value={sales}
-                onChange={(e) => setSales(e.target.value)}
-              />
-            </label>
-            <fieldset>
-              <legend>Spécialités à faire examiner</legend>
-              {specialties.map((s) => (
-                <label className="verification-check" key={s}>
-                  <input
-                    type="checkbox"
-                    checked={skills.includes(s)}
-                    onChange={(e) =>
-                      setSkills(
-                        e.target.checked
-                          ? [...skills, s]
-                          : skills.filter((x) => x !== s),
-                      )
-                    }
-                  />
-                  {s}
-                </label>
-              ))}
-            </fieldset>
-            <label>
-              Ton expérience concrète
-              <textarea
-                required
-                minLength={50}
-                maxLength={2000}
-                value={experience}
-                onChange={(e) => setExperience(e.target.value)}
-                placeholder="Plateformes, période d’activité, types de pièces, volumes, méthode de sourcing…"
-              />
-            </label>
-            <label>
-              Un cas pratique : comment aiderais-tu un débutant dont une pièce
-              ne se vend pas ?
-              <textarea
-                required
-                minLength={80}
-                maxLength={2000}
-                value={example}
-                onChange={(e) => setExample(e.target.value)}
-                placeholder="Explique ton diagnostic et les conseils que tu donnerais, sans promettre une vente."
-              />
-            </label>
-            <label>
-              Liens HTTPS vers tes justificatifs (1 à 5, un par ligne)
-              <textarea
-                required
-                maxLength={5000}
-                value={evidence}
-                onChange={(e) => setEvidence(e.target.value)}
-                placeholder="Historique de ventes, captures anonymisées, exemples de pièces…"
-              />
-            </label>
-            <p className="small-text">
-              Utilise des liens en lecture seule. Masque les noms, adresses et
-              coordonnées des acheteurs. N’envoie ni pièce d’identité, ni mot de
-              passe, ni coordonnées bancaires. Le partage sur le service qui
-              héberge les fichiers reste sous ton contrôle.
+          {record?.feedback && (
+            <p className="info-box">
+              Retour de l’administration : {record.feedback}
             </p>
-            <label className="verification-check">
-              <input
-                type="checkbox"
-                required
-                checked={consent}
-                onChange={(e) => setConsent(e.target.checked)}
-              />
-              J’autorise l’examen confidentiel de ces éléments et la publication
-              du résumé validé.
-            </label>
-            {record?.status === "approved" && (
-              <p>
-                Renvoyer le dossier retire le badge jusqu’au prochain examen.
+          )}
+          {record && !isNew(record.dossier) && (
+            <p>
+              L’ancien dossier reste conservé pour l’administration. Remplis ce
+              nouveau questionnaire pour le remplacer.
+            </p>
+          )}
+          <form className="verification-form" onSubmit={submit}>
+            <fieldset
+              disabled={busy || uploading}
+              className="proof-questionnaire"
+            >
+              <fieldset>
+                <legend>
+                  1. Depuis combien de temps fais-tu de la revente ?
+                </legend>
+                <p className="small-text">Une seule réponse.</p>
+                {experienceOptions.map((v) => (
+                  <label className="verification-check" key={v}>
+                    <input
+                      type="radio"
+                      name="verification-experience"
+                      required
+                      checked={draft.experience === v}
+                      onChange={() =>
+                        setDraft((d) => ({ ...d, experience: v }))
+                      }
+                    />
+                    {v}
+                  </label>
+                ))}
+              </fieldset>
+              <fieldset>
+                <legend>2. Sur quelles plateformes vends-tu ?</legend>
+                <p className="small-text">Plusieurs réponses possibles.</p>
+                {platformOptions.map((v) => (
+                  <label className="verification-check" key={v}>
+                    <input
+                      type="checkbox"
+                      checked={draft.platforms.includes(v)}
+                      onChange={() => toggle("platforms", v)}
+                    />
+                    {v}
+                  </label>
+                ))}
+              </fieldset>
+              <fieldset>
+                <legend>3. Combien de ventes as-tu réalisées environ ?</legend>
+                <p className="small-text">Une seule réponse.</p>
+                {salesOptions.map((v) => (
+                  <label className="verification-check" key={v}>
+                    <input
+                      type="radio"
+                      name="verification-sales"
+                      required
+                      checked={draft.salesRange === v}
+                      onChange={() =>
+                        setDraft((d) => ({ ...d, salesRange: v }))
+                      }
+                    />
+                    {v}
+                  </label>
+                ))}
+              </fieldset>
+              <fieldset>
+                <legend>
+                  4. Dans quels domaines peux-tu aider un débutant ?
+                </legend>
+                <p className="small-text">Plusieurs réponses possibles.</p>
+                {helpOptions.map((v) => (
+                  <label className="verification-check" key={v}>
+                    <input
+                      type="checkbox"
+                      checked={draft.helpAreas.includes(v)}
+                      onChange={() => toggle("helpAreas", v)}
+                    />
+                    {v}
+                  </label>
+                ))}
+                {draft.helpAreas.includes("Autre") && (
+                  <label>
+                    Précise ton autre domaine
+                    <input
+                      required
+                      value={draft.otherHelp}
+                      onChange={(e) =>
+                        setDraft((d) => ({ ...d, otherHelp: e.target.value }))
+                      }
+                    />
+                  </label>
+                )}
+              </fieldset>
+              <label>
+                5. Pourquoi souhaites-tu devenir parrain ?
+                <textarea
+                  required
+                  value={draft.motivation}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, motivation: e.target.value }))
+                  }
+                  placeholder="Par exemple : j’aurais aimé être accompagné à mes débuts et j’ai envie de partager ce que j’ai appris."
+                />
+              </label>
+              <fieldset>
+                <legend>6. Quelles preuves peux-tu fournir ?</legend>
+                <p>
+                  Sélectionne au moins deux justificatifs différents si
+                  possible. Une seule catégorie reste acceptée si tu n’en as pas
+                  d’autre.
+                </p>
+                {proofOptions.map((type) => {
+                  const proof = draft.proofs.find((p) => p.type === type);
+                  return (
+                    <div className="proof-category" key={type}>
+                      <label className="verification-check">
+                        <input
+                          type="checkbox"
+                          checked={!!proof}
+                          onChange={(e) =>
+                            setDraft((d) => ({
+                              ...d,
+                              proofs: e.target.checked
+                                ? [...d.proofs, { type, links: [], files: [] }]
+                                : d.proofs.filter((p) => p.type !== type),
+                            }))
+                          }
+                        />
+                        {type}
+                      </label>
+                      {proof && (
+                        <div className="proof-inputs">
+                          <label>
+                            Lien(s) vers ce justificatif — un par ligne
+                            <textarea
+                              value={proof.links.join("\n")}
+                              onChange={(e) =>
+                                updateProof(type, {
+                                  links: e.target.value.split("\n"),
+                                })
+                              }
+                              placeholder="https://…"
+                            />
+                          </label>
+                          <label className="proof-upload">
+                            <Upload size={18} /> Importer des photos ou des
+                            fichiers
+                            <input
+                              type="file"
+                              multiple
+                              accept="image/*,.pdf,application/pdf"
+                              onChange={(e) => {
+                                void upload(type, e.target.files);
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
+                          <p className="small-text">
+                            Photothèque ou fichiers de ton appareil. JPEG, PNG,
+                            WebP, GIF, HEIC ou PDF · 4 Mo par fichier · 12
+                            fichiers maximum.
+                          </p>
+                          {files.length > 0 && (
+                            <fieldset>
+                              <legend>
+                                Fichiers importés à joindre à cette preuve
+                              </legend>
+                              {files.map((f) => (
+                                <label
+                                  className="verification-check"
+                                  key={f.id}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={proof.files.includes(f.id)}
+                                    onChange={(e) =>
+                                      updateProof(type, {
+                                        files: e.target.checked
+                                          ? [...proof.files, f.id]
+                                          : proof.files.filter(
+                                              (id) => id !== f.id,
+                                            ),
+                                      })
+                                    }
+                                  />
+                                  <span>
+                                    {f.name} · {Math.ceil(f.size / 1024)} Ko{" "}
+                                    <a
+                                      href={`/api/verification-files?id=${f.id}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      Télécharger
+                                    </a>
+                                  </span>
+                                </label>
+                              ))}
+                            </fieldset>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </fieldset>
+              <p className="small-text">
+                Masque les coordonnées de tes acheteurs avant l’envoi. Tes
+                fichiers ne sont jamais affichés dans l’annuaire. Pour un lien
+                externe, tu gardes le contrôle de son partage.
               </p>
-            )}
-            <button className="btn" disabled={busy || !skills.length}>
-              {busy
-                ? "Enregistrement…"
-                : record
-                  ? "Renvoyer mon dossier"
-                  : "Demander la vérification"}
-            </button>
-            {record && (
-              <button
-                className="text-btn"
-                type="button"
-                disabled={busy}
-                onClick={() => void withdraw()}
-              >
-                Retirer mon dossier et mon badge
+              <label className="verification-check">
+                <input
+                  type="checkbox"
+                  required
+                  checked={consent}
+                  onChange={(e) => setConsent(e.target.checked)}
+                />
+                J’autorise l’administration à examiner ces éléments
+                confidentiellement et à publier les domaines validés avec mon
+                badge.
+              </label>
+              {record?.status === "approved" && (
+                <p>
+                  Renvoyer le dossier retire le badge jusqu’au prochain examen.
+                </p>
+              )}
+              <button className="btn" type="submit">
+                {busy
+                  ? "Envoi…"
+                  : uploading
+                    ? "Import en cours…"
+                    : record
+                      ? "Renvoyer mon dossier"
+                      : "Envoyer mon dossier"}
               </button>
-            )}
+            </fieldset>
           </form>
+          {(record || files.length > 0) && (
+            <button
+              type="button"
+              className="text-btn"
+              disabled={busy || uploading}
+              onClick={() => void withdraw()}
+            >
+              Retirer mon dossier et tous mes fichiers
+            </button>
+          )}
+          {files.length > 0 && (
+            <details className="proof-cleanup">
+              <summary>Gérer mes fichiers importés</summary>
+              {files.map((f) => (
+                <div key={f.id}>
+                  {f.name}{" "}
+                  <button
+                    type="button"
+                    className="text-btn"
+                    disabled={busy || uploading}
+                    onClick={async () => {
+                      setError("");
+                      try {
+                        await call("/api/verification-files", "DELETE", {
+                          id: f.id,
+                        });
+                        setFiles((old) => old.filter((x) => x.id !== f.id));
+                        setDraft((d) => ({
+                          ...d,
+                          proofs: d.proofs.map((p) => ({
+                            ...p,
+                            files: p.files.filter((id) => id !== f.id),
+                          })),
+                        }));
+                      } catch (e) {
+                        setError((e as Error).message);
+                      }
+                    }}
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              ))}
+            </details>
+          )}
         </>
       )}
       {error && (
@@ -303,8 +540,8 @@ export function VerificationForm({
 }
 export function Moderation() {
   const [items, setItems] = useState<Review[]>([]),
-    [loading, setLoading] = useState(true),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [loading, setLoading] = useState(true);
   const load = useCallback(async () => {
     setError("");
     try {
@@ -322,10 +559,10 @@ export function Moderation() {
     <section className="wrap section">
       <h1>Vérification des parrains</h1>
       <p>
-        Espace confidentiel. Vérifie le volume des ventes, la cohérence de
-        l’activité et des spécialités, puis la pertinence du cas pratique. Ne
-        valide pas un dossier sur la seule ancienneté. Les liens sont fournis
-        par les membres : n’y saisis aucun identifiant.
+        Examine le parcours, les plateformes, les domaines d’aide et la
+        motivation en regard des justificatifs. Deux types de preuves sont
+        conseillés, sans être obligatoires. Les liens externes viennent des
+        membres : n’y saisis aucun identifiant.
       </p>
       <button className="text-btn" onClick={() => void load()}>
         Actualiser les dossiers
@@ -358,6 +595,12 @@ function ReviewCard({
   item: Review;
   reload: () => Promise<void>;
 }) {
+  const d = item.dossier,
+    newD = isNew(d) ? d : null,
+    old = !isNew(d) ? d : null,
+    areas = newD
+      ? newD.helpAreas.map((s) => (s === "Autre" ? newD.otherHelp : s))
+      : old?.specialties || [];
   const [sales, setSales] = useState(String(item.verified_sales || "")),
     [skills, setSkills] = useState<string[]>(
       item.verified_specialties ? JSON.parse(item.verified_specialties) : [],
@@ -374,7 +617,7 @@ function ReviewCard({
         userId: item.user_id,
         revision: item.revision,
         action,
-        sales: Number(sales),
+        sales: newD ? 0 : Number(sales),
         specialties: skills,
         feedback,
         checked,
@@ -394,40 +637,85 @@ function ReviewCard({
           ? "Vérifié"
           : item.status === "changes"
             ? "Compléments demandés"
-            : "À examiner"}{" "}
-        · {item.profile.experience} mois déclarés · {item.dossier.sales} ventes
-        déclarées
+            : "À examiner"}
       </p>
-      <p>
-        <strong>Expérience :</strong> {item.dossier.experience}
-      </p>
-      <p>
-        <strong>Cas pratique :</strong> {item.dossier.example}
-      </p>
-      <ul>
-        {item.dossier.evidence.map((url, i) => (
-          <li key={url}>
-            <a href={url} target="_blank" rel="noopener noreferrer">
-              Justificatif {i + 1} · {new URL(url).hostname}
-            </a>
-          </li>
-        ))}
-      </ul>
+      {newD ? (
+        <>
+          <dl className="review-answers">
+            <dt>Ancienneté</dt>
+            <dd>{newD.experience}</dd>
+            <dt>Plateformes</dt>
+            <dd>{newD.platforms.join(" · ")}</dd>
+            <dt>Ventes estimées</dt>
+            <dd>{newD.salesRange}</dd>
+            <dt>Domaines d’aide</dt>
+            <dd>{areas.join(" · ")}</dd>
+            <dt>Motivation</dt>
+            <dd className="free-answer">{newD.motivation}</dd>
+          </dl>
+          {newD.proofs.map((p) => (
+            <section className="proof-category" key={p.type}>
+              <h3>{p.type}</h3>
+              <ul>
+                {p.links.map((url, i) => (
+                  <li key={url}>
+                    <a href={url} target="_blank" rel="noopener noreferrer">
+                      Lien {i + 1} · {new URL(url).hostname}
+                    </a>
+                  </li>
+                ))}
+                {p.files.map((id, i) => (
+                  <li key={id}>
+                    <a
+                      href={`/api/verification-files?id=${id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Télécharger le justificatif {i + 1}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </>
+      ) : (
+        old && (
+          <>
+            <p>
+              Ancienne version du questionnaire · {old.sales} ventes déclarées
+            </p>
+            <p>{old.experience}</p>
+            <p>{old.example}</p>
+            <ul>
+              {old.evidence.map((url, i) => (
+                <li key={url}>
+                  <a href={url} target="_blank" rel="noopener noreferrer">
+                    Justificatif {i + 1}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </>
+        )
+      )}
       {item.feedback && <p>Dernier retour : {item.feedback}</p>}
       <div className="verification-form">
-        <label>
-          Ventes effectivement documentées
-          <input
-            type="number"
-            min="0"
-            max={item.dossier.sales}
-            value={sales}
-            onChange={(e) => setSales(e.target.value)}
-          />
-        </label>
+        {old && (
+          <label>
+            Ventes effectivement documentées
+            <input
+              type="number"
+              min="0"
+              max={old.sales}
+              value={sales}
+              onChange={(e) => setSales(e.target.value)}
+            />
+          </label>
+        )}
         <fieldset>
-          <legend>Spécialités effectivement examinées</legend>
-          {item.dossier.specialties.map((s) => (
+          <legend>Domaines examinés à publier avec le badge</legend>
+          {areas.map((s) => (
             <label className="verification-check" key={s}>
               <input
                 type="checkbox"
@@ -445,7 +733,7 @@ function ReviewCard({
           ))}
         </fieldset>
         <label>
-          Retour privé au parrain (obligatoire)
+          Retour privé au parrain
           <textarea
             minLength={15}
             maxLength={1500}
@@ -459,8 +747,8 @@ function ReviewCard({
             checked={checked}
             onChange={(e) => setChecked(e.target.checked)}
           />
-          J’ai examiné les justificatifs et le cas pratique. Mon avis ne se
-          fonde pas uniquement sur l’ancienneté.
+          J’ai examiné les réponses et les justificatifs. Mon avis ne repose pas
+          uniquement sur l’ancienneté déclarée.
         </label>
         <div className="hero-buttons">
           <button

@@ -1,5 +1,6 @@
+import { deleteUserProofs } from "@/lib/proof-storage";
 import { query } from "@/lib/db";
-import { guard, json, user } from "@/lib/http";
+import { guard, json, user, sameOrigin } from "@/lib/http";
 import { dossierSchema } from "@/lib/verification";
 export const runtime = "nodejs";
 export async function GET(request: Request) {
@@ -28,8 +29,7 @@ export async function GET(request: Request) {
 }
 export async function POST(request: Request) {
   try {
-    const blocked = await guard(request);
-    if (blocked) return blocked;
+    if (!sameOrigin(request)) return json({ error: "Origine refusée." }, 403);
     const u = await user(request);
     if (!u) return json({ error: "Connexion requise." }, 401);
     const parsed = dossierSchema.safeParse(await request.json());
@@ -39,11 +39,10 @@ export async function POST(request: Request) {
       "SELECT details FROM profiles WHERE user_id=$1 AND role='mentor'",
       [u.id],
     );
-    if (!p.length || Number(JSON.parse(String(p[0].details)).experience) < 6)
+    if (!p.length)
       return json(
         {
-          error:
-            "Complète ton profil parrain avec au moins 6 mois de pratique.",
+          error: "Complète ton profil parrain avant de soumettre un dossier.",
         },
         403,
       );
@@ -61,6 +60,20 @@ export async function POST(request: Request) {
         },
         503,
       );
+    const fileIds = [...new Set(parsed.data.proofs.flatMap((p) => p.files))];
+    for (const id of fileIds)
+      if (
+        !(
+          await query(
+            "SELECT id FROM verification_files WHERE id=$1 AND user_id=$2",
+            [id, u.id],
+          )
+        ).length
+      )
+        return json(
+          { error: "Un fichier est introuvable ou ne t’appartient pas." },
+          400,
+        );
     await query(
       `INSERT INTO verifications (user_id,revision,status,dossier,submitted_at) VALUES ($1,$2,'pending',$3,$4) ON CONFLICT(user_id) DO UPDATE SET revision=excluded.revision,status='pending',dossier=excluded.dossier,feedback='',verified_sales=NULL,verified_specialties=NULL,submitted_at=excluded.submitted_at,reviewed_at=NULL,reviewer_id=NULL`,
       [
@@ -81,6 +94,7 @@ export async function DELETE(request: Request) {
     if (blocked) return blocked;
     const u = await user(request);
     if (!u) return json({ error: "Connexion requise." }, 401);
+    await deleteUserProofs(u.id);
     await query("DELETE FROM verifications WHERE user_id=$1", [u.id]);
     return json({ ok: true });
   } catch {
