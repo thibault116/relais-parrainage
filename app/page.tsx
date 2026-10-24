@@ -641,6 +641,8 @@ export default function App() {
               </div>
             ) : !profile || editing ? (
               <ProfileForm
+                key={session.user.id}
+                onLogin={() => setAuthMode("login")}
                 initial={
                   profile
                     ? { ...profile, consent: true }
@@ -1019,7 +1021,9 @@ function ProfileForm({
   initial,
   onSave,
   onCancel,
+  onLogin,
 }: {
+  onLogin: () => void;
   initial: ProfileInput;
   onSave: (p: Profile) => void;
   onCancel?: () => void;
@@ -1084,6 +1088,19 @@ function ProfileForm({
         </div>
       </aside>
       <form className="form-panel" onSubmit={submit}>
+        <div className="questionnaire-login">
+          <p>
+            Tu as déjà un compte Mentora ? Retrouve ton profil avec ton e-mail
+            et ton mot de passe.
+          </p>
+          <button type="button" className="btn secondary" onClick={onLogin}>
+            Se connecter à mon compte
+          </button>
+          <small>
+            Si tu changes de compte, les réponses non enregistrées de ce
+            questionnaire ne seront pas conservées.
+          </small>
+        </div>
         <span className="eyebrow">ÉTAPE {step + 1} SUR 3</span>
         <h2>
           {

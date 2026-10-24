@@ -2740,3 +2740,21 @@ textarea {
     padding: 16px;
   }
 }
+
+.questionnaire-login {
+  padding: 18px;
+  margin-bottom: 25px;
+  border: 1px solid #dfcdef;
+  border-radius: 14px;
+  background: #faf5ff;
+}
+.questionnaire-login p {
+  margin: 0 0 12px;
+  line-height: 1.6;
+}
+.questionnaire-login small {
+  display: block;
+  margin-top: 12px;
+  color: #776a86;
+  line-height: 1.5;
+}
