@@ -51,7 +51,9 @@ export function RatingSummary({
 }
 export function RequestAccompaniment({
   mentorProfileId,
+  compact = false,
 }: {
+  compact?: boolean;
   mentorProfileId: string;
 }) {
   const [busy, setBusy] = useState(false);
@@ -59,11 +61,16 @@ export function RequestAccompaniment({
   const [error, setError] = useState("");
   return (
     <div className="pair-request">
-      <h3>Vous avez décidé d’avancer ensemble ?</h3>
-      <p>
-        Envoie une demande à ce parrain. Il pourra confirmer votre binôme dans «
-        Mon profil ». Tu pourras le noter une fois l’accompagnement terminé.
-      </p>
+      {!compact && (
+        <>
+          <h3>Vous avez décidé d’avancer ensemble ?</h3>
+          <p>
+            Envoie une demande à ce parrain. Il pourra confirmer votre binôme
+            dans « Mon profil ». Tu pourras le noter une fois l’accompagnement
+            terminé.
+          </p>
+        </>
+      )}
       <button
         className="btn secondary full"
         disabled={busy || sent}
@@ -86,6 +93,8 @@ export function RequestAccompaniment({
           </>
         ) : busy ? (
           "Envoi…"
+        ) : compact ? (
+          "Envoyer une demande de parrainage"
         ) : (
           "Choisir ce parrain"
         )}

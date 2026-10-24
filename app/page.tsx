@@ -41,11 +41,8 @@ import {
   RatingSummary,
   RequestAccompaniment,
 } from "./components/accompaniments";
-import {
-  VerificationBadge,
-  VerificationForm,
-  Moderation,
-} from "./components/verification";
+import { VerificationBadge, VerificationForm } from "./components/verification";
+import { AdminDashboard, ReportProfile } from "./components/admin";
 const DISCORD_GROUP = "https://discord.gg/SRVs9Y5ze";
 type View = "home" | "directory" | "guide" | "faq" | "profile" | "moderation";
 const views: Record<View, string> = {
@@ -54,7 +51,7 @@ const views: Record<View, string> = {
   guide: "Comment ça marche",
   faq: "FAQ",
   profile: "Mon profil",
-  moderation: "Modération",
+  moderation: "Administration",
 };
 const Icon = ({ children }: { children: React.ReactNode }) => (
   <span className="icon-box">{children}</span>
@@ -88,6 +85,7 @@ export default function App() {
   const [mobile, setMobile] = useState(false);
   const { data: session, isPending } = authClient.useSession();
   const [moderator, setModerator] = useState(false);
+  const [moderationBlock, setModerationBlock] = useState<string | null>(null);
   const view: View = session
     ? requestedView === "moderation" && moderator
       ? "moderation"
@@ -143,6 +141,7 @@ export default function App() {
       const data = await api("/api/me");
       setProfile(data.profile);
       setModerator(!!data.isModerator);
+      setModerationBlock(data.moderationBlock);
     } catch (e) {
       setProfileError((e as Error).message);
     } finally {
@@ -259,7 +258,7 @@ export default function App() {
       </header>
       <main>
         {!isPending && session && moderator && view === "moderation" && (
-          <Moderation />
+          <AdminDashboard />
         )}
         {isPending && (
           <div className="empty">
@@ -602,6 +601,11 @@ export default function App() {
               </h1>
               <p>Présente-toi, garde la main et avance à ton rythme.</p>
             </div>
+            {moderationBlock && (
+              <p className="error" role="alert">
+                Ton profil est masqué par la modération : {moderationBlock}
+              </p>
+            )}
             {isPending || profileLoading ? (
               <div className="empty">
                 <LoaderCircle className="spin" /> Chargement de ton profil…
@@ -1159,15 +1163,6 @@ function ProfileForm({
                   placeholder="ex. alex.resell"
                 />
               </Field>
-              <Field label="Arrivée dans la formation">
-                <input
-                  required
-                  type="month"
-                  max={new Date().toISOString().slice(0, 7)}
-                  value={draft.joined}
-                  onChange={(e) => update("joined", e.target.value)}
-                />
-              </Field>
             </div>
             <Field
               label="Identifiant Discord numérique (facultatif)"
@@ -1218,27 +1213,43 @@ function ProfileForm({
                   onChange={(e) => update("experience", Number(e.target.value))}
                 />
               </Field>
-              <Field
-                label={
-                  draft.role === "mentor"
-                    ? "Ta spécialité principale"
-                    : "Ce qui t’intéresse le plus"
-                }
-              >
-                <select
-                  value={draft.specialty}
-                  onChange={(e) =>
-                    update(
-                      "specialty",
-                      e.target.value as ProfileInput["specialty"],
-                    )
-                  }
+              <fieldset className="specialty-options">
+                <legend>
+                  {draft.role === "mentor"
+                    ? "Tes spécialités (plusieurs choix possibles)"
+                    : "Tes centres d’intérêt"}
+                </legend>
+                {specialties.map((x) => (
+                  <label key={x}>
+                    <input
+                      type="checkbox"
+                      checked={draft.specialty.includes(x)}
+                      onChange={(e) =>
+                        update(
+                          "specialty",
+                          e.target.checked
+                            ? [...draft.specialty, x]
+                            : draft.specialty.filter((s) => s !== x),
+                        )
+                      }
+                    />
+                    {x}
+                  </label>
+                ))}
+              </fieldset>
+
+              {draft.role === "mentor" && (
+                <Field
+                  label="Ce que tu peux apprendre à un débutant"
+                  hint="Exemples : sourcing en brocante, calcul des marges, photos et annonces…"
                 >
-                  {specialties.map((x) => (
-                    <option key={x}>{x}</option>
-                  ))}
-                </select>
-              </Field>
+                  <textarea
+                    maxLength={500}
+                    value={draft.teaching}
+                    onChange={(e) => update("teaching", e.target.value)}
+                  />
+                </Field>
+              )}
               {draft.role === "mentor" ? (
                 <Field
                   label="Chiffre d’affaires mensuel"
@@ -1259,7 +1270,9 @@ function ProfileForm({
                       "1 000–2 000 €",
                       "2 000–3 000 €",
                       "3 000–5 000 €",
-                      "5 000 € et plus",
+                      "5 000–7 000 €",
+                      "7 000–10 000 €",
+                      "10 000 € et plus",
                     ].map((x) => (
                       <option key={x}>{x}</option>
                     ))}
@@ -1484,65 +1497,115 @@ function ProfileCard({
   p,
   onOpen,
   own = false,
+  canRequest = false,
 }: {
   p: PublicProfile;
   onOpen: () => void;
   own?: boolean;
+  canRequest?: boolean;
 }) {
+  const remaining = Math.max(0, p.capacity - (p.activeCount ?? 0));
+  const experience =
+    p.experience >= 12
+      ? `${Math.floor(p.experience / 12)} an${p.experience >= 24 ? "s" : ""} d’expérience`
+      : `${p.experience} mois d’expérience`;
   return (
-    <article className="member-card">
-      <div className="member-top">
+    <article className="member-card redesigned-card">
+      <div className="mentor-card-head">
         <div className={`avatar ${p.role === "beginner" ? "peach" : ""}`}>
           {p.name.slice(0, 2).toUpperCase()}
         </div>
-        <span className={`badge ${p.role === "mentor" ? "green" : ""}`}>
-          {p.role === "mentor" ? (
-            <>
-              <span className="status-dot" />
-              {Math.max(0, p.capacity - (p.activeCount ?? 0))} place
-              {Math.max(0, p.capacity - (p.activeCount ?? 0)) > 1
-                ? "s"
-                : ""}{" "}
-              libre
-              {Math.max(0, p.capacity - (p.activeCount ?? 0)) > 1 ? "s" : ""}
-            </>
-          ) : (
-            <>
-              <Sprout size={13} /> Débutant
-            </>
-          )}
+        <div className="mentor-card-title">
+          <h3>{p.name}</h3>
+          <p>
+            {p.role === "mentor" ? (
+              <>
+                <ShieldCheck size={17} />
+                {p.verification
+                  ? "Dossier vérifié"
+                  : "Expérience non vérifiée"}{" "}
+                · {experience}
+              </>
+            ) : (
+              "Débutant · cherche un parrain"
+            )}
+          </p>
+        </div>
+        <span
+          className={`badge ${p.role === "mentor" && remaining ? "green" : ""}`}
+        >
+          {p.role === "mentor"
+            ? `${remaining} place${remaining > 1 ? "s" : ""} libre${remaining > 1 ? "s" : ""}`
+            : "Débutant"}
         </span>
       </div>
-      <h3>{p.name}</h3>
-      <VerificationBadge profile={p} />
-      {p.role === "mentor" && <MentorAvailability profile={p} />}
-      <p className="member-subtitle">
-        {p.role === "mentor"
-          ? `Parrain · ${p.experience} mois d’expérience`
-          : "À la recherche d’un coup de pouce"}
-      </p>
-      {p.role === "mentor" && !own && (
-        <RatingSummary average={p.ratingAverage} count={p.ratingCount} />
-      )}
       <div className="mini-tags">
-        <span>{p.specialty}</span>
-        {p.references && <span>{p.references.split(",")[0].slice(0, 25)}</span>}
+        {p.specialty.map((s) => (
+          <span key={s}>{s}</span>
+        ))}
+        {p.references && <span>{p.references.split(",")[0].slice(0, 50)}</span>}
       </div>
-      <p className="member-bio">{p.bio}</p>
-      <div className="member-facts">
-        <span>
-          <Clock size={15} />
-          {p.availability}
-        </span>
-        <span>
-          <MessageCircle size={15} />
-          {p.responseTime}
-        </span>
-      </div>
-      <button className="card-btn" onClick={onOpen}>
-        {own ? "Modifier mon profil" : "Découvrir le profil"}{" "}
-        <ArrowUpRight size={17} />
-      </button>
+      <p className="card-quote">« {p.bio} »</p>
+      {p.role === "mentor" ? (
+        <>
+          <div className="card-stats">
+            <div>
+              <strong>
+                {p.ratingCount
+                  ? `${Number(p.ratingAverage).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}/5`
+                  : "—"}
+              </strong>
+              <span>
+                {p.ratingCount ? `${p.ratingCount} avis` : "Pas encore d’avis"}
+              </span>
+            </div>
+            <div>
+              <strong>{p.completedCount ?? 0}</strong>
+              <span>Binômes terminés</span>
+            </div>
+            <div>
+              <strong>{p.responseTime.replace("Sous ", "")}</strong>
+              <span>Délai annoncé</span>
+            </div>
+          </div>
+          <p className="card-active">
+            {p.activeCount ?? 0} accompagnement
+            {(p.activeCount ?? 0) > 1 ? "s" : ""} en cours
+          </p>
+          <div className="card-teaching">
+            <h4>Ce qu’il peut t’apprendre</h4>
+            <p>
+              {p.teaching ||
+                "Ses conseils précis sont à définir ensemble selon ses spécialités."}
+            </p>
+          </div>
+        </>
+      ) : (
+        <div className="card-teaching">
+          <h4>Ses objectifs</h4>
+          <p>{p.goals}</p>
+        </div>
+      )}
+      {own ? (
+        <button className="card-btn" onClick={onOpen}>
+          Modifier mon profil <ArrowUpRight size={17} />
+        </button>
+      ) : (
+        <>
+          {p.role === "mentor" && canRequest ? (
+            <RequestAccompaniment mentorProfileId={p.id} compact />
+          ) : (
+            <button className="card-btn" onClick={onOpen}>
+              Découvrir le profil <ArrowUpRight size={17} />
+            </button>
+          )}
+          {p.role === "mentor" && canRequest && (
+            <button className="text-btn card-details" onClick={onOpen}>
+              Voir le profil et le contact Discord
+            </button>
+          )}
+        </>
+      )}
     </article>
   );
 }
@@ -1761,7 +1824,12 @@ function Directory({
       ) : profiles.length ? (
         <div className="member-grid">
           {profiles.map((p) => (
-            <ProfileCard key={p.id} p={p} onOpen={() => open(p)} />
+            <ProfileCard
+              key={p.id}
+              p={p}
+              onOpen={() => open(p)}
+              canRequest={own?.role === "beginner" && p.id !== own.id}
+            />
           ))}
         </div>
       ) : (
@@ -1877,7 +1945,7 @@ function Directory({
             </div>
             <span className="eyebrow">
               {selected.role === "mentor" ? "PARRAIN" : "DÉBUTANT"} ·{" "}
-              {selected.specialty}
+              {selected.specialty.join(" · ") || "Spécialités à préciser"}
             </span>
             <h2 id="member-title">{selected.name}</h2>
             <VerificationBadge profile={selected} />
@@ -1891,17 +1959,15 @@ function Directory({
               <MentorAvailability profile={selected} />
             )}
             <p>{selected.bio}</p>
+            {session && selected.id !== own?.id && (
+              <ReportProfile key={selected.id} profileId={selected.id} />
+            )}
             <div className="detail-grid">
               <div>
                 <small>Expérience</small>
                 <strong>{selected.experience} mois</strong>
               </div>
-              <div>
-                <small>Dans la formation depuis</small>
-                <strong>
-                  {selected.joined.split("-").reverse().join("/")}
-                </strong>
-              </div>
+
               <div>
                 <small>Disponibilités</small>
                 <strong>{selected.availability}</strong>

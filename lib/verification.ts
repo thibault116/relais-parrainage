@@ -3,7 +3,7 @@ import { z } from "zod";
 import { specialties } from "./profile";
 export const dossierSchema = z.object({
   sales: z.number().int().min(1).max(1000000),
-  specialties: z.array(z.enum(specialties)).min(1).max(6),
+  specialties: z.array(z.enum(specialties)).min(1).max(8),
   experience: z.string().trim().min(50).max(2000),
   example: z.string().trim().min(80).max(2000),
   evidence: z

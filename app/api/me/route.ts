@@ -9,16 +9,25 @@ export async function GET(request: Request) {
     if (!u)
       return json({ error: "Connecte-toi pour accéder à ton profil." }, 401);
     const rows = await query(
-      "SELECT p.*, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='active') AS active_count FROM profiles p WHERE user_id=$1",
+      "SELECT p.*, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='active') AS active_count, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed') AS completed_count, (SELECT COUNT(a.rating) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed' AND NOT EXISTS (SELECT 1 FROM hidden_ratings h WHERE h.accompaniment_id=a.id)) AS rating_count, (SELECT AVG(a.rating*1.0) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed' AND NOT EXISTS (SELECT 1 FROM hidden_ratings h WHERE h.accompaniment_id=a.id)) AS rating_average FROM profiles p WHERE user_id=$1",
       [u.id],
     );
     const verifications = await getPublicVerifications([u.id]);
     return json({
       isModerator: await isModerator(u.id),
+      moderationBlock:
+        (
+          await query("SELECT reason FROM profile_blocks WHERE user_id=$1", [
+            u.id,
+          ])
+        )[0]?.reason || null,
       profile: rows[0]
         ? {
             ...decode(rows[0]),
             verification: verifications.get(u.id) || null,
+            completedCount: Number(rows[0].completed_count) || 0,
+            ratingCount: Number(rows[0].rating_count) || 0,
+            ratingAverage: Number(rows[0].rating_average) || 0,
             activeCount: Number(rows[0].active_count) || 0,
           }
         : null,

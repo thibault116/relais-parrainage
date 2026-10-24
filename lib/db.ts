@@ -77,3 +77,45 @@ export async function migrateVerifications() {
     );
   }
 }
+
+export async function migrateAdministration() {
+  await query(
+    `CREATE TABLE IF NOT EXISTS reports (id TEXT PRIMARY KEY,reporter_id TEXT NOT NULL,target_id TEXT NOT NULL,reason TEXT NOT NULL,details TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','resolved','dismissed')),created_at TEXT NOT NULL,reviewed_at TEXT,reviewer_id TEXT,review_note TEXT NOT NULL DEFAULT '')`,
+  );
+  await query(
+    "CREATE UNIQUE INDEX IF NOT EXISTS reports_one_open ON reports (reporter_id,target_id) WHERE status='open'",
+  );
+  await query(
+    "CREATE TABLE IF NOT EXISTS profile_blocks (user_id TEXT PRIMARY KEY,reason TEXT NOT NULL,moderator_id TEXT NOT NULL,created_at TEXT NOT NULL)",
+  );
+  await query(
+    "CREATE TABLE IF NOT EXISTS hidden_ratings (accompaniment_id TEXT PRIMARY KEY,reason TEXT NOT NULL,moderator_id TEXT NOT NULL,created_at TEXT NOT NULL)",
+  );
+  // Remove the retired field and convert legacy single-choice profiles once.
+  const rows = await query("SELECT id,details FROM profiles");
+  const allowed = [
+    "Vintage",
+    "Luxe",
+    "Sneakers",
+    "Généraliste",
+    "Bot",
+    "Brocante",
+    "Fournisseur",
+    "Délégation",
+  ];
+  for (const row of rows) {
+    const d = JSON.parse(String(row.details));
+    const before = JSON.stringify(d);
+    delete d.joined;
+    d.specialty = (
+      Array.isArray(d.specialty) ? d.specialty : [d.specialty]
+    ).filter((s: string) => allowed.includes(s));
+    if (d.revenue === "5 000 € et plus")
+      d.revenue = "Je préfère ne pas préciser";
+    if (JSON.stringify(d) !== before)
+      await query("UPDATE profiles SET details=$1 WHERE id=$2", [
+        JSON.stringify(d),
+        String(row.id),
+      ]);
+  }
+}

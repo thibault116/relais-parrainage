@@ -37,7 +37,7 @@ export async function POST(request: Request) {
         403,
       );
     const mentors = await query(
-      "SELECT user_id,details FROM profiles WHERE id=$1 AND visible=1 AND role='mentor'",
+      "SELECT user_id,details FROM profiles p WHERE id=$1 AND visible=1 AND role='mentor' AND NOT EXISTS (SELECT 1 FROM profile_blocks b WHERE b.user_id=p.user_id)",
       [input.data.mentorProfileId],
     );
     const mentor = mentors[0];

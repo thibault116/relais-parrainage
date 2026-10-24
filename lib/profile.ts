@@ -1,8 +1,10 @@
 import { z } from "zod";
 export const specialties = [
   "Vintage",
-  "Streetwear",
-  "Sportswear",
+  "Bot",
+  "Brocante",
+  "Fournisseur",
+  "Délégation",
   "Luxe",
   "Sneakers",
   "Généraliste",
@@ -43,14 +45,12 @@ export const profileSchema = z
       "25–34 ans",
       "35 ans et plus",
     ]),
-    joined: z
-      .string()
-      .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
-      .refine(
-        (v) => v <= new Date().toISOString().slice(0, 7),
-        "La date ne peut pas être dans le futur.",
-      ),
-    specialty: z.enum(specialties),
+    specialty: z
+      .array(z.enum(specialties))
+      .min(1, "Choisis au moins une spécialité.")
+      .max(8)
+      .transform((v) => [...new Set(v)]),
+    teaching: z.string().trim().max(500).default(""),
     availability: z.enum(times),
     bio: z
       .string()
@@ -69,7 +69,9 @@ export const profileSchema = z
       "1 000–2 000 €",
       "2 000–3 000 €",
       "3 000–5 000 €",
-      "5 000 € et plus",
+      "5 000–7 000 €",
+      "7 000–10 000 €",
+      "10 000 € et plus",
     ]),
     capacity: z.coerce.number().int().min(0).max(10),
     duration: z.enum([
@@ -112,6 +114,7 @@ export type Profile = Omit<ProfileInput, "consent"> & {
     specialties: string[];
     reviewedAt: string;
   } | null;
+  completedCount?: number;
   activeCount?: number;
   ratingAverage?: number;
   ratingCount?: number;
@@ -123,8 +126,8 @@ export const initialProfile: ProfileInput = {
   discord: "",
   discordId: "",
   age: "Non précisé",
-  joined: new Date().toISOString().slice(0, 7),
-  specialty: "Généraliste",
+  specialty: ["Généraliste"],
+  teaching: "",
   availability: "En soirée",
   bio: "",
   goals: "",
@@ -140,6 +143,13 @@ export const initialProfile: ProfileInput = {
 };
 export function decode(row: Record<string, unknown>): Profile {
   const details = JSON.parse(String(row.details));
+  delete details.joined;
+  details.specialty = (
+    Array.isArray(details.specialty) ? details.specialty : [details.specialty]
+  ).filter((s: string) => (specialties as readonly string[]).includes(s));
+  details.teaching ||= "";
+  if (details.revenue === "5 000 € et plus")
+    details.revenue = "Je préfère ne pas préciser";
   return {
     ...details,
     id: String(row.id),

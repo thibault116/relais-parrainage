@@ -70,3 +70,16 @@ La règle initiale du badge est : au moins 6 mois de pratique, 20 ventes documen
 Configurer `MENTORA_MODERATOR_EMAILS` côté serveur, avec les adresses de comptes **déjà existants**, séparées par des virgules. La migration associe une fois chaque adresse à l’identifiant immuable du compte dans `moderators` (sans accorder l’accès dynamiquement sur une adresse non vérifiée). Cette liaison est conservée si le compte est supprimé pour éviter qu’une réinscription récupère l’accès. Pour retirer un accès, supprimer sa ligne dans `moderators` et retirer l’adresse de la configuration avant la prochaine migration. Si aucun modérateur actif n’est configuré, les dépôts sont fermés et l’interface le précise. Aucun utilisateur n’est nommé modérateur par défaut.
 
 Test local : `node --import tsx scripts/test-verification.ts` avec l’application sur `http://127.0.0.1:3001`. Le script crée et supprime ses comptes temporaires et teste les accès, la confidentialité, les décisions concurrentes, les seuils, le renvoi et le retrait.
+
+
+## Administration et cartes de profils
+
+L’onglet Administration est réservé aux identifiants présents dans `moderators`. Il contient les indicateurs globaux, les comptes paginés par 30, les 100 derniers signalements (ouverts en premier), les 100 dernières notes et l’examen confidentiel des dossiers. Toutes les API vérifient ces droits côté serveur.
+
+Un parrain actif a au moins un accompagnement en cours. Le taux d’acceptation est `(actifs + terminés) / (actifs + terminés + refusés)` ; les demandes en attente et annulées sont exclues. Les chiffres portent sur les données conservées, et ne constituent pas un historique immuable des comptes supprimés.
+
+Les membres connectés peuvent signaler un profil. Un seul signalement ouvert par paire déclarant/profil et 5 signalements par jour sont autorisés. Un masquage de profil par la modération est conservé séparément de la visibilité choisie par le membre : il ne peut pas être annulé via l’édition du profil. Les avis masqués sont exclus des moyennes et restent enregistrés pour empêcher un second vote. Les décisions nécessitent un motif.
+
+Les spécialités sont désormais une liste de choix cumulables. La migration retire l’ancien champ `joined` des données enregistrées et retire Streetwear/Sportswear des choix. Les profils concernés devront choisir leurs nouvelles spécialités. L’ancien palier indifférencié « 5 000 € et plus » devient non précisé, car il ne permet pas de déduire un nouveau palier fiable. Les paliers supérieurs sont 5 000–7 000 €, 7 000–10 000 € et 10 000 € et plus.
+
+Les cartes affichent les statistiques réelles, un délai annoncé (pas un temps de réponse mesuré) et le nouveau champ `teaching`. Les binômes terminés sont comptés indépendamment des notes. Test du parcours administrateur : `node --import tsx scripts/test-admin.ts` sur le serveur local en port 3001.

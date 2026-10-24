@@ -23,7 +23,7 @@ export async function GET(request: Request) {
           403,
         );
       const rows = await query(
-        "SELECT * FROM profiles WHERE id=$1 AND visible=1",
+        "SELECT * FROM profiles p WHERE id=$1 AND visible=1 AND NOT EXISTS (SELECT 1 FROM profile_blocks b WHERE b.user_id=p.user_id)",
         [id],
       );
       if (!rows.length)
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     const role =
       url.searchParams.get("role") === "beginner" ? "beginner" : "mentor";
     const rows = await query(
-      "SELECT p.*, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='active') AS active_count, (SELECT AVG(a.rating * 1.0) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed') AS rating_average, (SELECT COUNT(a.rating) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed') AS rating_count FROM profiles p WHERE visible=1 AND role=$1 ORDER BY updated_at DESC",
+      "SELECT p.*, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='active') AS active_count, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed') AS completed_count, (SELECT AVG(a.rating * 1.0) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed' AND NOT EXISTS (SELECT 1 FROM hidden_ratings h WHERE h.accompaniment_id=a.id)) AS rating_average, (SELECT COUNT(a.rating) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed' AND NOT EXISTS (SELECT 1 FROM hidden_ratings h WHERE h.accompaniment_id=a.id)) AS rating_count FROM profiles p WHERE visible=1 AND role=$1 AND NOT EXISTS (SELECT 1 FROM profile_blocks b WHERE b.user_id=p.user_id) ORDER BY updated_at DESC",
       [role],
     );
     const verifications = await getPublicVerifications(
@@ -44,6 +44,7 @@ export async function GET(request: Request) {
       .map((row) => ({
         ...decode(row),
         verification: verifications.get(String(row.user_id)) || null,
+        completedCount: Number(row.completed_count) || 0,
         activeCount: Number(row.active_count) || 0,
         ratingAverage: Number(row.rating_average) || 0,
         ratingCount: Number(row.rating_count) || 0,
@@ -59,7 +60,8 @@ export async function GET(request: Request) {
           `${p.name} ${p.bio} ${p.references}`
             .toLocaleLowerCase("fr")
             .includes(search)) &&
-        (!specialty || p.specialty === specialty) &&
+        (!specialty ||
+          p.specialty.includes(specialty as (typeof p.specialty)[number])) &&
         (!time || p.availability === time),
     );
     const page = Math.max(
