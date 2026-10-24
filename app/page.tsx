@@ -42,11 +42,12 @@ import {
   RequestAccompaniment,
 } from "./components/accompaniments";
 const DISCORD_GROUP = "https://discord.gg/SRVs9Y5ze";
-type View = "home" | "directory" | "guide" | "profile";
+type View = "home" | "directory" | "guide" | "faq" | "profile";
 const views: Record<View, string> = {
   home: "Accueil",
   directory: "Trouver mon binôme",
   guide: "Comment ça marche",
+  faq: "FAQ",
   profile: "Mon profil",
 };
 const Icon = ({ children }: { children: React.ReactNode }) => (
@@ -77,9 +78,19 @@ async function api(path: string, options: RequestInit = {}) {
   return data;
 }
 export default function App() {
-  const [view, setView] = useState<View>("home");
+  const [requestedView, setView] = useState<View>("home");
   const [mobile, setMobile] = useState(false);
   const { data: session, isPending } = authClient.useSession();
+  const view: View = session
+    ? requestedView === "profile"
+      ? "profile"
+      : "directory"
+    : ["home", "guide", "faq"].includes(requestedView)
+      ? requestedView
+      : "home";
+  const navigation: View[] = session
+    ? ["directory", "profile"]
+    : ["home", "guide", "faq"];
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState("");
@@ -95,6 +106,10 @@ export default function App() {
     }
   }, [toast]);
   const go = (next: View) => {
+    if (!session && (next === "directory" || next === "profile")) {
+      setAuthMode("signup");
+      return;
+    }
     setView(next);
     setMobile(false);
     setEditing(false);
@@ -157,21 +172,21 @@ export default function App() {
       <header className="header">
         <div className="nav-wrap">
           <a
-            href="#home"
+            href={session ? "#directory" : "#home"}
             className="brand"
-            aria-label="Relais, accueil"
-            onClick={() => go("home")}
+            aria-label={session ? "Mentora, espace membre" : "Mentora, accueil"}
+            onClick={() => go(session ? "directory" : "home")}
           >
             <span className="brand-mark">
               <HeartHandshake size={25} />
             </span>
-            relais<span className="brand-dot">.</span>
+            mentora<span className="brand-dot">.</span>
           </a>
           <nav
             aria-label="Navigation principale"
             className={mobile ? "open" : ""}
           >
-            {(Object.keys(views) as View[]).slice(0, 3).map((v) => (
+            {navigation.map((v) => (
               <button
                 key={v}
                 onClick={() => go(v)}
@@ -227,7 +242,12 @@ export default function App() {
         </div>
       </header>
       <main>
-        {view === "home" && (
+        {isPending && (
+          <div className="empty">
+            <LoaderCircle className="spin" /> Chargement…
+          </div>
+        )}
+        {!isPending && !session && view === "home" && (
           <>
             <section className="hero wrap">
               <div className="hero-copy">
@@ -491,7 +511,7 @@ export default function App() {
             </section>
           </>
         )}
-        {view === "directory" && (
+        {!isPending && session && view === "directory" && (
           <Directory
             session={!!session}
             own={profile}
@@ -501,8 +521,18 @@ export default function App() {
             notify={notify}
           />
         )}
-        {view === "guide" && <Guide onJoin={() => join("beginner")} />}
-        {view === "profile" && (
+        {!isPending && !session && view === "guide" && (
+          <Guide onJoin={() => join("beginner")} />
+        )}
+        {!isPending && !session && view === "faq" && (
+          <section className="wrap guide">
+            <div className="page-heading">
+              <h1>Tes questions, nos réponses.</h1>
+            </div>
+            <FAQ />
+          </section>
+        )}
+        {!isPending && session && view === "profile" && (
           <section className="wrap profile-page">
             <div className="page-heading">
               <span className="eyebrow">TON ESPACE</span>
@@ -556,7 +586,7 @@ export default function App() {
                 onSave={(p) => {
                   setProfile(p);
                   setEditing(false);
-                  notify("Ton profil est enregistré. Bienvenue dans Relais !");
+                  notify("Ton profil est enregistré. Bienvenue dans Mentora !");
                 }}
               />
             ) : (
@@ -635,36 +665,40 @@ export default function App() {
           </section>
         )}
       </main>
-      <section className="wrap discord-community">
-        <div>
-          <span className="eyebrow">ON SE RETROUVE SUR DISCORD</span>
-          <h2>La communauté t’attend.</h2>
-          <p>
-            Rejoins le groupe pour échanger avec les membres et retrouver ton
-            binôme.
-          </p>
-        </div>
-        <a
-          className="btn"
-          href={DISCORD_GROUP}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <MessageCircle size={19} /> Rejoindre le groupe Discord{" "}
-          <ArrowUpRight size={17} />
-        </a>
-      </section>
-      <footer className="footer wrap">
-        <a className="brand" href="#home" onClick={() => go("home")}>
-          <span className="brand-mark">
-            <HeartHandshake size={21} />
-          </span>
-          relais<span className="brand-dot">.</span>
-        </a>
-        <p>On avance mieux ensemble.</p>
-        <button onClick={() => go("guide")}>La charte d’entraide</button>
-        <span>Une initiative indépendante, entre membres.</span>
-      </footer>
+      {!session && !isPending && (
+        <>
+          <section className="wrap discord-community">
+            <div>
+              <span className="eyebrow">ON SE RETROUVE SUR DISCORD</span>
+              <h2>La communauté t’attend.</h2>
+              <p>
+                Rejoins le groupe pour échanger avec les membres et retrouver
+                ton binôme.
+              </p>
+            </div>
+            <a
+              className="btn"
+              href={DISCORD_GROUP}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <MessageCircle size={19} /> Rejoindre le groupe Discord{" "}
+              <ArrowUpRight size={17} />
+            </a>
+          </section>
+          <footer className="footer wrap">
+            <a className="brand" href="#home" onClick={() => go("home")}>
+              <span className="brand-mark">
+                <HeartHandshake size={21} />
+              </span>
+              mentora<span className="brand-dot">.</span>
+            </a>
+            <p>On avance mieux ensemble.</p>
+            <button onClick={() => go("guide")}>La charte d’entraide</button>
+            <span>Une initiative indépendante, entre membres.</span>
+          </footer>
+        </>
+      )}
       {authMode && (
         <AuthModal
           mode={authMode}
@@ -674,7 +708,9 @@ export default function App() {
           close={() => setAuthMode(null)}
           onSuccess={() => {
             setAuthMode(null);
-            go("profile");
+            setView(authMode === "signup" ? "profile" : "directory");
+            window.location.hash =
+              authMode === "signup" ? "profile" : "directory";
           }}
         />
       )}
@@ -789,7 +825,7 @@ function AuthModal({
         <Icon>
           <HeartHandshake />
         </Icon>
-        <span className="eyebrow">BIENVENUE CHEZ RELAIS</span>
+        <span className="eyebrow">BIENVENUE CHEZ MENTORA</span>
         <h2 id="auth-title">
           {mode === "signup"
             ? "Les bonnes rencontres commencent ici."
@@ -1400,7 +1436,9 @@ function ProfileCard({
             <>
               <span className="status-dot" />
               {Math.max(0, p.capacity - (p.activeCount ?? 0))} place
-              {Math.max(0, p.capacity - (p.activeCount ?? 0)) > 1 ? "s" : ""}{" "}
+              {Math.max(0, p.capacity - (p.activeCount ?? 0)) > 1
+                ? "s"
+                : ""}{" "}
               libre
               {Math.max(0, p.capacity - (p.activeCount ?? 0)) > 1 ? "s" : ""}
             </>
@@ -1674,7 +1712,7 @@ function Directory({
           <p>
             {search || specialty || time
               ? "Essaie une autre spécialité ou élargis tes disponibilités."
-              : `L’annuaire attend ses premiers ${role === "mentor" ? "parrains" : "débutants"}. Crée ton profil et fais connaître Relais aux membres de ta formation.`}
+              : `L’annuaire attend ses premiers ${role === "mentor" ? "parrains" : "débutants"}. Crée ton profil et fais connaître Mentora aux membres de ta formation.`}
           </p>
           <Button
             onClick={
@@ -1979,7 +2017,7 @@ function Guide({ onJoin }: { onJoin: () => void }) {
           <HeartHandshake />
         </Icon>
         <div>
-          <h2>Le principe de Relais</h2>
+          <h2>Le principe de Mentora</h2>
           <p>
             Un membre expérimenté accompagne un débutant en achat-revente de
             vêtements. Il répond à ses questions, partage son expérience et
@@ -2040,7 +2078,7 @@ function Guide({ onJoin }: { onJoin: () => void }) {
             sur la fiche du parrain.
           </p>
           <p>
-            Les notes proviennent de binômes confirmés sur Relais. Elles
+            Les notes proviennent de binômes confirmés sur Mentora. Elles
             reflètent l’expérience des membres, sans vérifier le contenu de
             leurs échanges sur Discord. Un profil masqué reste absent de
             l’annuaire.
@@ -2048,7 +2086,7 @@ function Guide({ onJoin }: { onJoin: () => void }) {
         </div>
       </section>
       <section className="charter">
-        <span className="eyebrow">LA CHARTE RELAIS</span>
+        <span className="eyebrow">LA CHARTE MENTORA</span>
         <h2>
           De bonnes rencontres,
           <br />
@@ -2059,7 +2097,7 @@ function Guide({ onJoin }: { onJoin: () => void }) {
             [
               "01",
               "De l’entraide, pas une prestation.",
-              "Le parrainage Relais est gratuit. Aucune vente de coaching ni demande d’argent en échange d’une réponse.",
+              "Le parrainage Mentora est gratuit. Aucune vente de coaching ni demande d’argent en échange d’une réponse.",
             ],
             [
               "02",
@@ -2097,40 +2135,7 @@ function Guide({ onJoin }: { onJoin: () => void }) {
           ))}
         </div>
       </section>
-      <section className="faq">
-        <span className="eyebrow">ON RÉPOND À TES QUESTIONS</span>
-        <h2>Avant de te lancer.</h2>
-        {[
-          [
-            "Dois-je avoir un certain chiffre d’affaires pour être parrain ?",
-            "Non. Les 6 mois d’expérience sont le seuil prévu, mais la pédagogie et la disponibilité comptent aussi. Le chiffre d’affaires aide à comprendre un parcours : ce n’est ni une certification ni une promesse de résultat.",
-          ],
-          [
-            "Est-ce que Relais envoie une demande d’amis automatiquement ?",
-            "Non. Tu copies le pseudo et l’ajoutes dans Discord. Si le membre a renseigné son identifiant numérique, un bouton ouvre directement son profil Discord.",
-          ],
-          [
-            "Puis-je accompagner plusieurs débutants ?",
-            "Oui. Indique le nombre maximum de débutants que tu peux accompagner en même temps, jusqu’à 10. Les accompagnements acceptés et en cours sont déduits automatiquement. Une place se libère à la fin de chaque accompagnement. Avec une capacité réglée sur 0, ton profil ne figure plus dans l’annuaire.",
-          ],
-          [
-            "Qui peut voir mes informations ?",
-            "Le site et les profils visibles sont publics, sauf les pseudos Discord qui sont réservés aux membres connectés ayant un profil. Ton adresse e-mail n’est jamais affichée dans l’annuaire. Tu peux modifier, masquer ou supprimer ton profil depuis ton espace.",
-          ],
-          [
-            "Est-ce le site officiel de la formation ?",
-            "Relais est une initiative indépendante entre membres. Il ne remplace ni la formation ni son équipe, et ne prétend pas être affilié à ses créateurs.",
-          ],
-        ].map(([q, a]) => (
-          <details key={q}>
-            <summary>
-              {q}
-              <ChevronDown size={18} />
-            </summary>
-            <p>{a}</p>
-          </details>
-        ))}
-      </section>
+      <FAQ />
       <div className="bottom-cta">
         <div>
           <h2>Prêt à faire le premier pas ?</h2>
@@ -2140,7 +2145,7 @@ function Guide({ onJoin }: { onJoin: () => void }) {
           </p>
         </div>
         <Button onClick={onJoin}>
-          Rejoindre Relais <ArrowUpRight size={18} />
+          Rejoindre Mentora <ArrowUpRight size={18} />
         </Button>
       </div>
     </section>
@@ -2157,5 +2162,44 @@ function MentorAvailability({ profile }: { profile: PublicProfile }) {
       {remaining} place{remaining > 1 ? "s" : ""} libre
       {remaining > 1 ? "s" : ""} restante{remaining > 1 ? "s" : ""}
     </p>
+  );
+}
+
+function FAQ() {
+  return (
+    <section className="faq">
+      <span className="eyebrow">ON RÉPOND À TES QUESTIONS</span>
+      <h2>Avant de te lancer.</h2>
+      {[
+        [
+          "Dois-je avoir un certain chiffre d’affaires pour être parrain ?",
+          "Non. Les 6 mois d’expérience sont le seuil prévu, mais la pédagogie et la disponibilité comptent aussi. Le chiffre d’affaires aide à comprendre un parcours : ce n’est ni une certification ni une promesse de résultat.",
+        ],
+        [
+          "Est-ce que Mentora envoie une demande d’amis automatiquement ?",
+          "Non. Tu copies le pseudo et l’ajoutes dans Discord. Si le membre a renseigné son identifiant numérique, un bouton ouvre directement son profil Discord.",
+        ],
+        [
+          "Puis-je accompagner plusieurs débutants ?",
+          "Oui. Indique le nombre maximum de débutants que tu peux accompagner en même temps, jusqu’à 10. Les accompagnements acceptés et en cours sont déduits automatiquement. Une place se libère à la fin de chaque accompagnement. Avec une capacité réglée sur 0, ton profil ne figure plus dans l’annuaire.",
+        ],
+        [
+          "Qui peut voir mes informations ?",
+          "Le site et les profils visibles sont publics, sauf les pseudos Discord qui sont réservés aux membres connectés ayant un profil. Ton adresse e-mail n’est jamais affichée dans l’annuaire. Tu peux modifier, masquer ou supprimer ton profil depuis ton espace.",
+        ],
+        [
+          "Est-ce le site officiel de la formation ?",
+          "Mentora est une initiative indépendante entre membres. Il ne remplace ni la formation ni son équipe, et ne prétend pas être affilié à ses créateurs.",
+        ],
+      ].map(([q, a]) => (
+        <details key={q}>
+          <summary>
+            {q}
+            <ChevronDown size={18} />
+          </summary>
+          <p>{a}</p>
+        </details>
+      ))}
+    </section>
   );
 }

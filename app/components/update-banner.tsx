@@ -44,7 +44,7 @@ export function UpdateBanner() {
   return (
     <aside className="update-banner" role="status">
       <span>
-        Une nouvelle version de Relais est disponible. Pense à enregistrer tes
+        Une nouvelle version de Mentora est disponible. Pense à enregistrer tes
         modifications, puis recharge la page.
       </span>
       <button type="button" onClick={() => window.location.reload()}>
