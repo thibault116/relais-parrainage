@@ -83,3 +83,10 @@ Les membres connectés peuvent signaler un profil. Un seul signalement ouvert pa
 Les spécialités sont désormais une liste de choix cumulables. La migration retire l’ancien champ `joined` des données enregistrées et retire Streetwear/Sportswear des choix. Les profils concernés devront choisir leurs nouvelles spécialités. L’ancien palier indifférencié « 5 000 € et plus » devient non précisé, car il ne permet pas de déduire un nouveau palier fiable. Les paliers supérieurs sont 5 000–7 000 €, 7 000–10 000 € et 10 000 € et plus.
 
 Les cartes affichent les statistiques réelles, un délai annoncé (pas un temps de réponse mesuré) et le nouveau champ `teaching`. Les binômes terminés sont comptés indépendamment des notes. Test du parcours administrateur : `node --import tsx scripts/test-admin.ts` sur le serveur local en port 3001.
+
+
+### Photos, fiches et aide
+
+L’annuaire affiche deux cartes carrées par ligne sur ordinateur et une colonne sur mobile. Les fiches détaillées disposent d’un défilement interne et d’une navigation entre les profils, y compris entre les pages de résultats. L’onglet Aide détaille le fonctionnement complet de la plateforme.
+
+La photo se gère dans Mon profil. Le navigateur recadre au centre et réduit les images à 512 × 512 pixels en JPEG. `/api/profile-photo` accepte JPEG, PNG ou WebP de 4 Mo maximum, stocke le fichier dans le stockage privé et ne sert l’image publiquement que si le profil est visible et non masqué par la modération. Le propriétaire peut toujours la consulter. Le chemin de stockage n’est jamais renvoyé dans les profils publics. La suppression du profil ou du compte supprime aussi sa photo. Test : `node --import tsx scripts/test-profile-photo.ts` avec le serveur local sur le port 3001.

@@ -1,3 +1,4 @@
+import { deleteProfilePhoto } from "@/lib/profile-photo";
 import { deleteUserProofs } from "@/lib/proof-storage";
 import { isModerator, getPublicVerifications } from "@/lib/verification";
 import { query } from "@/lib/db";
@@ -51,9 +52,11 @@ export async function PUT(request: Request) {
       return json({ error: parsed.error.issues[0].message }, 400);
     const { discord, consent, ...details } = parsed.data;
     void consent;
-    const rows = await query("SELECT id FROM profiles WHERE user_id=$1", [
-      u.id,
-    ]);
+    const rows = await query("SELECT * FROM profiles WHERE user_id=$1", [u.id]);
+    const savedDetails = {
+      ...details,
+      photo: rows[0] ? JSON.parse(String(rows[0].details)).photo : undefined,
+    };
     const id = String(rows[0]?.id || crypto.randomUUID());
     await query(
       `INSERT INTO profiles (id,user_id,discord,role,name,details,visible,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(user_id) DO UPDATE SET discord=excluded.discord,role=excluded.role,name=excluded.name,details=excluded.details,visible=excluded.visible,updated_at=excluded.updated_at`,
@@ -63,12 +66,21 @@ export async function PUT(request: Request) {
         discord,
         details.role,
         details.name,
-        JSON.stringify(details),
+        JSON.stringify(savedDetails),
         details.visible ? 1 : 0,
         new Date().toISOString(),
       ],
     );
-    return json({ profile: { id, discord, ...details } });
+    return json({
+      profile: decode({
+        id,
+        discord,
+        name: details.name,
+        role: details.role,
+        visible: details.visible ? 1 : 0,
+        details: JSON.stringify(savedDetails),
+      }),
+    });
   } catch (e) {
     if (/unique|duplicate/i.test(String(e)))
       return json(
@@ -109,6 +121,7 @@ export async function DELETE(request: Request) {
     const u = await user(request);
     if (!u) return json({ error: "Connexion requise." }, 401);
     await deleteUserProofs(u.id);
+    await deleteProfilePhoto(u.id);
     await query("DELETE FROM verifications WHERE user_id=$1", [u.id]);
     await query("DELETE FROM profiles WHERE user_id=$1", [u.id]);
     return json({ ok: true });

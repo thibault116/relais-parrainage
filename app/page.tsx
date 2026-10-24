@@ -1,5 +1,11 @@
 "use client";
-import { useState, useEffect, useCallback, type FormEvent } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  type FormEvent,
+} from "react";
 import {
   ArrowUpRight,
   ArrowRight,
@@ -43,9 +49,19 @@ import {
 } from "./components/accompaniments";
 import { VerificationBadge, VerificationForm } from "./components/verification";
 import { AdminDashboard, ReportProfile } from "./components/admin";
+import { Avatar, ProfilePhoto } from "./components/profile-photo";
+import { Help } from "./components/help";
 const DISCORD_GROUP = "https://discord.gg/SRVs9Y5ze";
-type View = "home" | "directory" | "guide" | "faq" | "profile" | "moderation";
+type View =
+  | "home"
+  | "directory"
+  | "guide"
+  | "faq"
+  | "profile"
+  | "moderation"
+  | "help";
 const views: Record<View, string> = {
+  help: "Aide",
   home: "Accueil",
   directory: "Trouver mon binôme",
   guide: "Comment ça marche",
@@ -86,7 +102,7 @@ export default function App() {
   const { data: session, isPending } = authClient.useSession();
   const [moderator, setModerator] = useState(false);
   const [moderationBlock, setModerationBlock] = useState<string | null>(null);
-  const publicView = ["home", "guide", "faq"].includes(requestedView);
+  const publicView = ["home", "guide", "faq", "help"].includes(requestedView);
   const view: View = publicView
     ? requestedView
     : session
@@ -98,9 +114,9 @@ export default function App() {
   const navigation: View[] =
     inWorkspace && session
       ? moderator
-        ? ["directory", "profile", "moderation"]
-        : ["directory", "profile"]
-      : ["home", "guide", "faq"];
+        ? ["directory", "profile", "moderation", "help"]
+        : ["directory", "profile", "help"]
+      : ["home", "guide", "faq", "help"];
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState("");
@@ -585,6 +601,7 @@ export default function App() {
             notify={notify}
           />
         )}
+        {!isPending && view === "help" && <Help />}
         {!isPending && view === "guide" && (
           <Guide onJoin={() => join("beginner")} />
         )}
@@ -679,6 +696,7 @@ export default function App() {
                     <LogOut size={16} /> Se déconnecter
                   </button>
                 </div>
+                <ProfilePhoto profile={profile} onChange={refreshProfile} />
                 <div className="profile-columns">
                   <ProfileCard
                     p={profile}
@@ -1533,9 +1551,7 @@ function ProfileCard({
   return (
     <article className="member-card redesigned-card">
       <div className="mentor-card-head">
-        <div className={`avatar ${p.role === "beginner" ? "peach" : ""}`}>
-          {p.name.slice(0, 2).toUpperCase()}
-        </div>
+        <Avatar profile={p} />
         <div className="mentor-card-title">
           <h3>{p.name}</h3>
           <p>
@@ -1543,9 +1559,8 @@ function ProfileCard({
               <>
                 <ShieldCheck size={17} />
                 {p.verification
-                  ? "Dossier vérifié"
-                  : "Expérience non vérifiée"}{" "}
-                · {experience}
+                  ? "Parrain vérifié"
+                  : "Parrain non vérifié"} · {experience}
               </>
             ) : (
               "Débutant · cherche un parrain"
@@ -1607,26 +1622,10 @@ function ProfileCard({
           <p>{p.goals}</p>
         </div>
       )}
-      {own ? (
-        <button className="card-btn" onClick={onOpen}>
-          Modifier mon profil <ArrowUpRight size={17} />
-        </button>
-      ) : (
-        <>
-          {p.role === "mentor" && canRequest ? (
-            <RequestAccompaniment mentorProfileId={p.id} compact />
-          ) : (
-            <button className="card-btn" onClick={onOpen}>
-              Découvrir le profil <ArrowUpRight size={17} />
-            </button>
-          )}
-          {p.role === "mentor" && canRequest && (
-            <button className="text-btn card-details" onClick={onOpen}>
-              Voir le profil et le contact Discord
-            </button>
-          )}
-        </>
-      )}
+      <button className="card-btn" onClick={onOpen}>
+        {own ? "Modifier mon profil" : "Découvrir le profil"}{" "}
+        <ArrowUpRight size={17} />
+      </button>
     </article>
   );
 }
@@ -1655,6 +1654,8 @@ function Directory({
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<PublicProfile | null>(null);
+  const selectedRef = useRef<string | null>(null);
+  const [switching, setSwitching] = useState(false);
   const [contact, setContact] = useState<{
     discord: string;
     discordId: string;
@@ -1705,10 +1706,43 @@ function Directory({
     };
   }, [selected]);
   const open = (p: PublicProfile) => {
+    selectedRef.current = p.id;
     setSelected(p);
+    setContactBusy(false);
     setContact(null);
     setContactError("");
   };
+  async function moveProfile(direction: number) {
+    if (!selected || switching) return;
+    const index = profiles.findIndex((p) => p.id === selected.id),
+      next = index + direction;
+    if (next >= 0 && next < profiles.length) {
+      open(profiles[next]);
+      return;
+    }
+    const targetPage = page + direction;
+    if (targetPage < 0 || targetPage * 12 >= total) return;
+    setSwitching(true);
+    try {
+      const q = new URLSearchParams({
+        role,
+        q: search,
+        specialty,
+        time,
+        page: String(targetPage),
+      });
+      const d = await api("/api/profiles?" + q);
+      if (d.profiles.length) {
+        setProfiles(d.profiles);
+        setPage(targetPage);
+        open(d.profiles[direction > 0 ? 0 : d.profiles.length - 1]);
+      }
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setSwitching(false);
+    }
+  }
   async function showContact() {
     if (!session) {
       setSelected(null);
@@ -1720,14 +1754,17 @@ function Directory({
       onProfile();
       return;
     }
+    const requestedId = selected?.id;
     setContactBusy(true);
     setContactError("");
     try {
-      setContact(await api("/api/profiles?contact=" + selected?.id));
+      const data = await api("/api/profiles?contact=" + requestedId);
+      if (selectedRef.current === requestedId) setContact(data);
     } catch (e) {
-      setContactError((e as Error).message);
+      if (selectedRef.current === requestedId)
+        setContactError((e as Error).message);
     } finally {
-      setContactBusy(false);
+      if (selectedRef.current === requestedId) setContactBusy(false);
     }
   }
   return (
@@ -1935,10 +1972,11 @@ function Directory({
             aria-modal="true"
             aria-labelledby="member-title"
             className="modal member-modal"
+            key={selected.id}
             onKeyDown={(e) => {
               if (e.key === "Tab") {
                 const items = e.currentTarget.querySelectorAll<HTMLElement>(
-                  "button:not(:disabled),a[href]",
+                  "button:not(:disabled),a[href],input:not(:disabled),textarea:not(:disabled),select:not(:disabled)",
                 );
                 if (e.shiftKey && document.activeElement === items[0]) {
                   e.preventDefault();
@@ -1961,9 +1999,38 @@ function Directory({
             >
               <X />
             </button>
-            <div className="avatar">
-              {selected.name.slice(0, 2).toUpperCase()}
+            <div className="profile-pager">
+              <button
+                aria-label="Profil précédent"
+                disabled={
+                  switching || (page === 0 && profiles[0]?.id === selected.id)
+                }
+                onClick={() => void moveProfile(-1)}
+              >
+                ←
+              </button>
+              <span>
+                Profil{" "}
+                {page * 12 +
+                  profiles.findIndex((p) => p.id === selected.id) +
+                  1}{" "}
+                sur {total}
+              </span>
+              <button
+                aria-label="Profil suivant"
+                disabled={
+                  switching ||
+                  page * 12 +
+                    profiles.findIndex((p) => p.id === selected.id) +
+                    1 >=
+                    total
+                }
+                onClick={() => void moveProfile(1)}
+              >
+                →
+              </button>
             </div>
+            <Avatar profile={selected} />
             <span className="eyebrow">
               {selected.role === "mentor" ? "PARRAIN" : "DÉBUTANT"} ·{" "}
               {selected.specialty.join(" · ") || "Spécialités à préciser"}
@@ -2027,7 +2094,11 @@ function Directory({
                 ? "Ce que je peux t’apporter"
                 : "Mes objectifs"}
             </h3>
-            <p>{selected.goals}</p>
+            <p>
+              {selected.role === "mentor"
+                ? selected.teaching || selected.goals
+                : selected.goals}
+            </p>
             {selected.references && (
               <>
                 <h3>Marques & références</h3>

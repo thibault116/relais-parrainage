@@ -1,3 +1,4 @@
+import { deleteProfilePhoto } from "./profile-photo";
 import { deleteUserProofs } from "./proof-storage";
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
@@ -31,6 +32,7 @@ function createAuth() {
         enabled: true,
         beforeDelete: async (user) => {
           await deleteUserProofs(user.id);
+          await deleteProfilePhoto(user.id);
           await query("DELETE FROM verifications WHERE user_id=$1", [user.id]);
 
           await query(

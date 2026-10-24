@@ -60,14 +60,14 @@ export function VerificationBadge({ profile }: { profile: PublicProfile }) {
   if (!profile.verification)
     return (
       <p className="verification-unchecked">
-        Expérience déclarée · non vérifiée
+        Parrain non vérifié · expérience déclarée
       </p>
     );
   const v = profile.verification;
   return (
     <div className="verification-badge">
       <span>
-        <ShieldCheck size={17} /> Dossier vérifié
+        <ShieldCheck size={17} /> Parrain vérifié
       </span>
       <small>
         {v.sales !== null && <>{v.sales} ventes documentées · </>}
