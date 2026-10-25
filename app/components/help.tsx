@@ -46,7 +46,7 @@ const chapters = [
   [
     "demande",
     "Faire une demande de parrainage",
-    "Depuis un profil parrain, un débutant peut envoyer une demande de parrainage. Le parrain la retrouve dans Mon profil → Demandes et peut l’accepter ou la refuser. Une demande en attente n’est pas encore un accompagnement actif.",
+    "Depuis un profil parrain, un débutant peut envoyer une demande en expliquant son objectif et l’aide recherchée. Le parrain la retrouve dans Mon profil → Demandes et peut l’accepter ou la refuser. Une demande en attente ne réserve aucune place. Une place est occupée seulement après acceptation et se libère à la fin du binôme.",
     "Le nombre de places libres dépend de la capacité choisie par le parrain et des accompagnements en cours. Le parrain choisit combien de débutants il peut aider et pour quelle durée. Un profil sans place libre ne peut pas accepter davantage de débutants tant qu’une place ne se libère pas.",
   ],
   [

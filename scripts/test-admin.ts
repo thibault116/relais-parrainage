@@ -142,7 +142,10 @@ try {
       await call(
         "/api/accompaniments",
         "POST",
-        { mentorProfileId: mentor.profileId },
+        {
+          mentorProfileId: mentor.profileId,
+          objective: "Améliorer mes annonces et progresser dans la revente.",
+        },
         beginner,
       )
     ).status,
@@ -162,7 +165,10 @@ try {
   await call(
     "/api/accompaniments",
     "POST",
-    { mentorProfileId: mentor.profileId },
+    {
+      mentorProfileId: mentor.profileId,
+      objective: "Améliorer mes annonces et progresser dans la revente.",
+    },
     beginner,
   );
   const pair = (await call("/api/accompaniments", "GET", undefined, mentor))

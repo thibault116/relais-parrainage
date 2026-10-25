@@ -48,7 +48,7 @@ try {
         ...initialProfile,
         role,
         experience: 8,
-        capacity: 2,
+        capacity: 1,
         name: "Test notes",
         discord: `rating_${suffix}`,
         bio: "Compte de test local des accompagnements.",
@@ -66,7 +66,10 @@ try {
       await call(
         "/api/accompaniments",
         "POST",
-        { mentorProfileId: mentor.id },
+        {
+          mentorProfileId: mentor.id,
+          objective: "Je veux améliorer mes premières annonces Vinted.",
+        },
         mentor,
       )
     ).status,
@@ -77,7 +80,10 @@ try {
       await call(
         "/api/accompaniments",
         "POST",
-        { mentorProfileId: mentor.id },
+        {
+          mentorProfileId: mentor.id,
+          objective: "Je veux améliorer mes premières annonces Vinted.",
+        },
         beginner,
         "https://evil.invalid",
       )
@@ -89,7 +95,10 @@ try {
       await call(
         "/api/accompaniments",
         "POST",
-        { mentorProfileId: mentor.id },
+        {
+          mentorProfileId: mentor.id,
+          objective: "Je veux améliorer mes premières annonces Vinted.",
+        },
         beginner,
       )
     ).status,
@@ -100,14 +109,36 @@ try {
       await call(
         "/api/accompaniments",
         "POST",
-        { mentorProfileId: mentor.id },
+        {
+          mentorProfileId: mentor.id,
+          objective: "Je veux améliorer mes premières annonces Vinted.",
+        },
         beginner,
       )
     ).status,
     409,
   );
+  assert.equal(
+    (await call("/api/me", "GET", undefined, mentor)).data.profile.activeCount,
+    0,
+  );
+  assert.equal(
+    (
+      await call(
+        "/api/accompaniments",
+        "POST",
+        { mentorProfileId: mentor.id, objective: "" },
+        outsider,
+      )
+    ).status,
+    400,
+  );
   const pairs = await call("/api/accompaniments", "GET", undefined, beginner);
   const id = pairs.data.accompaniments[0].id;
+  assert.equal(
+    pairs.data.accompaniments[0].objective,
+    "Je veux améliorer mes premières annonces Vinted.",
+  );
   assert.equal(
     (await call("/api/accompaniments", "GET", undefined, outsider)).data
       .accompaniments.length,
@@ -155,6 +186,38 @@ try {
   assert.equal(
     (
       await call(
+        "/api/accompaniments",
+        "POST",
+        {
+          mentorProfileId: mentor.id,
+          objective: "Je cherche un accompagnement pour mes annonces.",
+        },
+        outsider,
+      )
+    ).status,
+    201,
+  );
+  const secondPending = (
+    await call("/api/accompaniments", "GET", undefined, outsider)
+  ).data.accompaniments[0].id;
+  assert.equal(
+    (
+      await call(
+        "/api/accompaniments",
+        "PATCH",
+        { id: secondPending, action: "accept" },
+        mentor,
+      )
+    ).status,
+    409,
+  );
+  assert.equal(
+    (await call("/api/me", "GET", undefined, mentor)).data.profile.activeCount,
+    1,
+  );
+  assert.equal(
+    (
+      await call(
         "/api/ratings",
         "POST",
         { accompanimentId: id, rating: 5 },
@@ -185,7 +248,10 @@ try {
     ).status,
     200,
   );
-  assert.equal((await call("/api/me", "GET", undefined, mentor)).data.profile.activeCount, 0);
+  assert.equal(
+    (await call("/api/me", "GET", undefined, mentor)).data.profile.activeCount,
+    0,
+  );
   for (const u of [mentor, outsider])
     assert.equal(
       (
@@ -210,13 +276,32 @@ try {
       ).status,
       400,
     );
-  await call("/api/accompaniments", "POST", { mentorProfileId: mentor.id }, outsider);
-  const second = (await call("/api/accompaniments", "GET", undefined, outsider)).data.accompaniments[0].id;
-  await call("/api/accompaniments", "PATCH", { id: second, action: "accept" }, mentor);
-  assert.equal((await call("/api/me", "GET", undefined, mentor)).data.profile.activeCount, 1);
-  const occupied = (await call("/api/profiles?role=mentor")).data.profiles.find((p: { id: string }) => p.id === mentor.id);
+  await call(
+    "/api/accompaniments",
+    "POST",
+    {
+      mentorProfileId: mentor.id,
+      objective: "Je veux améliorer mes premières annonces Vinted.",
+    },
+    outsider,
+  );
+  const second = (await call("/api/accompaniments", "GET", undefined, outsider))
+    .data.accompaniments[0].id;
+  await call(
+    "/api/accompaniments",
+    "PATCH",
+    { id: second, action: "accept" },
+    mentor,
+  );
+  assert.equal(
+    (await call("/api/me", "GET", undefined, mentor)).data.profile.activeCount,
+    1,
+  );
+  const occupied = (await call("/api/profiles?role=mentor")).data.profiles.find(
+    (p: { id: string }) => p.id === mentor.id,
+  );
   assert.equal(occupied.activeCount, 1);
-  assert.equal(occupied.capacity - occupied.activeCount, 1);
+  assert.equal(occupied.capacity - occupied.activeCount, 0);
   const results = await Promise.all([
     call("/api/ratings", "POST", { accompanimentId: id, rating: 4 }, beginner),
     call("/api/ratings", "POST", { accompanimentId: id, rating: 4 }, beginner),

@@ -3887,3 +3887,36 @@ textarea {
     font-size: 20px;
   }
 }
+
+.request-objective {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+  font-weight: 600;
+}
+.request-objective textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font: inherit;
+  background: white;
+}
+.request-objective small {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.request-message {
+  background: var(--lavender);
+  padding: 14px;
+  border-radius: 12px;
+  margin: 14px 0;
+}
+.request-message p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin-bottom: 0;
+}

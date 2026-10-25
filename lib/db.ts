@@ -8,6 +8,8 @@ export function database() {
     return (pool ??= new Pool({
       connectionString: process.env.DATABASE_URL,
       max: 5,
+      connectionTimeoutMillis: 5000,
+      statement_timeout: 10000,
     }));
   if (process.env.VERCEL)
     throw new Error("DATABASE_URL est nécessaire sur Vercel.");
@@ -43,6 +45,19 @@ export async function migrateAccompaniments() {
   await query(
     `CREATE TABLE IF NOT EXISTS accompaniments (id TEXT PRIMARY KEY, beginner_id TEXT NOT NULL, mentor_id TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('pending','active','completed','declined','cancelled')), created_at TEXT NOT NULL, completed_at TEXT, rating INTEGER CHECK(rating BETWEEN 1 AND 5), rated_at TEXT, UNIQUE(beginner_id,mentor_id), CHECK(beginner_id <> mentor_id), CHECK(rating IS NULL OR status='completed'))`,
   );
+  if (database() instanceof Pool) {
+    await query(
+      "ALTER TABLE accompaniments ADD COLUMN IF NOT EXISTS objective TEXT NOT NULL DEFAULT ''",
+    );
+  } else if (
+    !(await query("PRAGMA table_info(accompaniments)")).some(
+      (c) => c.name === "objective",
+    )
+  ) {
+    await query(
+      "ALTER TABLE accompaniments ADD COLUMN objective TEXT NOT NULL DEFAULT ''",
+    );
+  }
   await query(
     "CREATE INDEX IF NOT EXISTS accompaniments_mentor ON accompaniments (mentor_id,status)",
   );
@@ -146,4 +161,56 @@ export async function migrateSuggestions() {
   await query(
     "CREATE INDEX IF NOT EXISTS suggestions_owner ON suggestions(user_id,created_at)",
   );
+}
+
+// Serialize acceptances per mentor so concurrent requests cannot take the same place.
+export async function acceptAccompaniment(id: string, mentorId: string) {
+  const db = database();
+  if (db instanceof Pool) {
+    const client = await db.connect();
+    try {
+      await client.query("BEGIN");
+      const profile = (
+        await client.query(
+          "SELECT details FROM profiles WHERE user_id=$1 AND role='mentor' FOR UPDATE",
+          [mentorId],
+        )
+      ).rows[0];
+      const capacity = profile
+        ? Number(JSON.parse(profile.details).capacity)
+        : 0;
+      const rows = (
+        await client.query(
+          `UPDATE accompaniments SET status='active' WHERE id=$1 AND mentor_id=$2 AND status='pending' AND (SELECT COUNT(*) FROM accompaniments WHERE mentor_id=$2 AND status='active') < $3 RETURNING id`,
+          [id, mentorId, capacity],
+        )
+      ).rows;
+      await client.query("COMMIT");
+      return rows.length > 0;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const profile = db
+      .prepare("SELECT details FROM profiles WHERE user_id=? AND role='mentor'")
+      .get(mentorId);
+    const capacity = profile
+      ? Number(JSON.parse(String(profile.details)).capacity)
+      : 0;
+    const rows = db
+      .prepare(
+        "UPDATE accompaniments SET status='active' WHERE id=? AND mentor_id=? AND status='pending' AND (SELECT COUNT(*) FROM accompaniments WHERE mentor_id=? AND status='active') < ? RETURNING id",
+      )
+      .all(id, mentorId, mentorId, capacity);
+    db.exec("COMMIT");
+    return rows.length > 0;
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
 }

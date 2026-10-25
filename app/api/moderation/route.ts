@@ -37,7 +37,7 @@ export async function PATCH(request: Request) {
         action: z.enum(["approve", "changes"]),
         sales: z.number().int().min(0).max(1000000),
         specialties: z.array(z.string()).max(13),
-        feedback: z.string().trim().min(15).max(1500),
+        feedback: z.string().trim().max(1500),
         checked: z.literal(true),
       })
       .safeParse(await request.json());
@@ -47,6 +47,13 @@ export async function PATCH(request: Request) {
         400,
       );
     const d = input.data;
+    if (d.action === "changes" && d.feedback.length < 15)
+      return json(
+        {
+          error: "Explique les compléments attendus en au moins 15 caractères.",
+        },
+        400,
+      );
     if (d.userId === u.id)
       return json({ error: "Tu ne peux pas valider ton propre dossier." }, 403);
     const existing = await query(
@@ -76,10 +83,10 @@ export async function PATCH(request: Request) {
         400,
       );
     const saved = await query(
-      `UPDATE verifications SET status=$1,feedback=$2,verified_sales=$3,verified_specialties=$4,reviewed_at=$5,reviewer_id=$6,revision=$7 WHERE user_id=$8 AND revision=$9 RETURNING user_id`,
+      `UPDATE verifications SET status=$1,feedback=$2,verified_sales=$3,verified_specialties=$4,reviewed_at=$5,reviewer_id=$6,revision=$7 WHERE user_id=$8 AND revision=$9 RETURNING revision,status,feedback,verified_sales,verified_specialties,reviewed_at`,
       [
         d.action === "approve" ? "approved" : "changes",
-        d.feedback,
+        d.feedback || "Dossier examiné et validé par l’administration.",
         d.action === "approve" && original.version !== 2 ? d.sales : null,
         d.action === "approve" ? JSON.stringify(d.specialties) : null,
         new Date().toISOString(),
@@ -91,7 +98,7 @@ export async function PATCH(request: Request) {
     );
     if (!saved.length)
       return json({ error: "Le dossier a changé. Actualise la liste." }, 409);
-    return json({ ok: true });
+    return json({ ok: true, verification: saved[0] });
   } catch {
     return json({ error: "Impossible d’enregistrer la décision." }, 503);
   }

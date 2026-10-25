@@ -1,4 +1,4 @@
-import { query } from "@/lib/db";
+import { query, acceptAccompaniment } from "@/lib/db";
 import { guard, json, user } from "@/lib/http";
 import { z } from "zod";
 export const runtime = "nodejs";
@@ -7,7 +7,7 @@ export async function GET(request: Request) {
     const u = await user(request);
     if (!u) return json({ error: "Connexion requise." }, 401);
     const rows = await query(
-      `SELECT a.id,a.status,a.created_at,a.completed_at,a.rating, CASE WHEN a.beginner_id=$1 THEN 'beginner' ELSE 'mentor' END AS side, CASE WHEN a.beginner_id=$1 THEN COALESCE(m.name,'Ancien membre') ELSE COALESCE(b.name,'Ancien membre') END AS partner_name FROM accompaniments a LEFT JOIN profiles m ON m.user_id=a.mentor_id LEFT JOIN profiles b ON b.user_id=a.beginner_id WHERE a.beginner_id=$1 OR a.mentor_id=$1 ORDER BY a.created_at DESC`,
+      `SELECT a.id,a.objective,a.status,a.created_at,a.completed_at,a.rating, CASE WHEN a.beginner_id=$1 THEN 'beginner' ELSE 'mentor' END AS side, CASE WHEN a.beginner_id=$1 THEN COALESCE(m.name,'Ancien membre') ELSE COALESCE(b.name,'Ancien membre') END AS partner_name FROM accompaniments a LEFT JOIN profiles m ON m.user_id=a.mentor_id LEFT JOIN profiles b ON b.user_id=a.beginner_id WHERE a.beginner_id=$1 OR a.mentor_id=$1 ORDER BY CASE WHEN a.status='pending' THEN 0 ELSE 1 END, a.created_at DESC`,
       [u.id],
     );
     return json({ accompaniments: rows });
@@ -22,9 +22,16 @@ export async function POST(request: Request) {
     const u = await user(request);
     if (!u) return json({ error: "Connexion requise." }, 401);
     const input = z
-      .object({ mentorProfileId: z.string().uuid() })
+      .object({
+        mentorProfileId: z.string().uuid(),
+        objective: z.string().trim().min(10).max(2000),
+      })
       .safeParse(await request.json());
-    if (!input.success) return json({ error: "Profil invalide." }, 400);
+    if (!input.success)
+      return json(
+        { error: "Explique ton objectif en 10 à 2 000 caractères." },
+        400,
+      );
     const own = await query("SELECT role FROM profiles WHERE user_id=$1", [
       u.id,
     ]);
@@ -46,12 +53,13 @@ export async function POST(request: Request) {
     if (mentor.user_id === u.id)
       return json({ error: "Tu ne peux pas être ton propre parrain." }, 400);
     const saved = await query(
-      `INSERT INTO accompaniments (id,beginner_id,mentor_id,status,created_at) VALUES ($1,$2,$3,'pending',$4) ON CONFLICT(beginner_id,mentor_id) DO NOTHING RETURNING id`,
+      `INSERT INTO accompaniments (id,beginner_id,mentor_id,status,created_at,objective) VALUES ($1,$2,$3,'pending',$4,$5) ON CONFLICT(beginner_id,mentor_id) DO NOTHING RETURNING id`,
       [
         crypto.randomUUID(),
         u.id,
         String(mentor.user_id),
         new Date().toISOString(),
+        input.data.objective,
       ],
     );
     if (!saved.length)
@@ -81,6 +89,17 @@ export async function PATCH(request: Request) {
       .safeParse(await request.json());
     if (!input.success) return json({ error: "Action invalide." }, 400);
     const { id, action } = input.data;
+    if (action === "accept") {
+      if (!(await acceptAccompaniment(id, u.id)))
+        return json(
+          {
+            error:
+              "Aucune place libre, demande déjà traitée ou action non autorisée. Termine un binôme actif pour libérer une place.",
+          },
+          409,
+        );
+      return json({ ok: true });
+    }
     const rows =
       action === "complete"
         ? await query(
@@ -89,15 +108,7 @@ export async function PATCH(request: Request) {
           )
         : await query(
             `UPDATE accompaniments SET status=$1 WHERE id=$2 AND status='pending' AND ${action === "cancel" ? "beginner_id" : "mentor_id"}=$3 RETURNING id`,
-            [
-              action === "accept"
-                ? "active"
-                : action === "decline"
-                  ? "declined"
-                  : "cancelled",
-              id,
-              u.id,
-            ],
+            [action === "decline" ? "declined" : "cancelled", id, u.id],
           );
     if (!rows.length)
       return json(

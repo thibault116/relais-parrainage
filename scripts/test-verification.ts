@@ -241,10 +241,15 @@ try {
     ).status,
     400,
   );
-  assert.equal(
-    (await call("/api/moderation", "PATCH", decision, admin)).status,
-    200,
+  const approved = await call(
+    "/api/moderation",
+    "PATCH",
+    { ...decision, feedback: "" },
+    admin,
   );
+  assert.equal(approved.status, 200);
+  assert.equal(approved.data.verification.status, "approved");
+  assert.notEqual(approved.data.verification.revision, decision.revision);
   assert.equal(
     (await call("/api/moderation", "PATCH", decision, admin)).status,
     409,

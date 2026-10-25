@@ -7,6 +7,8 @@ type Accompaniment = {
   side: "beginner" | "mentor";
   partner_name: string;
   rating: number | null;
+  objective: string;
+  created_at: string;
 };
 async function request(path: string, method = "GET", body?: unknown) {
   const res = await fetch(path, {
@@ -14,6 +16,7 @@ async function request(path: string, method = "GET", body?: unknown) {
     headers: { "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
     cache: "no-store",
+    signal: AbortSignal.timeout(20000),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Une erreur est survenue.");
@@ -58,6 +61,7 @@ export function RequestAccompaniment({
 }) {
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
+  const [objective, setObjective] = useState("");
   const [error, setError] = useState("");
   return (
     <div className="pair-request">
@@ -71,14 +75,35 @@ export function RequestAccompaniment({
           </p>
         </>
       )}
+      {!sent && (
+        <label className="request-objective">
+          Ton objectif pour cet accompagnement
+          <textarea
+            value={objective}
+            onChange={(e) => setObjective(e.target.value)}
+            minLength={10}
+            maxLength={2000}
+            disabled={busy}
+            placeholder="Ex. Je débute sur Vinted et je voudrais choisir mes premières pièces avec un budget de 150 €."
+          />
+          <small>
+            Explique où tu en es et l’aide que tu recherches. Le message est
+            réservé à ton binôme. Une place sera occupée seulement après
+            acceptation.
+          </small>
+        </label>
+      )}
       <button
         className="btn secondary full"
-        disabled={busy || sent}
+        disabled={busy || sent || objective.trim().length < 10}
         onClick={async () => {
           setBusy(true);
           setError("");
           try {
-            await request("/api/accompaniments", "POST", { mentorProfileId });
+            await request("/api/accompaniments", "POST", {
+              mentorProfileId,
+              objective,
+            });
             setSent(true);
           } catch (e) {
             setError((e as Error).message);
@@ -101,7 +126,8 @@ export function RequestAccompaniment({
       </button>
       {sent && (
         <p role="status">
-          Préviens ton parrain sur Discord pour qu’il accepte ta demande.
+          Ta demande est dans la boîte de réception du parrain. Retrouve son
+          statut dans Mon profil → Demandes.
         </p>
       )}
       {error && (
@@ -252,6 +278,16 @@ function Pair({
           <h3>{item.partner_name}</h3>
         </div>
         <span className="badge">{labels[item.status]}</span>
+      </div>
+      <p className="small-text">
+        Demande du {new Date(item.created_at).toLocaleDateString("fr-FR")}
+      </p>
+      <div className="request-message">
+        <strong>Objectif du débutant</strong>
+        <p>
+          {item.objective ||
+            "Ancienne demande : aucun message d’objectif n’avait été renseigné."}
+        </p>
       </div>
       {item.status === "pending" &&
         (item.side === "mentor" ? (

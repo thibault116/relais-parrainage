@@ -11,15 +11,27 @@ import {
 } from "@/lib/verification-form";
 import { ShieldCheck, Upload } from "lucide-react";
 async function call(path: string, method = "GET", body?: unknown) {
-  const r = await fetch(path, {
-    method,
-    cache: "no-store",
-    headers: { "Content-Type": "application/json" },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const d = await r.json();
-  if (!r.ok) throw Error(d.error || "Une erreur est survenue.");
-  return d;
+  try {
+    const r = await fetch(path, {
+      method,
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(20000),
+    });
+    const d = await r.json();
+    if (!r.ok) throw Error(d.error || "Une erreur est survenue.");
+    return d;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      ["TimeoutError", "AbortError"].includes(error.name)
+    )
+      throw Error(
+        "Le serveur met trop de temps à répondre. Actualise les dossiers pour vérifier si la décision a été enregistrée avant de réessayer.",
+      );
+    throw error;
+  }
 }
 type FileInfo = { id: string; name: string; size: number; mime: string };
 type Legacy = {
@@ -541,7 +553,8 @@ export function VerificationForm({
 export function Moderation() {
   const [items, setItems] = useState<Review[]>([]),
     [error, setError] = useState(""),
-    [loading, setLoading] = useState(true);
+    [loading, setLoading] = useState(true),
+    [message, setMessage] = useState("");
   const load = useCallback(async () => {
     setError("");
     try {
@@ -567,6 +580,11 @@ export function Moderation() {
       <button className="text-btn" onClick={() => void load()}>
         Actualiser les dossiers
       </button>
+      {message && (
+        <p className="info-box" role="status">
+          {message}
+        </p>
+      )}
       {loading ? (
         <p>Chargement…</p>
       ) : items.length ? (
@@ -574,7 +592,20 @@ export function Moderation() {
           <ReviewCard
             key={item.user_id + item.revision}
             item={item}
-            reload={load}
+            onReviewed={(verification) => {
+              setItems((current) =>
+                current.map((entry) =>
+                  entry.user_id === item.user_id
+                    ? { ...entry, ...verification }
+                    : entry,
+                ),
+              );
+              setMessage(
+                verification.status === "approved"
+                  ? `${item.name} : dossier validé, le badge vérifié est actif.`
+                  : `${item.name} : demande de compléments enregistrée.`,
+              );
+            }}
           />
         ))
       ) : (
@@ -590,10 +621,10 @@ export function Moderation() {
 }
 function ReviewCard({
   item,
-  reload,
+  onReviewed,
 }: {
   item: Review;
-  reload: () => Promise<void>;
+  onReviewed: (verification: Partial<Review>) => void;
 }) {
   const d = item.dossier,
     newD = isNew(d) ? d : null,
@@ -610,10 +641,20 @@ function ReviewCard({
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   async function decide(action: string) {
+    if (action === "approve" && !skills.length) {
+      setError(
+        "Sélectionne au moins un domaine examiné pour attribuer le badge.",
+      );
+      return;
+    }
+    if (action === "changes" && feedback.trim().length < 15) {
+      setError("Explique les compléments attendus en au moins 15 caractères.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
-      await call("/api/moderation", "PATCH", {
+      const result = await call("/api/moderation", "PATCH", {
         userId: item.user_id,
         revision: item.revision,
         action,
@@ -622,7 +663,7 @@ function ReviewCard({
         feedback,
         checked,
       });
-      await reload();
+      onReviewed(result.verification);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -733,9 +774,8 @@ function ReviewCard({
           ))}
         </fieldset>
         <label>
-          Retour privé au parrain
+          Retour privé au parrain (facultatif pour une validation)
           <textarea
-            minLength={15}
             maxLength={1500}
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
@@ -750,13 +790,19 @@ function ReviewCard({
           J’ai examiné les réponses et les justificatifs. Mon avis ne repose pas
           uniquement sur l’ancienneté déclarée.
         </label>
+        {item.status === "approved" && (
+          <p className="info-box" role="status">
+            Dossier validé : le badge « Parrain vérifié » est actif sur le
+            profil.
+          </p>
+        )}
         <div className="hero-buttons">
           <button
             className="btn"
             disabled={busy || !checked}
             onClick={() => void decide("approve")}
           >
-            Valider le dossier
+            {busy ? "Enregistrement…" : "Valider le dossier"}
           </button>
           <button
             className="btn secondary"
