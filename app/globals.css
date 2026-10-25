@@ -143,24 +143,24 @@ button {
 .brand-mark svg {
   transform: rotate(7deg);
 }
-nav {
+.header nav {
   display: flex;
   align-items: center;
   gap: 27px;
   flex: 1;
   justify-content: center;
 }
-nav button {
+.header nav button {
   font-size: 13px;
   font-weight: 550;
   color: var(--muted);
   position: relative;
   padding: 30px 0;
 }
-nav button.active {
+.header nav button.active {
   color: var(--purple);
 }
-nav button.active:after {
+.header nav button.active:after {
   content: "";
   position: absolute;
   bottom: 19px;
@@ -1546,10 +1546,10 @@ textarea {
     width: calc(100% - 45px);
     gap: 25px;
   }
-  nav {
+  .header nav {
     gap: 18px;
   }
-  nav button {
+  .header nav button {
     font-size: 11px;
   }
   .nav-actions {
@@ -1619,10 +1619,10 @@ textarea {
   .brand {
     font-size: 28px;
   }
-  nav {
+  .header nav {
     display: none;
   }
-  nav.open {
+  .header nav.open {
     display: flex;
     position: absolute;
     top: 71px;
@@ -1634,11 +1634,11 @@ textarea {
     flex-direction: column;
     gap: 0;
   }
-  nav.open button {
+  .header nav.open button {
     padding: 12px;
     width: 100%;
   }
-  nav button.active:after {
+  .header nav button.active:after {
     display: none;
   }
   .mobile-toggle {
@@ -3445,5 +3445,445 @@ textarea {
     padding: 18px;
     max-height: 55dvh;
     overflow-y: auto;
+  }
+}
+
+/* Touch layouts: keep content readable instead of shrinking it to fit. */
+.mobile-menu-login {
+  display: none;
+}
+@media (max-width: 800px) {
+  .header nav.open {
+    max-height: calc(100dvh - 80px - var(--update-banner-height, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .header nav .mobile-menu-login {
+    display: block;
+    color: var(--purple-dark);
+    border-top: 1px solid var(--line);
+  }
+  .mobile-toggle,
+  .discord-nav,
+  .account {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mobile-toggle {
+    flex-shrink: 0;
+  }
+  .nav-actions {
+    gap: 6px;
+  }
+  .nav-wrap {
+    gap: 8px;
+  }
+  .brand {
+    flex-shrink: 0;
+  }
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+    min-width: 0;
+    max-width: 100%;
+  }
+  fieldset,
+  .fields > *,
+  .form-panel,
+  .onboarding > *,
+  .verification-form,
+  .photo-editor > div,
+  .filter-select,
+  .search-field {
+    min-width: 0;
+  }
+  input[type="file"] {
+    width: 100%;
+  }
+  .btn,
+  .text-btn,
+  .role-switch button,
+  .follow-tabs button,
+  .directory-tabs button,
+  .admin-tabs button {
+    min-height: 44px;
+  }
+  .btn {
+    white-space: normal;
+    text-align: center;
+  }
+  .btn svg {
+    flex-shrink: 0;
+  }
+  .profile-tabs {
+    align-items: stretch;
+  }
+  .profile-tabs button {
+    min-height: 48px;
+    line-height: 1.4;
+  }
+  .help-index {
+    display: grid;
+  }
+  .member-grid .redesigned-card {
+    min-height: 0;
+    aspect-ratio: auto;
+  }
+  .member-modal .detail-grid strong,
+  .mentor-card-title h3,
+  .pair-heading h3,
+  .follow-list h3 {
+    overflow-wrap: anywhere;
+  }
+  .verification-invite {
+    position: static;
+    width: auto;
+    max-width: none;
+    max-height: none;
+    margin: 16px 18px 24px;
+  }
+  .modal-backdrop {
+    padding: calc(
+        12px + env(safe-area-inset-top) + var(--update-banner-height, 0px)
+      )
+      12px calc(12px + env(safe-area-inset-bottom));
+  }
+  .modal,
+  .modal.member-modal {
+    max-height: calc(
+      100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom) -
+        var(--update-banner-height, 0px)
+    );
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .modal .close-btn {
+    position: sticky;
+    top: 0;
+    float: right;
+    z-index: 4;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--paper);
+  }
+  .suggestion-dialog {
+    max-height: calc(
+      100dvh - 100px - env(safe-area-inset-top) - env(safe-area-inset-bottom) -
+        var(--update-banner-height, 0px)
+    );
+  }
+  .suggestion-close {
+    width: 44px;
+    height: 44px;
+  }
+}
+@media (max-width: 600px) {
+  .wrap {
+    width: calc(100% - 32px);
+  }
+  .nav-wrap {
+    width: calc(100% - 24px);
+    height: 68px;
+  }
+  .brand {
+    font-size: 25px;
+    gap: 7px;
+  }
+  .brand-mark {
+    width: 33px;
+    height: 33px;
+  }
+  .header nav.open {
+    top: 67px;
+  }
+  .small-btn {
+    font-size: 12px;
+    padding: 10px;
+  }
+  .small-btn svg {
+    display: none;
+  }
+  .hero h1 {
+    font-size: clamp(37px, 10.8vw, 52px);
+    letter-spacing: -2px;
+  }
+  .hero-copy > p,
+  .page-heading p,
+  .section-top > p,
+  .role-card p,
+  .steps-grid p,
+  .bottom-cta p,
+  .guide-intro p,
+  .guide-grid p,
+  .faq summary,
+  .faq details p,
+  .empty p,
+  .directory-tip p,
+  .pair-card p,
+  .pair-request p,
+  .discord-community p {
+    font-size: 15px;
+    line-height: 1.65;
+  }
+  .eyebrow {
+    font-size: 10px;
+    line-height: 1.6;
+    letter-spacing: 1px;
+  }
+  .hero-proof,
+  .promise-inner > span {
+    font-size: 12px;
+    flex-wrap: wrap;
+  }
+  .hero-buttons {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .hero-buttons .btn,
+  .bottom-cta .btn,
+  .contact-panel > .btn {
+    font-size: 14px;
+  }
+  .hero-buttons .btn {
+    flex: 1 1 155px;
+  }
+  .page-heading {
+    margin-top: 28px;
+    margin-bottom: 24px;
+  }
+  .page-heading h1 {
+    font-size: 34px;
+  }
+  .filters {
+    gap: 10px;
+  }
+  .filters .filter-select {
+    flex: 1 1 100%;
+  }
+  .filter-select select {
+    min-height: 46px;
+  }
+  .directory-tabs {
+    gap: 12px;
+  }
+  .directory-tabs button {
+    flex: 1;
+    font-size: 14px;
+  }
+  .results-label {
+    font-size: 12px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .results-label > span:last-child {
+    max-width: none;
+  }
+  .member-grid {
+    gap: 16px;
+  }
+  .card-stats small,
+  .card-stats span,
+  .rating-summary,
+  .rating-summary span {
+    font-size: 12px;
+  }
+  .modal.member-modal {
+    padding: 18px;
+    width: 100%;
+    font-size: 16px;
+  }
+  .member-modal h2 {
+    font-size: 28px;
+  }
+  .member-modal h3 {
+    font-size: 21px;
+  }
+  .member-modal > p {
+    font-size: 16px;
+  }
+  .member-modal .detail-grid {
+    gap: 12px;
+  }
+  .member-modal .detail-grid strong {
+    font-size: 16px;
+  }
+  .member-modal .detail-grid small {
+    font-size: 13px;
+  }
+  .profile-pager {
+    flex-wrap: wrap;
+    margin-right: 50px;
+    gap: 8px;
+  }
+  .profile-pager button {
+    flex-shrink: 0;
+  }
+  .photo-editor {
+    flex-wrap: wrap;
+    padding: 18px;
+  }
+  .photo-editor > div:not(.avatar) {
+    flex: 1 1 200px;
+  }
+  .photo-editor label {
+    margin-right: 0;
+  }
+  .photo-editor p {
+    font-size: 14px;
+  }
+  .onboarding > aside {
+    padding: 18px;
+  }
+  .form-panel {
+    padding: 20px 16px;
+  }
+  .form-steps {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .form-steps li {
+    font-size: 12px;
+  }
+  .form-actions {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .form-actions .btn,
+  .role-switch button {
+    font-size: 14px;
+  }
+  .verification-panel {
+    padding: 18px 14px;
+  }
+  .verification-form fieldset {
+    padding: 12px;
+  }
+  .verification-form legend {
+    max-width: 100%;
+    white-space: normal;
+  }
+  .verification-form .verification-check {
+    padding-block: 7px;
+  }
+  .proof-inputs {
+    padding-left: 0;
+  }
+  .proof-upload {
+    padding: 12px;
+    overflow-wrap: anywhere;
+  }
+  .pair-card {
+    padding: 18px;
+  }
+  .pair-heading {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .pair-heading h3 {
+    font-size: 21px;
+  }
+  .pair-actions {
+    gap: 10px;
+  }
+  .pair-actions .btn {
+    flex: 1 1 180px;
+  }
+  .stars-input {
+    flex-wrap: wrap;
+  }
+  .stars-input button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .stars-input span {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+  .follow-network {
+    margin-top: 0;
+    padding: 16px;
+  }
+  .follow-list article {
+    padding: 14px;
+  }
+  .follow-list article > div:not(.avatar) {
+    min-width: 0;
+    flex-basis: 140px;
+    overflow-wrap: anywhere;
+  }
+  .follow-list article > button {
+    width: 100%;
+  }
+  .admin-page,
+  .help-page {
+    padding-top: 28px;
+  }
+  .admin-tabs button {
+    flex: 1 1 130px;
+    font-size: 14px;
+  }
+  .admin-stats {
+    gap: 10px;
+  }
+  .admin-stats article {
+    padding: 14px;
+  }
+  .admin-stats span {
+    font-size: 13px;
+    overflow-wrap: anywhere;
+  }
+  .admin-table-wrap {
+    max-width: 100%;
+  }
+  .admin-table {
+    min-width: 600px;
+  }
+  .help-journey {
+    gap: 10px;
+  }
+  .help-journey > div {
+    padding: 14px;
+  }
+  .help-chapters p {
+    font-size: 16px;
+    line-height: 1.75;
+  }
+  .footer p,
+  .footer button,
+  .footer > span {
+    font-size: 12px;
+  }
+  main {
+    padding-bottom: 24px;
+  }
+  .toast {
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    font-size: 14px;
+  }
+}
+@media (max-width: 360px) {
+  .nav-actions {
+    gap: 2px;
+  }
+  .nav-actions .discord-nav {
+    display: none;
+  }
+  .brand {
+    font-size: 23px;
+  }
+  .member-modal .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .card-stats {
+    gap: 6px;
+  }
+  .card-stats strong {
+    font-size: 20px;
   }
 }

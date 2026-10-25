@@ -231,6 +231,7 @@ export default function App() {
             mentora<span className="brand-dot">.</span>
           </a>
           <nav
+            id="main-navigation"
             aria-label="Navigation principale"
             className={mobile ? "open" : ""}
           >
@@ -243,6 +244,17 @@ export default function App() {
                 {views[v]}
               </button>
             ))}
+            {!session && (
+              <button
+                className="mobile-menu-login"
+                onClick={() => {
+                  setMobile(false);
+                  setAuthMode("login");
+                }}
+              >
+                Se connecter
+              </button>
+            )}
           </nav>
           <div className="nav-actions">
             <a
@@ -283,16 +295,53 @@ export default function App() {
             )}
             <button
               className="mobile-toggle"
-              aria-label="Ouvrir le menu"
+              aria-label={mobile ? "Fermer le menu" : "Ouvrir le menu"}
+              aria-controls="main-navigation"
               aria-expanded={mobile}
               onClick={() => setMobile(!mobile)}
             >
-              <Menu />
+              {mobile ? <X /> : <Menu />}
             </button>
           </div>
         </div>
       </header>
       <main>
+        {session &&
+          inWorkspace &&
+          profile?.role === "mentor" &&
+          !profile.verification &&
+          !verificationDismissed &&
+          !authMode &&
+          !(view === "profile" && selectedProfileTab === "verification") && (
+            <aside
+              className="verification-invite"
+              aria-label="Faire vérifier mon compte de parrain"
+            >
+              <button
+                className="verification-invite-close"
+                aria-label="Fermer le rappel de vérification"
+                onClick={() => setVerificationDismissed(true)}
+              >
+                <X size={18} />
+              </button>
+              <ShieldCheck size={26} />
+              <h2>Faire vérifier mon compte de parrain</h2>
+              <p>
+                Présente ton expérience en achat-revente pour obtenir ton badge.
+                Déjà envoyé ? Retrouve ici le suivi de ton dossier.
+              </p>
+              <button
+                className="btn"
+                onClick={() => {
+                  go("profile");
+                  setProfileTab("verification");
+                }}
+              >
+                Faire vérifier mon compte
+              </button>
+            </aside>
+          )}
+
         {!isPending && session && moderator && view === "moderation" && (
           <AdminDashboard />
         )}
@@ -847,41 +896,6 @@ export default function App() {
           </footer>
         </>
       )}
-      {session &&
-        inWorkspace &&
-        profile?.role === "mentor" &&
-        !profile.verification &&
-        !verificationDismissed &&
-        !authMode &&
-        !(view === "profile" && selectedProfileTab === "verification") && (
-          <aside
-            className="verification-invite"
-            aria-label="Faire vérifier mon compte de parrain"
-          >
-            <button
-              className="verification-invite-close"
-              aria-label="Fermer le rappel de vérification"
-              onClick={() => setVerificationDismissed(true)}
-            >
-              <X size={18} />
-            </button>
-            <ShieldCheck size={26} />
-            <h2>Faire vérifier mon compte de parrain</h2>
-            <p>
-              Présente ton expérience en achat-revente pour obtenir ton badge.
-              Déjà envoyé ? Retrouve ici le suivi de ton dossier.
-            </p>
-            <button
-              className="btn"
-              onClick={() => {
-                go("profile");
-                setProfileTab("verification");
-              }}
-            >
-              Faire vérifier mon compte
-            </button>
-          </aside>
-        )}
       {authMode && (
         <AuthModal
           mode={authMode}
