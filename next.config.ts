@@ -7,6 +7,16 @@ const config: NextConfig = {
       "local",
   },
   serverExternalPackages: ["pg"],
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "relais-parrainage\\.vercel\\.app" }],
+        destination: "https://mentora-resell.vercel.app/:path*",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {
