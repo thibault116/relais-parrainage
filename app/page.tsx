@@ -133,7 +133,12 @@ export default function App() {
   }, []);
   const [focusMember, setFocusMember] = useState<PublicProfile | null>(null);
   const [role, setRole] = useState<"mentor" | "beginner">("beginner");
-  const [editing, setEditing] = useState(false);
+  const [profileTab, setProfileTab] = useState("accompaniments");
+  const [verificationDismissed, setVerificationDismissed] = useState(false);
+  const selectedProfileTab =
+    profileTab === "verification" && profile?.role !== "mentor"
+      ? "edit"
+      : profileTab;
   const [toast, setToast] = useState("");
   const notify = (text: string) => setToast(text);
   useEffect(() => {
@@ -150,7 +155,6 @@ export default function App() {
     if (next === "directory") setFocusMember(null);
     setView(next);
     setMobile(false);
-    setEditing(false);
     window.location.hash = next;
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -191,7 +195,7 @@ export default function App() {
     setRole(r);
     if (session) {
       go("profile");
-      setEditing(!profile);
+      setProfileTab("edit");
     } else setAuthMode("signup");
   };
   async function visibility() {
@@ -670,25 +674,19 @@ export default function App() {
                 <p role="alert">{profileError}</p>
                 <Button onClick={() => void loadMe()}>Réessayer</Button>
               </div>
-            ) : !profile || editing ? (
+            ) : !profile ? (
               <ProfileForm
                 key={session.user.id}
                 onLogin={() => setAuthMode("login")}
-                initial={
-                  profile
-                    ? { ...profile, consent: true }
-                    : {
-                        ...initialProfile,
-                        name: session.user.name,
-                        role,
-                        experience: role === "mentor" ? 6 : 0,
-                      }
-                }
-                onCancel={profile ? () => setEditing(false) : undefined}
+                initial={{
+                  ...initialProfile,
+                  name: session.user.name,
+                  role,
+                  experience: role === "mentor" ? 6 : 0,
+                }}
                 onSave={(p) => {
                   setProfile(p);
                   void refreshProfile();
-                  setEditing(false);
                   notify("Ton profil est enregistré. Bienvenue dans Mentora !");
                 }}
               />
@@ -711,69 +709,105 @@ export default function App() {
                     <LogOut size={16} /> Se déconnecter
                   </button>
                 </div>
-                <ProfilePhoto profile={profile} onChange={refreshProfile} />
-                <div className="profile-columns">
-                  <ProfileCard
-                    p={profile}
-                    onOpen={() => setEditing(true)}
-                    own
-                  />
-                  <aside className="profile-controls">
-                    <Icon>{profile.visible ? <Eye /> : <EyeOff />}</Icon>
-                    <h2>
-                      {profile.role === "beginner"
-                        ? "Tu as trouvé ton parrain ?"
-                        : "Ton accompagnement est complet ?"}
-                    </h2>
-                    <p>
-                      Masque ton profil : il disparaît de l’annuaire et son
-                      contact n’est plus consultable. Tu pourras revenir quand
-                      tu voudras.
-                    </p>
-                    <Button onClick={() => void visibility()} secondary>
-                      {profile.visible ? (
-                        <EyeOff size={18} />
-                      ) : (
-                        <Eye size={18} />
-                      )}{" "}
-                      {profile.visible
-                        ? "Masquer mon profil"
-                        : "Rendre mon profil visible"}
-                    </Button>
-                    <hr />
-                    <p className="small-text">
-                      Un contact déjà échangé ne peut pas être effacé du Discord
-                      de l’autre personne.
-                    </p>
-                  </aside>
+                <nav
+                  className="profile-tabs"
+                  aria-label="Rubriques de mon profil"
+                >
+                  {[
+                    ...(profile.role === "mentor"
+                      ? [["verification", "Vérification du compte"]]
+                      : []),
+                    ["following", "Suivi"],
+                    ["edit", "Modifier mon profil"],
+                    ["accompaniments", "Mes accompagnements"],
+                    ["requests", "Demandes"],
+                  ].map(([id, label]) => (
+                    <button
+                      key={id}
+                      aria-current={
+                        selectedProfileTab === id ? "page" : undefined
+                      }
+                      onClick={() => {
+                        setProfileTab(id);
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </nav>
+                <div className="profile-tab-content">
+                  {selectedProfileTab === "edit" && (
+                    <>
+                      <ProfilePhoto
+                        profile={profile}
+                        onChange={refreshProfile}
+                      />
+                      <ProfileForm
+                        key={profile.id}
+                        onLogin={() => setAuthMode("login")}
+                        initial={{ ...profile, consent: true }}
+                        onCancel={() => {
+                          setProfileTab("accompaniments");
+                        }}
+                        onSave={(p) => {
+                          setProfile(p);
+                          void refreshProfile();
+                          notify(
+                            "Les modifications de ton profil sont enregistrées.",
+                          );
+                        }}
+                      />
+                      <div className="profile-foot">
+                        <button
+                          className="btn secondary"
+                          onClick={() => void visibility()}
+                        >
+                          {profile.visible ? (
+                            <EyeOff size={18} />
+                          ) : (
+                            <Eye size={18} />
+                          )}
+                          {profile.visible
+                            ? "Masquer mon profil"
+                            : "Rendre mon profil visible"}
+                        </button>
+                        <DeleteProfile
+                          onDeleted={() => {
+                            setProfile(null);
+                            notify(
+                              "Ton profil est supprimé. Ton compte reste disponible.",
+                            );
+                          }}
+                        />
+                      </div>
+                      <p className="small-text">
+                        Un profil masqué disparaît de l’annuaire. Les contacts
+                        déjà échangés sur Discord restent disponibles.
+                      </p>
+                    </>
+                  )}
+                  {selectedProfileTab === "following" && (
+                    <FollowNetwork
+                      onChange={refreshProfile}
+                      onOpen={(p) => {
+                        go("directory");
+                        setFocusMember(p);
+                      }}
+                    />
+                  )}
+                  {(selectedProfileTab === "accompaniments" ||
+                    selectedProfileTab === "requests") && (
+                    <Accompaniments
+                      key={selectedProfileTab}
+                      mode={selectedProfileTab}
+                      onChange={refreshProfile}
+                    />
+                  )}
+                  {selectedProfileTab === "verification" &&
+                    profile.role === "mentor" && (
+                      <VerificationForm onChange={refreshProfile} />
+                    )}
                 </div>
-                <div className="profile-foot">
-                  <button
-                    className="btn secondary"
-                    onClick={() => setEditing(true)}
-                  >
-                    Modifier mon profil
-                  </button>
-                  <DeleteProfile
-                    onDeleted={() => {
-                      setProfile(null);
-                      notify(
-                        "Ton profil a été supprimé. Ton compte reste disponible.",
-                      );
-                    }}
-                  />
-                </div>
-                <FollowNetwork
-                  onChange={refreshProfile}
-                  onOpen={(p) => {
-                    go("directory");
-                    setFocusMember(p);
-                  }}
-                />
-                <Accompaniments onChange={refreshProfile} />
-                {profile.role === "mentor" && (
-                  <VerificationForm onChange={refreshProfile} />
-                )}
               </>
             )}
           </section>
@@ -813,6 +847,41 @@ export default function App() {
           </footer>
         </>
       )}
+      {session &&
+        inWorkspace &&
+        profile?.role === "mentor" &&
+        !profile.verification &&
+        !verificationDismissed &&
+        !authMode &&
+        !(view === "profile" && selectedProfileTab === "verification") && (
+          <aside
+            className="verification-invite"
+            aria-label="Faire vérifier mon compte de parrain"
+          >
+            <button
+              className="verification-invite-close"
+              aria-label="Fermer le rappel de vérification"
+              onClick={() => setVerificationDismissed(true)}
+            >
+              <X size={18} />
+            </button>
+            <ShieldCheck size={26} />
+            <h2>Faire vérifier mon compte de parrain</h2>
+            <p>
+              Présente ton expérience en achat-revente pour obtenir ton badge.
+              Déjà envoyé ? Retrouve ici le suivi de ton dossier.
+            </p>
+            <button
+              className="btn"
+              onClick={() => {
+                go("profile");
+                setProfileTab("verification");
+              }}
+            >
+              Faire vérifier mon compte
+            </button>
+          </aside>
+        )}
       {authMode && (
         <AuthModal
           mode={authMode}
@@ -1105,9 +1174,19 @@ function ProfileForm({
   return (
     <div className="onboarding">
       <aside>
-        <span className="eyebrow">FAISONS CONNAISSANCE</span>
-        <h2>Le bon binôme commence par toi.</h2>
-        <p>Quelques informations pour se rencontrer autour des mêmes envies.</p>
+        <span className="eyebrow">
+          {onCancel ? "MON PROFIL" : "FAISONS CONNAISSANCE"}
+        </span>
+        <h2>
+          {onCancel
+            ? "Mets ton profil à jour."
+            : "Le bon binôme commence par toi."}
+        </h2>
+        <p>
+          {onCancel
+            ? "Modifie ta présentation, ton parcours et tes disponibilités, puis enregistre à la dernière étape."
+            : "Quelques informations pour se rencontrer autour des mêmes envies."}
+        </p>
         <ol className="form-steps">
           {["Qui tu es", "Ton parcours", "Votre rythme"].map((s, i) => (
             <li
@@ -1128,19 +1207,21 @@ function ProfileForm({
         </div>
       </aside>
       <form className="form-panel" onSubmit={submit}>
-        <div className="questionnaire-login">
-          <p>
-            Tu as déjà un compte Mentora ? Retrouve ton profil avec ton e-mail
-            et ton mot de passe.
-          </p>
-          <button type="button" className="btn secondary" onClick={onLogin}>
-            Se connecter à mon compte
-          </button>
-          <small>
-            Si tu changes de compte, les réponses non enregistrées de ce
-            questionnaire ne seront pas conservées.
-          </small>
-        </div>
+        {!onCancel && (
+          <div className="questionnaire-login">
+            <p>
+              Tu as déjà un compte Mentora ? Retrouve ton profil avec ton e-mail
+              et ton mot de passe.
+            </p>
+            <button type="button" className="btn secondary" onClick={onLogin}>
+              Se connecter à mon compte
+            </button>
+            <small>
+              Si tu changes de compte, les réponses non enregistrées de ce
+              questionnaire ne seront pas conservées.
+            </small>
+          </div>
+        )}
         <span className="eyebrow">ÉTAPE {step + 1} SUR 3</span>
         <h2>
           {
@@ -2365,11 +2446,11 @@ function Guide({ onJoin }: { onJoin: () => void }) {
           <h2>Une note après l’accompagnement</h2>
           <p>
             Dans l’annuaire, le débutant clique sur « Choisir ce parrain ». Le
-            parrain accepte depuis « Mon profil », dans « Mes accompagnements ».
-            À la fin, l’un des deux clique sur « Terminer l’accompagnement ». Le
-            débutant peut alors publier une note de 1 à 5 étoiles, une seule
-            fois pour ce binôme. La moyenne et le nombre de notes apparaissent
-            sur la fiche du parrain.
+            parrain accepte depuis « Mon profil », dans « Demandes ». À la fin,
+            l’un des deux clique sur « Terminer l’accompagnement ». Le débutant
+            peut alors publier une note de 1 à 5 étoiles, une seule fois pour ce
+            binôme. La moyenne et le nombre de notes apparaissent sur la fiche
+            du parrain.
           </p>
           <p>
             Les notes proviennent de binômes confirmés sur Mentora. Elles

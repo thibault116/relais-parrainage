@@ -46,7 +46,7 @@ const chapters = [
   [
     "demande",
     "Faire une demande de parrainage",
-    "Depuis un profil parrain, un débutant peut envoyer une demande de parrainage. Le parrain la retrouve dans Mon profil → Mes accompagnements et peut l’accepter ou la refuser. Une demande en attente n’est pas encore un accompagnement actif.",
+    "Depuis un profil parrain, un débutant peut envoyer une demande de parrainage. Le parrain la retrouve dans Mon profil → Demandes et peut l’accepter ou la refuser. Une demande en attente n’est pas encore un accompagnement actif.",
     "Le nombre de places libres dépend de la capacité choisie par le parrain et des accompagnements en cours. Le parrain choisit combien de débutants il peut aider et pour quelle durée. Un profil sans place libre ne peut pas accepter davantage de débutants tant qu’une place ne se libère pas.",
   ],
   [
@@ -58,7 +58,7 @@ const chapters = [
   [
     "suivi",
     "Suivre, terminer et donner un avis",
-    "Retrouve les demandes et les binômes dans Mon profil → Mes accompagnements. Une fois la demande acceptée, l’accompagnement passe en cours. Quand il se termine, chacun des deux membres peut le signaler depuis cet espace.",
+    "Les demandes sont dans Mon profil → Demandes. Retrouve les binômes actifs et leur historique dans Mon profil → Mes accompagnements. Une fois la demande acceptée, l’accompagnement passe en cours. Quand il se termine, chacun des deux membres peut le signaler depuis cet espace.",
     "Le débutant peut ensuite laisser une note de 1 à 5 étoiles à son parrain, une seule fois pour cet accompagnement. La moyenne et le nombre d’avis apparaissent sur le profil du parrain. La fin d’un accompagnement libère une place.",
   ],
   [

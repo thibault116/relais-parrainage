@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { Star, HeartHandshake, CheckCircle2 } from "lucide-react";
+import { Star, CheckCircle2 } from "lucide-react";
 type Accompaniment = {
   id: string;
   status: "pending" | "active" | "completed" | "declined" | "cancelled";
@@ -114,7 +114,9 @@ export function RequestAccompaniment({
 }
 export function Accompaniments({
   onChange,
+  mode = "accompaniments",
 }: {
+  mode?: "accompaniments" | "requests";
   onChange: () => Promise<void>;
 }) {
   const [items, setItems] = useState<Accompaniment[]>([]);
@@ -134,21 +136,45 @@ export function Accompaniments({
   useEffect(() => {
     void load();
   }, [load]);
+  const groups =
+    mode === "requests"
+      ? [
+          {
+            label: "Demandes reçues",
+            rows: items.filter((i) => i.side === "mentor"),
+          },
+          {
+            label: "Demandes envoyées",
+            rows: items.filter((i) => i.side === "beginner"),
+          },
+        ]
+      : [
+          {
+            label: "Accompagnements actifs",
+            rows: items.filter((i) => i.status === "active"),
+          },
+          {
+            label: "Historique des accompagnements",
+            rows: items.filter((i) => i.status === "completed"),
+          },
+        ];
   return (
     <section className="accompaniments">
       <div className="section-top">
         <div>
-          <span className="eyebrow">DU PREMIER MESSAGE AU DERNIER CONSEIL</span>
-          <h2>Mes accompagnements</h2>
+          <span className="eyebrow">MON BINÔME, ÉTAPE PAR ÉTAPE</span>
+          <h2>
+            {mode === "requests" ? "Mes demandes" : "Mes accompagnements"}
+          </h2>
         </div>
         <button className="text-btn" onClick={() => void load()}>
           Actualiser
         </button>
       </div>
       <p>
-        Le parrain accepte la demande pour confirmer le binôme. Ensuite, chacun
-        peut signaler la fin de l’accompagnement. Le débutant peut alors laisser
-        une seule note, de 1 à 5 étoiles.
+        {mode === "requests"
+          ? "Retrouve tes demandes envoyées et reçues. Une demande acceptée devient un accompagnement actif."
+          : "Retrouve tes binômes en cours et terminés. À la fin, le débutant peut laisser une note à son parrain."}
       </p>
       {loading ? (
         <p>Chargement…</p>
@@ -156,28 +182,39 @@ export function Accompaniments({
         <p className="error" role="alert">
           {error}
         </p>
-      ) : items.length ? (
-        <div className="pair-list">
-          {items.map((item) => (
-            <Pair key={item.id} item={item} reload={load} />
-          ))}
-        </div>
       ) : (
-        <div className="info-box">
-          <HeartHandshake />
-          <p>
-            Aucun accompagnement pour le moment. Côté débutant, ouvre la fiche
-            de ton parrain dans l’annuaire et clique sur « Choisir ce parrain ».
-          </p>
-        </div>
+        groups.map((group) => (
+          <section key={group.label} className="pair-group">
+            <h3>
+              {group.label} <span className="badge">{group.rows.length}</span>
+            </h3>
+            {group.rows.length ? (
+              <div className="pair-list">
+                {group.rows.map((item) => (
+                  <Pair
+                    key={item.id}
+                    item={item}
+                    reload={load}
+                    requestsOnly={mode === "requests"}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="small-text">Rien à afficher pour le moment.</p>
+            )}
+          </section>
+        ))
       )}
     </section>
   );
 }
+
 function Pair({
   item,
   reload,
+  requestsOnly = false,
 }: {
+  requestsOnly?: boolean;
   item: Accompaniment;
   reload: () => Promise<void>;
 }) {
@@ -187,8 +224,8 @@ function Pair({
   const [error, setError] = useState("");
   const labels = {
     pending: "En attente de confirmation",
-    active: "En cours",
-    completed: "Terminé",
+    active: requestsOnly ? "Demande acceptée · en cours" : "En cours",
+    completed: requestsOnly ? "Demande acceptée · terminé" : "Terminé",
     declined: "Demande refusée",
     cancelled: "Demande annulée",
   };
@@ -246,7 +283,8 @@ function Pair({
             </button>
           </div>
         ))}
-      {item.status === "active" &&
+      {!requestsOnly &&
+        item.status === "active" &&
         (confirm ? (
           <div>
             <p>
@@ -271,7 +309,8 @@ function Pair({
             Terminer l’accompagnement
           </button>
         ))}
-      {item.status === "completed" &&
+      {!requestsOnly &&
+        item.status === "completed" &&
         (item.rating !== null ? (
           <p className="rating-summary">
             <Star size={17} fill="currentColor" />
