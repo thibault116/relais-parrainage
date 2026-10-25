@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { AdminSuggestions } from "./suggestions";
 import { Moderation } from "./verification";
 async function call(path: string, method = "GET", body?: unknown) {
   const r = await fetch(path, {
@@ -93,6 +94,7 @@ export function AdminDashboard() {
       <nav className="admin-tabs" aria-label="Rubriques administrateur">
         {[
           ["overview", "Vue d’ensemble"],
+          ["suggestions", "Suggestions"],
           ["accounts", "Comptes"],
           ["reports", "Signalements"],
           ["ratings", "Avis"],
@@ -115,7 +117,9 @@ export function AdminDashboard() {
           {error}
         </p>
       )}
-      {tab === "verification" ? (
+      {tab === "suggestions" ? (
+        <AdminSuggestions />
+      ) : tab === "verification" ? (
         <Moderation />
       ) : !data || !s ? (
         <p>Chargement…</p>

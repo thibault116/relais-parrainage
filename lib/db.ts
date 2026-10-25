@@ -98,6 +98,7 @@ export async function migrateAdministration() {
     "Luxe",
     "Sneakers",
     "Généraliste",
+    "Expert en photo",
     "Bot",
     "Brocante",
     "Fournisseur",
@@ -135,5 +136,14 @@ export async function migrateFollows() {
   );
   await query(
     "CREATE INDEX IF NOT EXISTS follows_target ON follows(followed_id)",
+  );
+}
+
+export async function migrateSuggestions() {
+  await query(
+    "CREATE TABLE IF NOT EXISTS suggestions (id TEXT PRIMARY KEY,user_id TEXT NOT NULL,message TEXT NOT NULL,page TEXT NOT NULL,attachment TEXT,status TEXT NOT NULL DEFAULT 'new' CHECK(status IN ('new','reviewed')),created_at TEXT NOT NULL)",
+  );
+  await query(
+    "CREATE INDEX IF NOT EXISTS suggestions_owner ON suggestions(user_id,created_at)",
   );
 }

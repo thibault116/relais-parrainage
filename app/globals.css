@@ -3219,3 +3219,133 @@ textarea {
     font-size: 13px;
   }
 }
+/* Updates remain visible after mobile browser resume and while scrolling. */
+.update-banner {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 500;
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+  box-shadow: 0 3px 12px #28133b20;
+}
+.update-banner-space {
+  height: var(--update-banner-height, 0px);
+}
+.header {
+  top: var(--update-banner-height, 0px);
+}
+.suggestion-launcher {
+  position: fixed;
+  right: calc(18px + env(safe-area-inset-right, 0px));
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  z-index: 151;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #7247a2;
+  color: white;
+  box-shadow: 0 4px 18px #4c267b35;
+  border: 1px solid #ffffff90;
+}
+.suggestion-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  background: #281b371a;
+}
+.suggestion-dialog {
+  position: absolute;
+  right: 18px;
+  bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+  width: min(390px, calc(100vw - 24px));
+  max-height: calc(100dvh - 100px - var(--update-banner-height, 0px));
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 24px;
+  background: #fcfaff;
+  border: 1px solid #dfd1eb;
+  border-radius: 20px;
+  box-shadow: 0 16px 55px #2d143b30;
+}
+.suggestion-dialog h2 {
+  font-size: 20px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 20px 12px 0;
+}
+.suggestion-dialog p {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.suggestion-dialog form {
+  display: grid;
+  gap: 14px;
+}
+.suggestion-dialog label {
+  display: grid;
+  gap: 7px;
+  font-size: 14px;
+}
+.suggestion-dialog textarea {
+  width: 100%;
+  min-height: 125px;
+  resize: vertical;
+  font-size: 16px;
+}
+.suggestion-dialog small {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #776a86;
+}
+.suggestion-dialog input[type="file"] {
+  font-size: 13px;
+  width: 100%;
+  padding: 8px;
+}
+.suggestion-close {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  width: 32px;
+  height: 32px;
+}
+.suggestion-filename {
+  overflow-wrap: anywhere;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+}
+.suggestion-filename button {
+  color: #7247a2;
+  text-decoration: underline;
+}
+.suggestion-message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .update-banner {
+    padding-inline: 12px;
+    gap: 8px;
+    font-size: 13px;
+    text-align: left;
+    justify-content: space-between;
+  }
+  .update-banner span {
+    flex: 1 1 190px;
+  }
+  .update-banner button {
+    font-size: 13px;
+    min-height: 40px;
+  }
+  .suggestion-dialog {
+    right: 12px;
+    padding: 20px;
+  }
+  .suggestion-launcher {
+    right: 12px;
+  }
+}

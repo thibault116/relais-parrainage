@@ -1,3 +1,4 @@
+import { deleteSuggestions } from "./suggestions";
 import { deleteProfilePhoto } from "./profile-photo";
 import { deleteUserProofs } from "./proof-storage";
 import { betterAuth } from "better-auth";
@@ -32,6 +33,7 @@ function createAuth() {
         enabled: true,
         beforeDelete: async (user) => {
           await deleteUserProofs(user.id);
+          await deleteSuggestions(user.id);
           await deleteProfilePhoto(user.id);
           await query(
             "DELETE FROM follows WHERE follower_id=$1 OR followed_id=$1",

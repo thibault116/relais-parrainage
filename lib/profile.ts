@@ -8,6 +8,7 @@ export const specialties = [
   "Luxe",
   "Sneakers",
   "Généraliste",
+  "Expert en photo",
 ] as const;
 export const times = [
   "En journée",
@@ -48,7 +49,7 @@ export const profileSchema = z
     specialty: z
       .array(z.enum(specialties))
       .min(1, "Choisis au moins une spécialité.")
-      .max(8)
+      .max(specialties.length)
       .transform((v) => [...new Set(v)]),
     teaching: z.string().trim().max(500).default(""),
     availability: z.enum(times),

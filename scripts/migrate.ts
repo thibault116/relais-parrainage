@@ -1,6 +1,7 @@
 import { getMigrations } from "better-auth/db/migration";
 import { getAuth } from "../lib/auth";
 import {
+  migrateSuggestions,
   migrateFollows,
   migrateProfiles,
   migrateAccompaniments,
@@ -11,6 +12,7 @@ import {
 await (await getMigrations(getAuth().options)).runMigrations();
 await migrateProfiles();
 await migrateFollows();
+await migrateSuggestions();
 await migrateAccompaniments();
 await migrateVerifications();
 await migrateAdministration();

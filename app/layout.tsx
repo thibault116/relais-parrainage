@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { SuggestionWidget } from "./components/suggestions";
 import { UpdateBanner } from "./components/update-banner";
 export const metadata: Metadata = {
   title: "Mentora — L’entraide entre revendeurs.",
@@ -12,6 +13,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <body>
         <UpdateBanner />
         {children}
+        <SuggestionWidget />
       </body>
     </html>
   );

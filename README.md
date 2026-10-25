@@ -94,3 +94,9 @@ La photo se gère dans Mon profil. Le navigateur recadre au centre et réduit le
 ### Abonnements entre revendeurs
 
 Les abonnements gratuits sont distincts des demandes de parrainage. La table `follows` impose une relation unique par paire et interdit le suivi de soi-même. Les compteurs sont calculés côté serveur ; les listes personnelles sont réservées au membre connecté et paginées par 30. Les profils masqués ou modérés restent anonymisés dans ces listes, mais on peut s’en désabonner. La suppression du compte ou du profil retire les relations entrantes et sortantes. Le réseau est classé par mise à jour du profil ; il ne publie pas les ventes ou échanges privés et n’envoie pas de notification. Test : `node --import tsx scripts/test-follows.ts` avec le serveur local sur le port 3001.
+
+### Suggestions et mise à jour mobile
+
+Le bouton ampoule global permet aux membres connectés d’envoyer une suggestion (5 à 5 000 caractères) avec une image ou un PDF facultatif de 4 Mo maximum. Les suggestions sont privées, limitées à cinq par membre sur 24 heures, et l’identifiant d’envoi évite les doublons lors d’une nouvelle tentative. L’onglet Administration → Suggestions présente les messages et pièces jointes, avec les statuts Nouvelle / Examinée et une pagination de 30 éléments. La suppression du compte supprime ses suggestions et fichiers. Test : `node --import tsx scripts/test-suggestions.ts`.
+
+La bannière de mise à jour est fixée en haut de l’écran, respecte les zones sûres des mobiles et réserve sa hauteur dans la page. Elle vérifie la version au chargement, toutes les 30 secondes, au retour dans l’onglet, à la restauration de page et au retour du réseau. Chaque requête expire après 10 secondes pour éviter un blocage après mise en veille. Le rechargement actualise le paramètre de version tout en conservant la page ouverte. « Expert en photo » est disponible parmi les spécialités et domaines de vérification.

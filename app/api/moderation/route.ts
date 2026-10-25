@@ -36,7 +36,7 @@ export async function PATCH(request: Request) {
         revision: z.string().uuid(),
         action: z.enum(["approve", "changes"]),
         sales: z.number().int().min(0).max(1000000),
-        specialties: z.array(z.string()).max(12),
+        specialties: z.array(z.string()).max(13),
         feedback: z.string().trim().min(15).max(1500),
         checked: z.literal(true),
       })

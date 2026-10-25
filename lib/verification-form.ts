@@ -26,6 +26,7 @@ export const helpOptions = [
   "Bot Vinted",
   "Estimation et prix",
   "Création d’annonce",
+  "Expert en photo",
   "Expédition",
   "Logistique",
   "Gestion et organisation",

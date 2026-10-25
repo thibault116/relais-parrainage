@@ -126,6 +126,11 @@ export default function App() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [authMode, setAuthMode] = useState<"login" | "signup" | null>(null);
+  useEffect(() => {
+    const login = () => setAuthMode("login");
+    window.addEventListener("mentora-login", login);
+    return () => window.removeEventListener("mentora-login", login);
+  }, []);
   const [focusMember, setFocusMember] = useState<PublicProfile | null>(null);
   const [role, setRole] = useState<"mentor" | "beginner">("beginner");
   const [editing, setEditing] = useState(false);
@@ -315,10 +320,9 @@ export default function App() {
                 </h1>
                 <p>
                   Débute et progresse dans{" "}
-                  <strong>l’achat-revente de vêtements (resell)</strong>
-                  avec un revendeur expérimenté. Sur Vinted, Leboncoin, eBay,
-                  Whatnot et d’autres plateformes, avance avec les bons
-                  conseils.
+                  <strong>l’achat-revente de vêtements (resell)</strong> avec un
+                  revendeur expérimenté. Sur Vinted, Leboncoin, eBay, Whatnot et
+                  d’autres plateformes, avance avec les bons conseils.
                 </p>
                 <div className="hero-buttons">
                   <Button
