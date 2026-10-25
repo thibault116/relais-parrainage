@@ -3135,3 +3135,87 @@ textarea {
     margin-right: 45px;
   }
 }
+.follow-counts {
+  display: flex;
+  gap: 18px;
+  font-size: 13px;
+  color: #756283;
+  margin: 8px 0;
+  flex-wrap: wrap;
+}
+.follow-counts strong {
+  color: #542d73;
+}
+.member-grid .follow-counts {
+  font-size: 12px;
+  margin: 0;
+}
+.follow-action {
+  margin: 16px 0;
+}
+.follow-network {
+  margin: 35px 0;
+  padding: 26px;
+  border: 1px solid #dfd1eb;
+  border-radius: 22px;
+  background: #fcfaff;
+}
+.follow-network h2 {
+  margin: 12px 0;
+  font-size: 26px;
+}
+.follow-network > p {
+  line-height: 1.7;
+  color: #756283;
+}
+.follow-tabs {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 20px 0;
+}
+.follow-list {
+  display: grid;
+  gap: 12px;
+}
+.follow-list article {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid #e4d9ed;
+  border-radius: 16px;
+  background: #fff;
+  flex-wrap: wrap;
+}
+.follow-list article > .avatar {
+  flex: 0 0 50px;
+  width: 50px;
+  height: 50px;
+}
+.follow-list article > div:not(.avatar) {
+  flex: 1;
+  min-width: 160px;
+}
+.follow-list p {
+  margin: 5px 0;
+  font-size: 14px;
+}
+.follow-list small {
+  color: #756283;
+}
+.profile-pager[hidden] {
+  display: none;
+}
+@media (max-width: 600px) {
+  .follow-network {
+    padding: 18px;
+  }
+  .follow-list article {
+    gap: 12px;
+  }
+  .follow-tabs .btn {
+    padding: 12px;
+    font-size: 13px;
+  }
+}

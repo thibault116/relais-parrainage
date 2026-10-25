@@ -1,3 +1,4 @@
+import { followCountsSQL } from "@/lib/follows";
 import { deleteProfilePhoto } from "@/lib/profile-photo";
 import { deleteUserProofs } from "@/lib/proof-storage";
 import { isModerator, getPublicVerifications } from "@/lib/verification";
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
     if (!u)
       return json({ error: "Connecte-toi pour accéder à ton profil." }, 401);
     const rows = await query(
-      "SELECT p.*, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='active') AS active_count, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed') AS completed_count, (SELECT COUNT(a.rating) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed' AND NOT EXISTS (SELECT 1 FROM hidden_ratings h WHERE h.accompaniment_id=a.id)) AS rating_count, (SELECT AVG(a.rating*1.0) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed' AND NOT EXISTS (SELECT 1 FROM hidden_ratings h WHERE h.accompaniment_id=a.id)) AS rating_average FROM profiles p WHERE user_id=$1",
+      `SELECT p.*, ${followCountsSQL}, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='active') AS active_count, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed') AS completed_count, (SELECT COUNT(a.rating) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed' AND NOT EXISTS (SELECT 1 FROM hidden_ratings h WHERE h.accompaniment_id=a.id)) AS rating_count, (SELECT AVG(a.rating*1.0) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed' AND NOT EXISTS (SELECT 1 FROM hidden_ratings h WHERE h.accompaniment_id=a.id)) AS rating_average FROM profiles p WHERE user_id=$1`,
       [u.id],
     );
     const verifications = await getPublicVerifications([u.id]);
@@ -122,6 +123,9 @@ export async function DELETE(request: Request) {
     if (!u) return json({ error: "Connexion requise." }, 401);
     await deleteUserProofs(u.id);
     await deleteProfilePhoto(u.id);
+    await query("DELETE FROM follows WHERE follower_id=$1 OR followed_id=$1", [
+      u.id,
+    ]);
     await query("DELETE FROM verifications WHERE user_id=$1", [u.id]);
     await query("DELETE FROM profiles WHERE user_id=$1", [u.id]);
     return json({ ok: true });

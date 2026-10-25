@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { UpdateBanner } from "./components/update-banner";
 export const metadata: Metadata = {
-  title: "Mentora — On avance mieux ensemble.",
+  title: "Mentora — L’entraide entre revendeurs.",
   description:
-    "Trouve ton parrain en achat-revente de vêtements. Une communauté d’entraide, des réponses sur Discord, et un réseau qui grandit avec toi.",
+    "Progresse dans l’achat-revente de vêtements (resell) sur Vinted, Leboncoin, eBay ou Whatnot. Mentora relie revendeurs débutants et expérimentés.",
 };
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (

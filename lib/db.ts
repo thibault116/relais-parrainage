@@ -128,3 +128,12 @@ export async function migrateVerificationFiles() {
     "CREATE INDEX IF NOT EXISTS verification_files_owner ON verification_files (user_id)",
   );
 }
+
+export async function migrateFollows() {
+  await query(
+    "CREATE TABLE IF NOT EXISTS follows (follower_id TEXT NOT NULL,followed_id TEXT NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(follower_id,followed_id),CHECK(follower_id<>followed_id))",
+  );
+  await query(
+    "CREATE INDEX IF NOT EXISTS follows_target ON follows(followed_id)",
+  );
+}

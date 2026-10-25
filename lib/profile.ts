@@ -110,6 +110,8 @@ export type ProfileInput = z.infer<typeof profileSchema>;
 export type Profile = Omit<ProfileInput, "consent"> & {
   id: string;
   photo?: string;
+  followerCount?: number;
+  followingCount?: number;
   verification?: {
     sales: number | null;
     specialties: string[];
@@ -153,6 +155,8 @@ export function decode(row: Record<string, unknown>): Profile {
     details.revenue = "Je préfère ne pas préciser";
   return {
     ...details,
+    followerCount: Number(row.follower_count) || 0,
+    followingCount: Number(row.following_count) || 0,
     photo: details.photo?.path
       ? `/api/profile-photo?id=${row.id}&v=${details.photo.version}`
       : undefined,

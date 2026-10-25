@@ -51,6 +51,11 @@ import { VerificationBadge, VerificationForm } from "./components/verification";
 import { AdminDashboard, ReportProfile } from "./components/admin";
 import { Avatar, ProfilePhoto } from "./components/profile-photo";
 import { Help } from "./components/help";
+import {
+  FollowButton,
+  FollowCounts,
+  FollowNetwork,
+} from "./components/follows";
 const DISCORD_GROUP = "https://discord.gg/SRVs9Y5ze";
 type View =
   | "home"
@@ -121,6 +126,7 @@ export default function App() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [authMode, setAuthMode] = useState<"login" | "signup" | null>(null);
+  const [focusMember, setFocusMember] = useState<PublicProfile | null>(null);
   const [role, setRole] = useState<"mentor" | "beginner">("beginner");
   const [editing, setEditing] = useState(false);
   const [toast, setToast] = useState("");
@@ -136,6 +142,7 @@ export default function App() {
       setAuthMode("signup");
       return;
     }
+    if (next === "directory") setFocusMember(null);
     setView(next);
     setMobile(false);
     setEditing(false);
@@ -290,7 +297,7 @@ export default function App() {
             <section className="hero wrap">
               <div className="hero-copy">
                 <span className="eyebrow">
-                  <span className="status-dot" /> L’ENTRAIDE QUI FAIT GRANDIR
+                  <span className="status-dot" /> L’ENTRAIDE ENTRE REVENDEURS
                 </span>
                 <h1>
                   Ton prochain cap,
@@ -307,13 +314,11 @@ export default function App() {
                   </svg>
                 </h1>
                 <p>
-                  Des centaines de messages sur Discord.
-                  <br />
-                  Et si tu avais enfin <strong>
-                    ta personne de confiance
-                  </strong>{" "}
-                  pour choisir tes achats, améliorer tes annonces Vinted et
-                  comprendre ce qui bloque tes ventes ?
+                  Débute et progresse dans{" "}
+                  <strong>l’achat-revente de vêtements (resell)</strong>
+                  avec un revendeur expérimenté. Sur Vinted, Leboncoin, eBay,
+                  Whatnot et d’autres plateformes, avance avec les bons
+                  conseils.
                 </p>
                 <div className="hero-buttons">
                   <Button
@@ -517,8 +522,8 @@ export default function App() {
                     de la valeur. Partage-la.
                   </h3>
                   <p>
-                    Tu pratiques depuis au moins 6 mois ? Aide un débutant à
-                    progresser et crée des liens qui durent.
+                    Tu fais de l’achat-revente depuis au moins 6 mois ? Aide un
+                    débutant à progresser et crée des liens qui durent.
                   </p>
                   <ul>
                     <li>
@@ -594,6 +599,8 @@ export default function App() {
         {!isPending && session && view === "directory" && (
           <Directory
             session={!!session}
+            onFollowChange={refreshProfile}
+            initialTarget={focusMember}
             own={profile}
             initialRole={role === "mentor" ? "beginner" : "mentor"}
             onJoin={() => setAuthMode("signup")}
@@ -620,7 +627,10 @@ export default function App() {
               <h1>
                 Mon profil<span>.</span>
               </h1>
-              <p>Présente-toi, garde la main et avance à ton rythme.</p>
+              <p>
+                Présente ton activité de revente et retrouve tes binômes et ton
+                réseau.
+              </p>
             </div>
             {moderationBlock && (
               <p className="error" role="alert">
@@ -673,6 +683,7 @@ export default function App() {
                 onCancel={profile ? () => setEditing(false) : undefined}
                 onSave={(p) => {
                   setProfile(p);
+                  void refreshProfile();
                   setEditing(false);
                   notify("Ton profil est enregistré. Bienvenue dans Mentora !");
                 }}
@@ -748,6 +759,13 @@ export default function App() {
                     }}
                   />
                 </div>
+                <FollowNetwork
+                  onChange={refreshProfile}
+                  onOpen={(p) => {
+                    go("directory");
+                    setFocusMember(p);
+                  }}
+                />
                 <Accompaniments onChange={refreshProfile} />
                 {profile.role === "mentor" && (
                   <VerificationForm onChange={refreshProfile} />
@@ -1563,7 +1581,7 @@ function ProfileCard({
                   : "Parrain non vérifié"} · {experience}
               </>
             ) : (
-              "Débutant · cherche un parrain"
+              "Revendeur débutant · cherche un parrain"
             )}
           </p>
         </div>
@@ -1581,6 +1599,7 @@ function ProfileCard({
         ))}
         {p.references && <span>{p.references.split(",")[0].slice(0, 50)}</span>}
       </div>
+      <FollowCounts profile={p} />
       <p className="card-quote">« {p.bio} »</p>
       {p.role === "mentor" ? (
         <>
@@ -1630,6 +1649,8 @@ function ProfileCard({
   );
 }
 function Directory({
+  onFollowChange,
+  initialTarget,
   session,
   own,
   initialRole,
@@ -1637,6 +1658,8 @@ function Directory({
   onProfile,
   notify,
 }: {
+  onFollowChange: () => Promise<void>;
+  initialTarget: PublicProfile | null;
   session: boolean;
   own: Profile | null;
   initialRole: "mentor" | "beginner";
@@ -1644,7 +1667,7 @@ function Directory({
   onProfile: () => void;
   notify: (s: string) => void;
 }) {
-  const [role, setRole] = useState(initialRole);
+  const [role, setRole] = useState(initialTarget?.role || initialRole);
   const [search, setSearch] = useState("");
   const [specialty, setSpecialty] = useState("");
   const [time, setTime] = useState("");
@@ -1663,6 +1686,29 @@ function Directory({
   const [contactError, setContactError] = useState("");
   const [contactBusy, setContactBusy] = useState(false);
   const [reload, setReload] = useState(0);
+  useEffect(() => {
+    if (!initialTarget) return;
+    let live = true;
+    api(
+      "/api/profiles?role=" +
+        initialTarget.role +
+        "&profile=" +
+        initialTarget.id,
+    )
+      .then((d) => {
+        if (live) {
+          selectedRef.current = d.profile.id;
+          setSelected(d.profile);
+          setContact(null);
+        }
+      })
+      .catch((e) => {
+        if (live) notify(e.message);
+      });
+    return () => {
+      live = false;
+    };
+  }, [initialTarget]);
   useEffect(() => {
     let live = true;
     setBusy(true);
@@ -1776,8 +1822,8 @@ function Directory({
             Trouve ton binôme<span>.</span>
           </h1>
           <p>
-            Un objectif commun. Un rythme compatible. Et l’envie d’avancer
-            ensemble.
+            Des revendeurs débutants et expérimentés, réunis pour progresser
+            dans l’achat-revente.
           </p>
         </div>
         <div className="directory-doodle">
@@ -1999,7 +2045,10 @@ function Directory({
             >
               <X />
             </button>
-            <div className="profile-pager">
+            <div
+              className="profile-pager"
+              hidden={!profiles.some((p) => p.id === selected.id)}
+            >
               <button
                 aria-label="Profil précédent"
                 disabled={
@@ -2037,6 +2086,22 @@ function Directory({
             </span>
             <h2 id="member-title">{selected.name}</h2>
             <VerificationBadge profile={selected} />
+            <FollowCounts profile={selected} />
+            {session && selected.id !== own?.id && (
+              <FollowButton
+                key={selected.id}
+                profile={selected}
+                onChange={(count) => {
+                  void onFollowChange();
+                  setSelected((p) => (p ? { ...p, followerCount: count } : p));
+                  setProfiles((list) =>
+                    list.map((p) =>
+                      p.id === selected.id ? { ...p, followerCount: count } : p,
+                    ),
+                  );
+                }}
+              />
+            )}
             {selected.role === "mentor" && (
               <RatingSummary
                 average={selected.ratingAverage}

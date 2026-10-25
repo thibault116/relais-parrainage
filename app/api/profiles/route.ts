@@ -1,3 +1,4 @@
+import { followCountsSQL } from "@/lib/follows";
 import { getPublicVerifications } from "@/lib/verification";
 import { query } from "@/lib/db";
 import { decode, publicProfile } from "@/lib/profile";
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
     const role =
       url.searchParams.get("role") === "beginner" ? "beginner" : "mentor";
     const rows = await query(
-      "SELECT p.*, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='active') AS active_count, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed') AS completed_count, (SELECT AVG(a.rating * 1.0) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed' AND NOT EXISTS (SELECT 1 FROM hidden_ratings h WHERE h.accompaniment_id=a.id)) AS rating_average, (SELECT COUNT(a.rating) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed' AND NOT EXISTS (SELECT 1 FROM hidden_ratings h WHERE h.accompaniment_id=a.id)) AS rating_count FROM profiles p WHERE visible=1 AND role=$1 AND NOT EXISTS (SELECT 1 FROM profile_blocks b WHERE b.user_id=p.user_id) ORDER BY updated_at DESC",
+      `SELECT p.*, ${followCountsSQL}, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='active') AS active_count, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed') AS completed_count, (SELECT AVG(a.rating * 1.0) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed' AND NOT EXISTS (SELECT 1 FROM hidden_ratings h WHERE h.accompaniment_id=a.id)) AS rating_average, (SELECT COUNT(a.rating) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed' AND NOT EXISTS (SELECT 1 FROM hidden_ratings h WHERE h.accompaniment_id=a.id)) AS rating_count FROM profiles p WHERE visible=1 AND role=$1 AND NOT EXISTS (SELECT 1 FROM profile_blocks b WHERE b.user_id=p.user_id) ORDER BY updated_at DESC`,
       [role],
     );
     const verifications = await getPublicVerifications(
@@ -49,8 +50,20 @@ export async function GET(request: Request) {
         ratingAverage: Number(row.rating_average) || 0,
         ratingCount: Number(row.rating_count) || 0,
       }))
-      .filter((p) => p.role !== "mentor" || p.capacity > 0)
+      .filter(
+        (p) =>
+          !!url.searchParams.get("profile") ||
+          p.role !== "mentor" ||
+          p.capacity > 0,
+      )
       .map(publicProfile);
+    const target = url.searchParams.get("profile");
+    if (target) {
+      const found = profiles.find((p) => p.id === target);
+      return found
+        ? json({ profile: found })
+        : json({ error: "Profil indisponible." }, 404);
+    }
     const search = (url.searchParams.get("q") || "").toLocaleLowerCase("fr");
     const specialty = url.searchParams.get("specialty");
     const time = url.searchParams.get("time");

@@ -66,8 +66,8 @@ async function change(request: Request, remove = false) {
       details.photo = { path: saved, mime, version: crypto.randomUUID() };
     }
     const changed = await query(
-      "UPDATE profiles SET details=$1 WHERE user_id=$2 AND details=$3 RETURNING id",
-      [JSON.stringify(details), u.id, String(row.details)],
+      "UPDATE profiles SET details=$1,updated_at=$4 WHERE user_id=$2 AND details=$3 RETURNING id",
+      [JSON.stringify(details), u.id, String(row.details), new Date().toISOString()],
     );
     if (!changed.length) {
       if (saved) await deleteProof(saved);

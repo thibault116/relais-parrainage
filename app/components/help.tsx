@@ -8,6 +8,12 @@ import {
 } from "lucide-react";
 const chapters = [
   [
+    "reseau",
+    "Suivre des revendeurs",
+    "Ouvre la fiche d’un membre et clique sur S’abonner au profil. Tu peux suivre un parrain ou un débutant, sans créer de demande de parrainage. Cet abonnement est gratuit.",
+    "Dans Mon profil, les onglets Mes abonnements et Mes abonnés réunissent ton réseau. Les profils sont classés par date de mise à jour : ouvre leur fiche pour consulter les informations récentes. Les compteurs apparaissent sur les cartes. Se désabonner retire le suivi ; un profil masqué reste confidentiel. Ce suivi n’envoie pas de notifications et ne donne pas accès aux ventes ni aux échanges Discord.",
+  ],
+  [
     "compte",
     "Créer mon compte et mon profil",
     "Clique sur Rejoindre ou Créer un compte, puis choisis Débutant si tu cherches de l’aide, ou Parrain si tu souhaites transmettre ton expérience. Renseigne ton adresse e-mail et ton mot de passe, puis complète le questionnaire. Si tu as déjà un compte, utilise Se connecter : tu n’as pas besoin de te réinscrire.",
@@ -87,8 +93,8 @@ export function Help() {
         <span className="eyebrow">LE GUIDE MENTORA</span>
         <h1>Tout comprendre, simplement.</h1>
         <p>
-          De ton inscription à ton premier binôme : les étapes, les boutons et
-          les réponses à tes questions.
+          De tes premiers pas en achat-revente à ton premier binôme : les
+          étapes, les boutons et les réponses à tes questions.
         </p>
       </div>
       <div className="help-journey" aria-label="Les étapes du parrainage">

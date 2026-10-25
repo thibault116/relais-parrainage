@@ -33,6 +33,10 @@ function createAuth() {
         beforeDelete: async (user) => {
           await deleteUserProofs(user.id);
           await deleteProfilePhoto(user.id);
+          await query(
+            "DELETE FROM follows WHERE follower_id=$1 OR followed_id=$1",
+            [user.id],
+          );
           await query("DELETE FROM verifications WHERE user_id=$1", [user.id]);
 
           await query(
