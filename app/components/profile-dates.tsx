@@ -46,6 +46,25 @@ export function ProfileDates({ profile: p }: { profile: PublicProfile }) {
     </div>
   );
 }
+export function AvailabilityBadge({ profile: p }: { profile: PublicProfile }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+  const remaining = Math.max(0, p.capacity - (p.activeCount ?? 0));
+  const mentor = p.role === "mentor";
+  return (
+    <span className={`badge availability-badge ${mentor && remaining ? "green" : ""}`}>
+      <strong>{mentor ? `${remaining} place${remaining > 1 ? "s" : ""} libre${remaining > 1 ? "s" : ""}` : "Débutant"}</strong>
+      {p.availableSince && (!mentor || remaining > 0) && (
+        <small>{mentor ? "Place disponible" : "Cherche un parrain"}{" "}
+          <time dateTime={p.availableSince}>{elapsedLabel(p.availableSince, now, "since")}</time>
+        </small>
+      )}
+    </span>
+  );
+}
 export function ActivityTracker({ userId }: { userId?: string }) {
   useEffect(() => {
     if (!userId) return;

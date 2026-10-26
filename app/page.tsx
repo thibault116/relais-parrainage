@@ -57,7 +57,7 @@ import {
   FollowNetwork,
 } from "./components/follows";
 import { EmailPreferences } from "./components/emails";
-import { ProfileDates, ActivityTracker } from "./components/profile-dates";
+import { AvailabilityBadge, ProfileDates, ActivityTracker } from "./components/profile-dates";
 const DISCORD_GROUP = "https://discord.gg/SRVs9Y5ze";
 type View =
   | "home"
@@ -1709,7 +1709,6 @@ function ProfileCard({
   own?: boolean;
   canRequest?: boolean;
 }) {
-  const remaining = Math.max(0, p.capacity - (p.activeCount ?? 0));
   const experience =
     p.experience >= 12
       ? `${Math.floor(p.experience / 12)} an${p.experience >= 24 ? "s" : ""} d’expérience`
@@ -1735,13 +1734,7 @@ function ProfileCard({
             )}
           </p>
         </div>
-        <span
-          className={`badge ${p.role === "mentor" && remaining ? "green" : ""}`}
-        >
-          {p.role === "mentor"
-            ? `${remaining} place${remaining > 1 ? "s" : ""} libre${remaining > 1 ? "s" : ""}`
-            : "Débutant"}
-        </span>
+        <AvailabilityBadge profile={p} />
       </div>
       <div className="mini-tags">
         {p.specialty.map((s) => (
@@ -1750,7 +1743,6 @@ function ProfileCard({
         {p.references && <span>{p.references.split(",")[0].slice(0, 50)}</span>}
       </div>
       <FollowCounts profile={p} />
-      <ProfileDates profile={p} />
       <p className="card-quote">« {p.bio} »</p>
       {p.role === "mentor" ? (
         <>

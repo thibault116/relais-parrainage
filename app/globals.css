@@ -3934,3 +3934,8 @@ textarea {
 .profile-dates p { margin:0; }
 .profile-dates time { color:#514462; }
 .member-modal .profile-dates { font-size:14px; }
+
+.mentor-card-head .availability-badge { display:flex; flex-direction:column; align-items:flex-start; gap:5px; padding:12px 16px; border-radius:18px; max-width:100%; white-space:normal; line-height:1.4; }
+.availability-badge strong { font-size:14px; font-weight:700; }
+.availability-badge small { display:block; font-size:11px; font-weight:500; }
+@media(max-width:600px) { .mentor-card-head .availability-badge { padding:10px 13px; } }
