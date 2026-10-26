@@ -1,4 +1,5 @@
 "use client";
+import { AdminSettings } from "./admin-settings";
 import { useCallback, useEffect, useState } from "react";
 import { AdminEmails } from "./emails";
 import { AdminSuggestions } from "./suggestions";
@@ -97,6 +98,7 @@ export function AdminDashboard() {
           ["overview", "Vue d’ensemble"],
           ["suggestions", "Suggestions"],
           ["emails", "E-mails"],
+          ["settings", "Paramètres"],
           ["accounts", "Comptes"],
           ["reports", "Signalements"],
           ["ratings", "Avis"],
@@ -119,7 +121,9 @@ export function AdminDashboard() {
           {error}
         </p>
       )}
-      {tab === "emails" ? (
+      {tab === "settings" ? (
+        <AdminSettings />
+      ) : tab === "emails" ? (
         <AdminEmails />
       ) : tab === "suggestions" ? (
         <AdminSuggestions />

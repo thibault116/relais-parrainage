@@ -1,4 +1,5 @@
 "use client";
+import { usePlatformSettings } from "./platform-settings";
 import { useCallback, useEffect, useState } from "react";
 import { Star, CheckCircle2 } from "lucide-react";
 type Accompaniment = {
@@ -54,15 +55,31 @@ export function RatingSummary({
 }
 export function RequestAccompaniment({
   mentorProfileId,
+  verified = false,
   compact = false,
 }: {
   compact?: boolean;
   mentorProfileId: string;
+  verified?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
+  const settings = usePlatformSettings();
   const [objective, setObjective] = useState("");
   const [error, setError] = useState("");
+  if (!settings.requestsEnabled)
+    return (
+      <p className="small-text">
+        Les nouvelles demandes sont temporairement en pause.
+      </p>
+    );
+  if (settings.verifiedMentorsOnly && !verified)
+    return (
+      <p className="small-text">
+        Ce parrain doit faire vérifier son compte avant de recevoir de nouvelles
+        demandes.
+      </p>
+    );
   return (
     <div className="pair-request">
       {!compact && (

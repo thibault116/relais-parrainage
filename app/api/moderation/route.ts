@@ -55,8 +55,22 @@ export async function PATCH(request: Request) {
         },
         400,
       );
-    if (d.userId === u.id)
-      return json({ error: "Tu ne peux pas valider ton propre dossier." }, 403);
+    if (
+      d.userId === u.id &&
+      !(
+        await query(
+          "SELECT user_id FROM moderators WHERE user_id=$1 AND LOWER(email)=$2",
+          [u.id, "thibault.cordiez@hotmail.com"],
+        )
+      ).length
+    )
+      return json(
+        {
+          error:
+            "L’auto-validation est réservée au compte administrateur principal.",
+        },
+        403,
+      );
     const existing = await query(
       "SELECT v.dossier,p.details FROM verifications v JOIN profiles p ON p.user_id=v.user_id WHERE v.user_id=$1 AND v.revision=$2 AND p.role='mentor'",
       [d.userId, d.revision],

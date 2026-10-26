@@ -1,3 +1,4 @@
+import { readPlatformSettings } from "@/lib/platform-settings";
 import { query } from "@/lib/db";
 import { guard, json, user, sameOrigin } from "@/lib/http";
 import { isModerator } from "@/lib/verification";
@@ -40,6 +41,11 @@ export async function POST(request: Request) {
       return json(
         { error: "Pièce jointe trop volumineuse (4 Mo maximum)." },
         413,
+      );
+    if (!(await readPlatformSettings()).settings.suggestionsEnabled)
+      return json(
+        { error: "Les suggestions sont temporairement désactivées." },
+        403,
       );
     const form = await request.formData(),
       parsed = schema.safeParse({

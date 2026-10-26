@@ -1,3 +1,4 @@
+import { migratePlatformSettings } from "../lib/platform-settings";
 import { migrateProfileTiming } from "../lib/profile-timing";
 import { migrateEmail } from "../lib/email-migration";
 import { getMigrations } from "better-auth/db/migration";
@@ -21,5 +22,6 @@ await migrateAdministration();
 await migrateVerificationFiles();
 await migrateEmail();
 await migrateProfileTiming();
+await migratePlatformSettings();
 console.log("Base Relais initialisée.");
 process.exit(0);

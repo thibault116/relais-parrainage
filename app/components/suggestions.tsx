@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Lightbulb, X, Paperclip } from "lucide-react";
+import { usePlatformSettings } from "./platform-settings";
 import { authClient } from "@/lib/auth-client";
 export function SuggestionWidget() {
+  const { suggestionsEnabled } = usePlatformSettings();
   const { data: session, isPending } = authClient.useSession();
   const [open, setOpen] = useState(false),
     [message, setMessage] = useState(""),
@@ -67,6 +69,7 @@ export function SuggestionWidget() {
       setBusy(false);
     }
   }
+  if (!suggestionsEnabled) return null;
   return (
     <>
       <button

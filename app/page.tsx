@@ -57,8 +57,12 @@ import {
   FollowNetwork,
 } from "./components/follows";
 import { EmailPreferences } from "./components/emails";
-import { AvailabilityBadge, ProfileDates, ActivityTracker } from "./components/profile-dates";
-const DISCORD_GROUP = "https://discord.gg/SRVs9Y5ze";
+import {
+  AvailabilityBadge,
+  ProfileDates,
+  ActivityTracker,
+} from "./components/profile-dates";
+import { usePlatformSettings } from "./components/platform-settings";
 type View =
   | "home"
   | "directory"
@@ -104,6 +108,7 @@ async function api(path: string, options: RequestInit = {}) {
   return data;
 }
 export default function App() {
+  const { discordUrl: DISCORD_GROUP } = usePlatformSettings();
   const [requestedView, setView] = useState<View>("home");
   const [mobile, setMobile] = useState(false);
   const { data: session, isPending } = authClient.useSession();
@@ -2376,6 +2381,7 @@ function Directory({
               <RequestAccompaniment
                 key={selected.id}
                 mentorProfileId={selected.id}
+                verified={!!selected.verification}
               />
             )}
             {contactError && (

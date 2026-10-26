@@ -3939,3 +3939,13 @@ textarea {
 .availability-badge strong { font-size:14px; font-weight:700; }
 .availability-badge small { display:block; font-size:11px; font-weight:500; }
 @media(max-width:600px) { .mentor-card-head .availability-badge { padding:10px 13px; } }
+
+.platform-announcement { padding:12px 20px; text-align:center; background:#eee6fc; color:#503482; font-size:14px; overflow-wrap:anywhere; white-space:pre-line; }
+.admin-settings { max-width:900px; }
+.admin-settings fieldset { border:1px solid #e7e0ef; border-radius:16px; padding:20px; margin:22px 0; min-width:0; }
+.admin-settings legend { font-weight:700; padding:0 8px; }
+.admin-settings label { display:block; margin:14px 0; }
+.admin-settings input[type=url],.admin-settings textarea { display:block; width:100%; box-sizing:border-box; border:1px solid #d9d0e5; border-radius:10px; padding:12px; margin-top:8px; font:inherit; }
+.admin-settings .settings-toggle { display:flex; gap:12px; align-items:flex-start; }
+.settings-toggle input { width:20px; height:20px; margin-top:3px; accent-color:#7751d9; flex-shrink:0; }
+.settings-toggle small { display:block; color:#746b82; line-height:1.5; margin-top:5px; }

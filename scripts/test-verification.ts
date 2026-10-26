@@ -5,6 +5,10 @@ import { initialProfile } from "../lib/profile";
 const base = "http://127.0.0.1:3001",
   password = "Mentora-test-verification-2026!";
 type Account = { cookie: string; id: string; profileId: string };
+if (process.env.DATABASE_URL || process.env.VERCEL) throw Error("Local only");
+const settingsSnapshot = (
+  await query("SELECT * FROM platform_settings WHERE id='main'")
+)[0];
 const users: Account[] = [];
 async function call(
   path: string,
@@ -61,6 +65,89 @@ try {
   }
   const [mentor, admin, outsider] = users;
   await query("INSERT INTO moderators (user_id) VALUES ($1)", [admin.id]);
+  assert.equal((await call("/api/admin/settings")).status, 403);
+  assert.equal(
+    (await call("/api/admin/settings", "GET", undefined, outsider)).status,
+    403,
+  );
+  const config = (await call("/api/admin/settings", "GET", undefined, admin))
+    .data;
+  const update = {
+    revision: config.revision,
+    settings: {
+      ...config.settings,
+      requestsEnabled: false,
+      suggestionsEnabled: false,
+      announcementEnabled: true,
+      announcement: "Annonce de test locale",
+    },
+  };
+  assert.equal(
+    (
+      await call(
+        "/api/admin/settings",
+        "PUT",
+        update,
+        admin,
+        "https://bad.example",
+      )
+    ).status,
+    403,
+  );
+  assert.equal(
+    (
+      await call(
+        "/api/admin/settings",
+        "PUT",
+        {
+          ...update,
+          settings: { ...update.settings, discordUrl: "javascript:alert(1)" },
+        },
+        admin,
+      )
+    ).status,
+    400,
+  );
+  const changed = await call("/api/admin/settings", "PUT", update, admin);
+  assert.equal(changed.status, 200);
+  assert.equal(
+    (await call("/api/admin/settings", "PUT", update, admin)).status,
+    409,
+  );
+  const visible = (await call("/api/settings")).data;
+  assert.equal(visible.announcement, "Annonce de test locale");
+  assert(!("emailsEnabled" in visible));
+  assert.equal(
+    (
+      await call(
+        "/api/accompaniments",
+        "POST",
+        {
+          mentorProfileId: mentor.profileId,
+          objective: "Objectif du test local",
+        },
+        outsider,
+      )
+    ).status,
+    403,
+  );
+  const suggestions = await fetch(base + "/api/suggestions", {
+    method: "POST",
+    headers: { Origin: base, cookie: outsider.cookie },
+    body: new FormData(),
+  });
+  assert.equal(suggestions.status, 403);
+  assert.equal(
+    (
+      await call(
+        "/api/admin/settings",
+        "PUT",
+        { settings: config.settings, revision: changed.data.revision },
+        admin,
+      )
+    ).status,
+    200,
+  );
   const form = new FormData();
   form.append(
     "file",
@@ -306,6 +393,21 @@ try {
     ).status,
     403,
   );
+  await query("UPDATE moderators SET email=$1 WHERE user_id=$2", [
+    "thibault.cordiez@hotmail.com",
+    admin.id,
+  ]);
+  const ownApproval = await call(
+    "/api/moderation",
+    "PATCH",
+    { ...decision, userId: admin.id, revision: row.revision },
+    admin,
+  );
+  assert.equal(ownApproval.status, 200);
+  assert.equal(ownApproval.data.verification.status, "approved");
+  assert(
+    (await call("/api/me", "GET", undefined, admin)).data.profile.verification,
+  );
   assert.equal(
     (await call("/api/verification", "DELETE", undefined, mentor)).status,
     200,
@@ -324,9 +426,18 @@ try {
     404,
   );
   console.log(
-    "PASS: accès privés, justificatifs non publics, questionnaire multiple, motivation longue, import privé et suppression, spécialités, validation humaine, interdiction auto-validation, conflits, retrait et renvoi.",
+    "PASS: accès privés, justificatifs non publics, questionnaire multiple, motivation longue, import privé et suppression, spécialités, validation humaine, auto-validation réservée au propriétaire, paramètres protégés, pause des demandes et suggestions, conflits, retrait et renvoi.",
   );
 } finally {
+  await query(
+    "UPDATE platform_settings SET data=$1,revision=$2,updated_at=$3,updated_by=$4 WHERE id='main'",
+    [
+      String(settingsSnapshot.data),
+      String(settingsSnapshot.revision),
+      String(settingsSnapshot.updated_at),
+      settingsSnapshot.updated_by ? String(settingsSnapshot.updated_by) : null,
+    ],
+  );
   for (const u of users) {
     await call("/api/auth/delete-user", "POST", { password }, u);
     await query("DELETE FROM moderators WHERE user_id=$1", [u.id]);

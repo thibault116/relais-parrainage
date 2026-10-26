@@ -1,3 +1,4 @@
+import { PlatformProvider } from "./components/platform-settings";
 import type { Metadata } from "next";
 import "./globals.css";
 import { SuggestionWidget } from "./components/suggestions";
@@ -12,8 +13,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <html lang="fr">
       <body>
         <UpdateBanner />
-        {children}
-        <SuggestionWidget />
+        <PlatformProvider>
+          {children}
+          <SuggestionWidget />
+        </PlatformProvider>
       </body>
     </html>
   );

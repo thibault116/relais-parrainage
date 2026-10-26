@@ -1,3 +1,4 @@
+import { readPlatformSettings } from "@/lib/platform-settings";
 import { sendEmailsAfterResponse } from "@/lib/email-after";
 import { query, acceptAccompaniment } from "@/lib/db";
 import { guard, json, user } from "@/lib/http";
@@ -45,6 +46,12 @@ export async function POST(request: Request) {
         },
         403,
       );
+    const { settings } = await readPlatformSettings();
+    if (!settings.requestsEnabled)
+      return json(
+        { error: "Les nouvelles demandes sont temporairement en pause." },
+        403,
+      );
     const mentors = await query(
       "SELECT user_id,details FROM profiles p WHERE id=$1 AND visible=1 AND role='mentor' AND NOT EXISTS (SELECT 1 FROM profile_blocks b WHERE b.user_id=p.user_id)",
       [input.data.mentorProfileId],
@@ -54,6 +61,22 @@ export async function POST(request: Request) {
       return json({ error: "Ce parrain n’est plus disponible." }, 404);
     if (mentor.user_id === u.id)
       return json({ error: "Tu ne peux pas être ton propre parrain." }, 400);
+    if (
+      settings.verifiedMentorsOnly &&
+      !(
+        await query(
+          "SELECT user_id FROM verifications WHERE user_id=$1 AND status='approved'",
+          [String(mentor.user_id)],
+        )
+      ).length
+    )
+      return json(
+        {
+          error:
+            "Ce parrain doit faire vérifier son compte avant de recevoir de nouvelles demandes.",
+        },
+        403,
+      );
     const saved = await query(
       `INSERT INTO accompaniments (id,beginner_id,mentor_id,status,created_at,objective) VALUES ($1,$2,$3,'pending',$4,$5) ON CONFLICT(beginner_id,mentor_id) DO NOTHING RETURNING id`,
       [

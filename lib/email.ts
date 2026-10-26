@@ -1,3 +1,4 @@
+import { readPlatformSettings } from "./platform-settings";
 import nodemailer from "nodemailer";
 import { query } from "./db";
 import {
@@ -56,11 +57,21 @@ export async function queueTestEmails(batch: string) {
 }
 export async function processEvents() {
   const started = Date.now();
+  const { settings } = await readPlatformSettings();
   const events = await query(
     "SELECT * FROM email_events WHERE processed=0 ORDER BY created_at,id LIMIT 100",
   );
   for (const e of events) {
     if (Date.now() - started > 10000) break;
+    if (
+      !settings.emailsEnabled ||
+      (e.kind === "vacancy" && !settings.vacancyEmailsEnabled)
+    ) {
+      await query("UPDATE email_events SET processed=1 WHERE id=$1", [
+        String(e.id),
+      ]);
+      continue;
+    }
     const id = String(e.id),
       entity = String(e.entity_id),
       kind = String(e.kind);
@@ -208,6 +219,7 @@ export async function runEmailWorker() {
       if (Date.now() - started > 35000) break;
       let to = "thibault.cordiez@hotmail.com";
       if (!Number(job.test)) {
+        const { settings } = await readPlatformSettings();
         const u = (
           await query(
             'SELECT u.email,COALESCE(p.enabled,1) AS enabled,COALESCE(p.vacancies,1) AS vacancies FROM "user" u LEFT JOIN email_preferences p ON p.user_id=u.id WHERE u.id=$1',
@@ -215,6 +227,8 @@ export async function runEmailWorker() {
           )
         )[0];
         let skip =
+          !settings.emailsEnabled ||
+          (job.kind === "place_available" && !settings.vacancyEmailsEnabled) ||
           !u ||
           !Number(u.enabled) ||
           (job.kind === "place_available" && !Number(u.vacancies));
