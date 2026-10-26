@@ -79,7 +79,6 @@ export function renderMail(kind: MailKind, d: MailData, test = false) {
   const pieces = [
     `Bonjour ${d.name},`,
     descriptions[kind],
-    d.objective ? `Objectif du débutant : ${d.objective}` : "",
     d.discord ? `Pseudo Discord de ${partner} : ${d.discord}` : "",
     d.feedback ? `Retour de l’administration : ${d.feedback}` : "",
   ].filter(Boolean);
