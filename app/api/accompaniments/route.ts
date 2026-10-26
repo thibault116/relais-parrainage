@@ -1,3 +1,4 @@
+import { sendEmailsAfterResponse } from "@/lib/email-after";
 import { query, acceptAccompaniment } from "@/lib/db";
 import { guard, json, user } from "@/lib/http";
 import { z } from "zod";
@@ -10,6 +11,7 @@ export async function GET(request: Request) {
       `SELECT a.id,a.objective,a.status,a.created_at,a.completed_at,a.rating, CASE WHEN a.beginner_id=$1 THEN 'beginner' ELSE 'mentor' END AS side, CASE WHEN a.beginner_id=$1 THEN COALESCE(m.name,'Ancien membre') ELSE COALESCE(b.name,'Ancien membre') END AS partner_name FROM accompaniments a LEFT JOIN profiles m ON m.user_id=a.mentor_id LEFT JOIN profiles b ON b.user_id=a.beginner_id WHERE a.beginner_id=$1 OR a.mentor_id=$1 ORDER BY CASE WHEN a.status='pending' THEN 0 ELSE 1 END, a.created_at DESC`,
       [u.id],
     );
+    sendEmailsAfterResponse();
     return json({ accompaniments: rows });
   } catch {
     return json({ error: "Impossible de charger les accompagnements." }, 503);
@@ -70,6 +72,7 @@ export async function POST(request: Request) {
         },
         409,
       );
+    sendEmailsAfterResponse();
     return json({ ok: true }, 201);
   } catch {
     return json({ error: "Impossible d’envoyer la demande." }, 503);
@@ -98,6 +101,7 @@ export async function PATCH(request: Request) {
           },
           409,
         );
+      sendEmailsAfterResponse();
       return json({ ok: true });
     }
     const rows =
@@ -118,8 +122,11 @@ export async function PATCH(request: Request) {
         },
         409,
       );
+    sendEmailsAfterResponse();
     return json({ ok: true });
   } catch {
     return json({ error: "Impossible de modifier l’accompagnement." }, 503);
   }
 }
+
+export const maxDuration = 60;

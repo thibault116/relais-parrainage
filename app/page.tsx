@@ -56,6 +56,7 @@ import {
   FollowCounts,
   FollowNetwork,
 } from "./components/follows";
+import { EmailPreferences } from "./components/emails";
 const DISCORD_GROUP = "https://discord.gg/SRVs9Y5ze";
 type View =
   | "home"
@@ -163,10 +164,50 @@ export default function App() {
       const v = window.location.hash.slice(1);
       setView(v in views ? (v as View) : "home");
     };
+    const tab = new URLSearchParams(window.location.search).get("profileTab");
+    if (
+      tab &&
+      [
+        "verification",
+        "following",
+        "edit",
+        "accompaniments",
+        "requests",
+        "emails",
+      ].includes(tab)
+    )
+      setProfileTab(tab);
     read();
     window.addEventListener("hashchange", read);
     return () => window.removeEventListener("hashchange", read);
   }, []);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (isPending) return;
+    if (!session && (params.has("profileTab") || params.has("member"))) {
+      setAuthMode("login");
+      return;
+    }
+    const member = params.get("member");
+    if (!session || !member) return;
+    let alive = true;
+    void api(`/api/profiles?profile=${encodeURIComponent(member)}`)
+      .then((data) => {
+        if (alive) {
+          setFocusMember(data.profile);
+          setView("directory");
+        }
+      })
+      .catch(() => {
+        if (alive)
+          setToast(
+            "Ce profil n’est plus disponible. Retrouve les autres parrains dans l’annuaire.",
+          );
+      });
+    return () => {
+      alive = false;
+    };
+  }, [session, isPending]);
   const loadMe = useCallback(async () => {
     setProfileLoading(true);
     setProfileError("");
@@ -770,6 +811,7 @@ export default function App() {
                     ["edit", "Modifier mon profil"],
                     ["accompaniments", "Mes accompagnements"],
                     ["requests", "Demandes"],
+                    ["emails", "Notifications"],
                   ].map(([id, label]) => (
                     <button
                       key={id}
@@ -785,6 +827,7 @@ export default function App() {
                   ))}
                 </nav>
                 <div className="profile-tab-content">
+                  {selectedProfileTab === "emails" && <EmailPreferences />}
                   {selectedProfileTab === "edit" && (
                     <>
                       <ProfilePhoto
@@ -905,9 +948,13 @@ export default function App() {
           close={() => setAuthMode(null)}
           onSuccess={() => {
             setAuthMode(null);
-            setView(authMode === "signup" ? "profile" : "directory");
-            window.location.hash =
-              authMode === "signup" ? "profile" : "directory";
+            const params = new URLSearchParams(window.location.search);
+            const target =
+              authMode === "signup" || params.has("profileTab")
+                ? "profile"
+                : "directory";
+            setView(target);
+            window.location.hash = target;
           }}
         />
       )}

@@ -32,6 +32,8 @@ function createAuth() {
       deleteUser: {
         enabled: true,
         beforeDelete: async (user) => {
+          await query("DELETE FROM email_outbox WHERE user_id=$1", [user.id]);
+          await query("DELETE FROM email_preferences WHERE user_id=$1", [user.id]);
           await deleteUserProofs(user.id);
           await deleteSuggestions(user.id);
           await deleteProfilePhoto(user.id);

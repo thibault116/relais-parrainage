@@ -10,7 +10,7 @@ const config: NextConfig = {
   async redirects() {
     return [
       {
-        source: "/:path*",
+        source: "/:path((?!api/cron/emails).*)",
         has: [{ type: "host", value: "relais-parrainage\\.vercel\\.app" }],
         destination: "https://mentora-resell.vercel.app/:path*",
         permanent: true,

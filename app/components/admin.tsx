@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { AdminEmails } from "./emails";
 import { AdminSuggestions } from "./suggestions";
 import { Moderation } from "./verification";
 async function call(path: string, method = "GET", body?: unknown) {
@@ -95,6 +96,7 @@ export function AdminDashboard() {
         {[
           ["overview", "Vue d’ensemble"],
           ["suggestions", "Suggestions"],
+          ["emails", "E-mails"],
           ["accounts", "Comptes"],
           ["reports", "Signalements"],
           ["ratings", "Avis"],
@@ -117,7 +119,9 @@ export function AdminDashboard() {
           {error}
         </p>
       )}
-      {tab === "suggestions" ? (
+      {tab === "emails" ? (
+        <AdminEmails />
+      ) : tab === "suggestions" ? (
         <AdminSuggestions />
       ) : tab === "verification" ? (
         <Moderation />

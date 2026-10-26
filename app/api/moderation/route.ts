@@ -1,3 +1,4 @@
+import { sendEmailsAfterResponse } from "@/lib/email-after";
 import { query } from "@/lib/db";
 import { guard, json, user } from "@/lib/http";
 import { isModerator } from "@/lib/verification";
@@ -98,8 +99,11 @@ export async function PATCH(request: Request) {
     );
     if (!saved.length)
       return json({ error: "Le dossier a changé. Actualise la liste." }, 409);
+    sendEmailsAfterResponse();
     return json({ ok: true, verification: saved[0] });
   } catch {
     return json({ error: "Impossible d’enregistrer la décision." }, 503);
   }
 }
+
+export const maxDuration = 60;

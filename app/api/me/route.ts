@@ -1,3 +1,4 @@
+import { sendEmailsAfterResponse } from "@/lib/email-after";
 import { followCountsSQL } from "@/lib/follows";
 import { deleteProfilePhoto } from "@/lib/profile-photo";
 import { deleteUserProofs } from "@/lib/proof-storage";
@@ -16,6 +17,7 @@ export async function GET(request: Request) {
       [u.id],
     );
     const verifications = await getPublicVerifications([u.id]);
+    sendEmailsAfterResponse();
     return json({
       isModerator: await isModerator(u.id),
       moderationBlock:
@@ -72,6 +74,7 @@ export async function PUT(request: Request) {
         new Date().toISOString(),
       ],
     );
+    sendEmailsAfterResponse();
     return json({
       profile: decode({
         id,
@@ -110,6 +113,7 @@ export async function PATCH(request: Request) {
       "UPDATE profiles SET visible=$1, updated_at=$2 WHERE user_id=$3",
       [b.visible ? 1 : 0, new Date().toISOString(), u.id],
     );
+    sendEmailsAfterResponse();
     return json({ visible: b.visible });
   } catch {
     return json({ error: "Impossible de modifier la visibilité." }, 503);
@@ -133,3 +137,5 @@ export async function DELETE(request: Request) {
     return json({ error: "Suppression impossible pour le moment." }, 503);
   }
 }
+
+export const maxDuration = 60;

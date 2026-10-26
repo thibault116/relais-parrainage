@@ -3920,3 +3920,12 @@ textarea {
   overflow-wrap: anywhere;
   margin-bottom: 0;
 }
+
+.email-panel { max-width: 920px; }
+.email-choice { display:flex; align-items:flex-start; gap:12px; margin:22px 0; line-height:1.6; cursor:pointer; }
+.email-choice input { width:20px; height:20px; flex-shrink:0; margin-top:3px; accent-color:#7751d9; }
+.email-actions { display:flex; gap:12px; flex-wrap:wrap; margin:20px 0; }
+.email-history { display:grid; gap:12px; margin-top:24px; }
+.email-history article { padding:16px; border:1px solid #e6e0ef; border-radius:14px; overflow-wrap:anywhere; }
+.email-history p { margin:8px 0; }
+@media(max-width:600px) { .email-actions .btn { width:100%; } }
