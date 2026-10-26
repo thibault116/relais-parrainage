@@ -1,3 +1,4 @@
+import { profileTimingSQL } from "@/lib/profile-timing";
 import { query } from "@/lib/db";
 import { decode, publicProfile } from "@/lib/profile";
 import { guard, json, user } from "@/lib/http";
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
       )[0].n,
     );
     const rows = await query(
-      `SELECT p.*, f.created_at, ${followCountsSQL}, (SELECT COUNT(*) FROM profile_blocks b WHERE b.user_id=p.user_id) AS blocked FROM follows f JOIN profiles p ON p.user_id=f.${other} WHERE f.${side}=$1 ORDER BY p.updated_at DESC,p.id LIMIT 30 OFFSET $2`,
+      `SELECT p.*, f.created_at, ${profileTimingSQL}, ${followCountsSQL}, (SELECT COUNT(*) FROM profile_blocks b WHERE b.user_id=p.user_id) AS blocked FROM follows f JOIN profiles p ON p.user_id=f.${other} WHERE f.${side}=$1 ORDER BY p.updated_at DESC,p.id LIMIT 30 OFFSET $2`,
       [u.id, page * 30],
     );
     return json({

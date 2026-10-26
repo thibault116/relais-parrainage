@@ -3929,3 +3929,8 @@ textarea {
 .email-history article { padding:16px; border:1px solid #e6e0ef; border-radius:14px; overflow-wrap:anywhere; }
 .email-history p { margin:8px 0; }
 @media(max-width:600px) { .email-actions .btn { width:100%; } }
+
+.profile-dates { display:grid; gap:4px; color:#746b82; font-size:12px; line-height:1.5; margin:10px 0; }
+.profile-dates p { margin:0; }
+.profile-dates time { color:#514462; }
+.member-modal .profile-dates { font-size:14px; }

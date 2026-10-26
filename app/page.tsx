@@ -57,6 +57,7 @@ import {
   FollowNetwork,
 } from "./components/follows";
 import { EmailPreferences } from "./components/emails";
+import { ProfileDates, ActivityTracker } from "./components/profile-dates";
 const DISCORD_GROUP = "https://discord.gg/SRVs9Y5ze";
 type View =
   | "home"
@@ -258,6 +259,7 @@ export default function App() {
   }
   return (
     <>
+      <ActivityTracker userId={session?.user.id} />
       <header className="header">
         <div className="nav-wrap">
           <a
@@ -1726,8 +1728,10 @@ function ProfileCard({
                   ? "Parrain vérifié"
                   : "Parrain non vérifié"} · {experience}
               </>
-            ) : (
+            ) : p.availableSince ? (
               "Revendeur débutant · cherche un parrain"
+            ) : (
+              "Revendeur débutant · accompagné"
             )}
           </p>
         </div>
@@ -1746,6 +1750,7 @@ function ProfileCard({
         {p.references && <span>{p.references.split(",")[0].slice(0, 50)}</span>}
       </div>
       <FollowCounts profile={p} />
+      <ProfileDates profile={p} />
       <p className="card-quote">« {p.bio} »</p>
       {p.role === "mentor" ? (
         <>
@@ -2233,6 +2238,7 @@ function Directory({
             <h2 id="member-title">{selected.name}</h2>
             <VerificationBadge profile={selected} />
             <FollowCounts profile={selected} />
+            <ProfileDates profile={selected} />
             {session && selected.id !== own?.id && (
               <FollowButton
                 key={selected.id}

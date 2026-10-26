@@ -1,3 +1,4 @@
+import { recordActivity } from "./profile-timing";
 import { getAuth } from "./auth";
 export const json = (data: unknown, status = 200) =>
   Response.json(data, {
@@ -5,7 +6,9 @@ export const json = (data: unknown, status = 200) =>
     headers: { "Cache-Control": "private, no-store" },
   });
 export async function user(request: Request) {
-  return (await getAuth().api.getSession({ headers: request.headers }))?.user;
+  const u = (await getAuth().api.getSession({ headers: request.headers }))?.user;
+  if (u) await recordActivity(u.id);
+  return u;
 }
 export function sameOrigin(request: Request) {
   const origin = request.headers.get("origin");

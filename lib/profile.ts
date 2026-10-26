@@ -1,3 +1,4 @@
+import { normalizeDate } from "./profile-dates";
 import { z } from "zod";
 export const specialties = [
   "Vintage",
@@ -110,6 +111,9 @@ export const profileSchema = z
 export type ProfileInput = z.infer<typeof profileSchema>;
 export type Profile = Omit<ProfileInput, "consent"> & {
   id: string;
+  memberSince?: string | null;
+  lastActiveAt?: string | null;
+  availableSince?: string | null;
   photo?: string;
   followerCount?: number;
   followingCount?: number;
@@ -156,6 +160,9 @@ export function decode(row: Record<string, unknown>): Profile {
     details.revenue = "Je préfère ne pas préciser";
   return {
     ...details,
+    memberSince: normalizeDate(row.member_since),
+    lastActiveAt: normalizeDate(row.last_active_at),
+    availableSince: normalizeDate(row.available_since),
     followerCount: Number(row.follower_count) || 0,
     followingCount: Number(row.following_count) || 0,
     photo: details.photo?.path
