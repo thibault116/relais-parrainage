@@ -50,12 +50,17 @@ type Data = {
   ratings: Rating[];
 };
 const date = (v: string) => new Date(v).toLocaleDateString("fr-FR");
-export function AdminDashboard() {
+export function AdminDashboard({
+  tab,
+  setTab,
+}: {
+  tab: string;
+  setTab: (tab: string) => void;
+}) {
   const [data, setData] = useState<Data | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
-    [page, setPage] = useState(0),
-    [tab, setTab] = useState("overview");
+    [page, setPage] = useState(0);
   const load = useCallback(async () => {
     setError("");
     try {

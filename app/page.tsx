@@ -107,6 +107,7 @@ async function api(path: string, options: RequestInit = {}) {
     throw new Error(data.error || "Une erreur est survenue. Réessaie.");
   return data;
 }
+import { WorkspaceNav } from "./components/workspace-nav";
 export default function App() {
   const { discordUrl: DISCORD_GROUP } = usePlatformSettings();
   const [requestedView, setView] = useState<View>("home");
@@ -122,7 +123,8 @@ export default function App() {
         ? "directory"
         : requestedView
       : "home";
-  const inWorkspace = ["directory", "profile", "moderation"].includes(view);
+  const inWorkspace =
+    !!session && ["directory", "profile", "moderation", "help"].includes(view);
   const navigation: View[] =
     inWorkspace && session
       ? moderator
@@ -141,6 +143,7 @@ export default function App() {
   const [focusMember, setFocusMember] = useState<PublicProfile | null>(null);
   const [role, setRole] = useState<"mentor" | "beginner">("beginner");
   const [profileTab, setProfileTab] = useState("accompaniments");
+  const [adminTab, setAdminTab] = useState("overview");
   const [verificationDismissed, setVerificationDismissed] = useState(false);
   const selectedProfileTab =
     profileTab === "verification" && profile?.role !== "mentor"
@@ -263,97 +266,117 @@ export default function App() {
     }
   }
   return (
-    <>
+    <div className={inWorkspace ? "workspace-shell" : "public-shell"}>
       <ActivityTracker userId={session?.user.id} />
-      <header className="header">
-        <div className="nav-wrap">
-          <a
-            href="#home"
-            className="brand"
-            aria-label="Mentora, accueil"
-            onClick={() => go("home")}
-          >
-            <span className="brand-mark">
-              <HeartHandshake size={25} />
-            </span>
-            mentora<span className="brand-dot">.</span>
-          </a>
-          <nav
-            id="main-navigation"
-            aria-label="Navigation principale"
-            className={mobile ? "open" : ""}
-          >
-            {navigation.map((v) => (
-              <button
-                key={v}
-                onClick={() => go(v)}
-                className={view === v ? "active" : ""}
-              >
-                {views[v]}
-              </button>
-            ))}
-            {!session && (
-              <button
-                className="mobile-menu-login"
-                onClick={() => {
-                  setMobile(false);
-                  setAuthMode("login");
-                }}
-              >
-                Se connecter
-              </button>
-            )}
-          </nav>
-          <div className="nav-actions">
+      {inWorkspace && session ? (
+        <WorkspaceNav
+          view={view}
+          profileTab={selectedProfileTab}
+          adminTab={adminTab}
+          mentor={profile?.role === "mentor"}
+          moderator={moderator}
+          name={session.user.name}
+          discordUrl={DISCORD_GROUP}
+          onNavigate={(next, tab) => {
+            go(next);
+            if (tab && next === "profile") setProfileTab(tab);
+            if (tab && next === "moderation") setAdminTab(tab);
+          }}
+          onSignOut={() => {
+            void authClient.signOut().then(() => go("home"));
+          }}
+        />
+      ) : (
+        <header className="header">
+          <div className="nav-wrap">
             <a
-              className="discord-nav"
-              aria-label="Rejoindre le groupe Discord"
-              href={DISCORD_GROUP}
-              target="_blank"
-              rel="noopener noreferrer"
+              href="#home"
+              className="brand"
+              aria-label="Mentora, accueil"
+              onClick={() => go("home")}
             >
-              <MessageCircle size={17} />
-              <span>Notre Discord</span>
+              <span className="brand-mark">
+                <HeartHandshake size={25} />
+              </span>
+              mentora<span className="brand-dot">.</span>
             </a>
-            {session ? (
-              <button
-                className="account"
-                onClick={() => go(inWorkspace ? "profile" : "directory")}
-              >
-                <span className="avatar small">
-                  {session.user.name.slice(0, 1).toUpperCase()}
-                </span>
-                <span>{inWorkspace ? "Mon profil" : "Mon espace"}</span>
-              </button>
-            ) : (
-              <>
+            <nav
+              id="main-navigation"
+              aria-label="Navigation principale"
+              className={mobile ? "open" : ""}
+            >
+              {navigation.map((v) => (
                 <button
-                  className="login-link"
-                  onClick={() => setAuthMode("login")}
+                  key={v}
+                  onClick={() => go(v)}
+                  className={view === v ? "active" : ""}
+                >
+                  {views[v]}
+                </button>
+              ))}
+              {!session && (
+                <button
+                  className="mobile-menu-login"
+                  onClick={() => {
+                    setMobile(false);
+                    setAuthMode("login");
+                  }}
                 >
                   Se connecter
                 </button>
+              )}
+            </nav>
+            <div className="nav-actions">
+              <a
+                className="discord-nav"
+                aria-label="Rejoindre le groupe Discord"
+                href={DISCORD_GROUP}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <MessageCircle size={17} />
+                <span>Notre Discord</span>
+              </a>
+              {session ? (
                 <button
-                  className="btn small-btn"
-                  onClick={() => join("beginner")}
+                  className="account"
+                  onClick={() => go(inWorkspace ? "profile" : "directory")}
                 >
-                  Rejoindre <ArrowUpRight size={16} />
+                  <span className="avatar small">
+                    {session.user.name.slice(0, 1).toUpperCase()}
+                  </span>
+                  <span>{inWorkspace ? "Mon profil" : "Mon espace"}</span>
                 </button>
-              </>
-            )}
-            <button
-              className="mobile-toggle"
-              aria-label={mobile ? "Fermer le menu" : "Ouvrir le menu"}
-              aria-controls="main-navigation"
-              aria-expanded={mobile}
-              onClick={() => setMobile(!mobile)}
-            >
-              {mobile ? <X /> : <Menu />}
-            </button>
+              ) : (
+                <>
+                  <button
+                    className="login-link"
+                    onClick={() => setAuthMode("login")}
+                  >
+                    Se connecter
+                  </button>
+                  <button
+                    className="btn small-btn"
+                    onClick={() => join("beginner")}
+                  >
+                    Rejoindre <ArrowUpRight size={16} />
+                  </button>
+                </>
+              )}
+              <button
+                className="mobile-toggle"
+                aria-label={mobile ? "Fermer le menu" : "Ouvrir le menu"}
+                aria-controls="main-navigation"
+                aria-expanded={mobile}
+                onClick={() => setMobile(!mobile)}
+              >
+                {mobile ? <X /> : <Menu />}
+              </button>
+            </div>
           </div>
-        </div>
-      </header>
-      <main>
+        </header>
+      )}
+      <main id="workspace-content">
         {session &&
           inWorkspace &&
           profile?.role === "mentor" &&
@@ -391,7 +414,7 @@ export default function App() {
           )}
 
         {!isPending && session && moderator && view === "moderation" && (
-          <AdminDashboard />
+          <AdminDashboard tab={adminTab} setTab={setAdminTab} />
         )}
         {isPending && (
           <div className="empty">
@@ -977,7 +1000,7 @@ export default function App() {
           </button>
         </div>
       )}
-    </>
+    </div>
   );
 }
 function AuthModal({
