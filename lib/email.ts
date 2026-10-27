@@ -264,6 +264,12 @@ export async function runEmailWorker() {
             !p ||
             Number(JSON.parse(String(p.details)).capacity) <= Number(p.active);
         }
+        if (job.kind === "reengagement") {
+          const payload = JSON.parse(String(job.payload));
+          const activity = (await query("SELECT last_active_at FROM member_activity WHERE user_id=$1",[String(job.user_id)]))[0];
+          const blocked = await query("SELECT user_id FROM profile_blocks WHERE user_id=$1",[String(job.user_id)]);
+          skip = skip || !activity || !payload.inactiveCutoff || String(activity.last_active_at)>payload.inactiveCutoff || blocked.length>0;
+        }
         if (skip) {
           await query(
             "UPDATE email_outbox SET status='skipped',payload='{}' WHERE id=$1",

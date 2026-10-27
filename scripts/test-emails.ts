@@ -37,6 +37,7 @@ try {
       kind,
       {
         name: "<script>x</script>",
+        reminderMessage: "<script>x</script>",
         discord: "hello",
         objective: "<img src=x>",
         partner: "Alice",
@@ -177,7 +178,7 @@ try {
   await runEmailWorker();
   assert.equal(
     delivery.filter((d) => d.to === "thibault.cordiez@hotmail.com").length,
-    10,
+    mailKinds.length,
   );
   assert.equal(
     (
@@ -186,10 +187,10 @@ try {
         ["test:" + prefix],
       )
     ).length,
-    10,
+    mailKinds.length,
   );
   console.log(
-    "PASS : 10 modèles, HTML échappé, demandes, acceptation, fin, place libérée, dédoublonnage, préférences, relance SMTP, suppression des contenus après envoi. Aucun e-mail réel envoyé.",
+    "PASS : modèles, HTML échappé, demandes, acceptation, fin, place libérée, dédoublonnage, préférences, relance SMTP, suppression des contenus après envoi. Aucun e-mail réel envoyé.",
   );
 } finally {
   nodemailer.createTransport = original;

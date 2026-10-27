@@ -1,4 +1,5 @@
 "use client";
+import { AdminRetention } from "./admin-retention";
 import { AdminSettings } from "./admin-settings";
 import { useCallback, useEffect, useState } from "react";
 import { AdminEmails } from "./emails";
@@ -165,6 +166,9 @@ export function AdminDashboard({
               <div className="admin-stats">
                 {[
                   ["Comptes créés", s.accounts],
+                  ["Comptes parrains", s.mentors],
+                  ["Comptes débutants", s.beginners],
+                  ["Profils à compléter", s.incomplete],
                   ["Parrains actifs", s.activeMentors],
                   ["Demandes reçues", s.requests],
                   [
@@ -182,6 +186,7 @@ export function AdminDashboard({
                   </article>
                 ))}
               </div>
+              <AdminRetention />
               <div className="verification-panel">
                 <h2>Comprendre les chiffres</h2>
                 <p>

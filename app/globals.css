@@ -4233,3 +4233,12 @@ textarea {
 :root[data-theme="light"] .brand-emblem-dark { display:none; }
 :root[data-theme="light"] .brand-emblem-light { display:block; }
 @media(max-width:600px) { .menu-page-grid { grid-template-columns:1fr; } .member-discord { margin:0 16px 28px; } .member-discord .btn { width:100%; } }
+
+.retention-filters { display:flex; flex-wrap:wrap; align-items:center; gap:20px; }
+.retention-filters select { margin:8px; padding:10px; border:1px solid var(--line); border-radius:10px; background:var(--surface,white); color:var(--ink); }
+.retention-panel td small { display:block; overflow-wrap:anywhere; }
+.reminder-compose { margin-top:24px; padding:24px; border:1px solid var(--line); border-radius:16px; background:var(--paper); }
+.reminder-compose label { display:block; margin:16px 0; font-weight:600; }
+.reminder-compose input,.reminder-compose textarea { display:block; width:100%; padding:12px; margin-top:8px; border:1px solid var(--line); border-radius:10px; color:var(--ink); background:var(--surface,white); }
+.reminder-compose textarea { resize:vertical; }
+@media(max-width:600px) { .reminder-compose { padding:16px; } .retention-panel .email-actions { align-items:center; } }

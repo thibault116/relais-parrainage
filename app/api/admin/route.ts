@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     ] = await Promise.all([
       query('SELECT COUNT(*) AS total FROM "user"'),
       query(
-        "SELECT COUNT(*) AS total, SUM(CASE WHEN p.role='mentor' THEN 1 ELSE 0 END) AS mentors, SUM(CASE WHEN p.role='mentor' AND EXISTS (SELECT 1 FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='active') THEN 1 ELSE 0 END) AS active FROM profiles p",
+        "SELECT COUNT(*) AS total, SUM(CASE WHEN p.role='mentor' THEN 1 ELSE 0 END) AS mentors, SUM(CASE WHEN p.role='beginner' THEN 1 ELSE 0 END) AS beginners, SUM(CASE WHEN p.role='mentor' AND EXISTS (SELECT 1 FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='active') THEN 1 ELSE 0 END) AS active FROM profiles p",
       ),
       query("SELECT status,COUNT(*) AS n FROM accompaniments GROUP BY status"),
       query(
@@ -57,6 +57,8 @@ export async function GET(request: Request) {
         accounts: Number(accounts[0].total),
         profiles: Number(profiles[0].total),
         mentors: Number(profiles[0].mentors) || 0,
+        beginners: Number(profiles[0].beginners) || 0,
+        incomplete: Number(accounts[0].total)-Number(profiles[0].total),
         activeMentors: Number(profiles[0].active) || 0,
         requests: Object.values(counts).reduce((a, b) => a + b, 0),
         pending: counts.pending || 0,
