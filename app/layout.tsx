@@ -1,3 +1,4 @@
+import { AppearanceProvider } from "./components/appearance";
 import { PlatformProvider } from "./components/platform-settings";
 import type { Metadata } from "next";
 import "./globals.css";
@@ -10,13 +11,22 @@ export const metadata: Metadata = {
 };
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var a=JSON.parse(localStorage.getItem("mentora-appearance")||"{}");document.documentElement.dataset.theme=a.dark===true?"dark":"light";document.documentElement.dataset.neon=a.neon===true?"true":"false";}catch(e){}`,
+          }}
+        />
+      </head>
       <body>
-        <UpdateBanner />
-        <PlatformProvider>
-          {children}
-          <SuggestionWidget />
-        </PlatformProvider>
+        <AppearanceProvider>
+          <UpdateBanner />
+          <PlatformProvider>
+            {children}
+            <SuggestionWidget />
+          </PlatformProvider>
+        </AppearanceProvider>
       </body>
     </html>
   );

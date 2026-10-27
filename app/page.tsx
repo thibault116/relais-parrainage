@@ -56,6 +56,7 @@ import {
   FollowCounts,
   FollowNetwork,
 } from "./components/follows";
+import { AppearanceSettings } from "./components/appearance";
 import { EmailPreferences } from "./components/emails";
 import {
   AvailabilityBadge,
@@ -190,6 +191,7 @@ export default function App() {
         "accompaniments",
         "requests",
         "emails",
+        "appearance",
       ].includes(tab)
     )
       setProfileTab(tab);
@@ -841,6 +843,8 @@ export default function App() {
                   J’ai déjà un compte
                 </button>
               </div>
+            ) : selectedProfileTab === "appearance" ? (
+              <AppearanceSettings />
             ) : profileError ? (
               <div className="empty">
                 <p role="alert">{profileError}</p>
@@ -894,6 +898,7 @@ export default function App() {
                     ["accompaniments", "Mes accompagnements"],
                     ["requests", "Demandes"],
                     ["emails", "Notifications"],
+                    ["appearance", "Paramètres"],
                   ].map(([id, label]) => (
                     <button
                       key={id}

@@ -72,6 +72,13 @@ const memberItems: Item[] = [
     view: "profile",
     tab: "emails",
   },
+  {
+    id: "appearance",
+    label: "Paramètres",
+    icon: Settings,
+    view: "profile",
+    tab: "appearance",
+  },
 ];
 const adminItems: Item[] = [
   {
@@ -125,7 +132,7 @@ const adminItems: Item[] = [
   },
   {
     id: "settings",
-    label: "Paramètres",
+    label: "Paramètres plateforme",
     icon: Settings,
     view: "moderation",
     tab: "settings",
