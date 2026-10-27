@@ -6,6 +6,10 @@ type Accompaniment = {
   id: string;
   status: "pending" | "active" | "completed" | "declined" | "cancelled";
   side: "beginner" | "mentor";
+  direction: "sent" | "received";
+  decline_reason: string;
+  partner_discord: string | null;
+  partner_profile_id: string | null;
   partner_name: string;
   rating: number | null;
   objective: string;
@@ -54,105 +58,103 @@ export function RatingSummary({
   );
 }
 export function RequestAccompaniment({
-  mentorProfileId,
+  targetProfileId,
+  senderRole,
   verified = false,
-  compact = false,
 }: {
-  compact?: boolean;
-  mentorProfileId: string;
+  targetProfileId: string;
+  senderRole: "mentor" | "beginner";
   verified?: boolean;
 }) {
-  const [busy, setBusy] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [open, setOpen] = useState(false),
+    [busy, setBusy] = useState(false),
+    [sent, setSent] = useState(false),
+    [objective, setObjective] = useState(""),
+    [error, setError] = useState("");
   const settings = usePlatformSettings();
-  const [objective, setObjective] = useState("");
-  const [error, setError] = useState("");
   if (!settings.requestsEnabled)
-    return (
-      <p className="small-text">
-        Les nouvelles demandes sont temporairement en pause.
-      </p>
-    );
+    return <p>Les nouvelles demandes sont temporairement en pause.</p>;
   if (settings.verifiedMentorsOnly && !verified)
     return (
-      <p className="small-text">
-        Ce parrain doit faire vérifier son compte avant de recevoir de nouvelles
-        demandes.
+      <p>
+        Le compte parrain doit être vérifié pour envoyer ou recevoir une
+        demande.
       </p>
     );
-  return (
-    <div className="pair-request">
-      {!compact && (
-        <>
-          <h3>Vous avez décidé d’avancer ensemble ?</h3>
-          <p>
-            Envoie une demande à ce parrain. Il pourra confirmer votre binôme
-            dans « Mon profil ». Tu pourras le noter une fois l’accompagnement
-            terminé.
-          </p>
-        </>
-      )}
-      {!sent && (
-        <label className="request-objective">
-          Ton objectif pour cet accompagnement
-          <textarea
-            value={objective}
-            onChange={(e) => setObjective(e.target.value)}
-            minLength={10}
-            maxLength={2000}
-            disabled={busy}
-            placeholder="Ex. Je débute sur Vinted et je voudrais choisir mes premières pièces avec un budget de 150 €."
-          />
-          <small>
-            Explique où tu en es et l’aide que tu recherches. Le message est
-            réservé à ton binôme. Une place sera occupée seulement après
-            acceptation.
-          </small>
-        </label>
-      )}
-      <button
-        className="btn secondary full"
-        disabled={busy || sent || objective.trim().length < 10}
-        onClick={async () => {
-          setBusy(true);
-          setError("");
-          try {
-            await request("/api/accompaniments", "POST", {
-              mentorProfileId,
-              objective,
-            });
-            setSent(true);
-          } catch (e) {
-            setError((e as Error).message);
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        {sent ? (
-          <>
-            <CheckCircle2 size={17} /> Demande envoyée
-          </>
-        ) : busy ? (
-          "Envoi…"
-        ) : compact ? (
-          "Envoyer une demande de parrainage"
-        ) : (
-          "Choisir ce parrain"
-        )}
+  if (sent)
+    return (
+      <p role="status">
+        <CheckCircle2 size={17} /> Demande envoyée. Retrouve sa réponse dans Mon
+        profil → Demandes.
+      </p>
+    );
+  if (!open)
+    return (
+      <button className="btn full" onClick={() => setOpen(true)}>
+        Envoyer une demande
       </button>
-      {sent && (
-        <p role="status">
-          Ta demande est dans la boîte de réception du parrain. Retrouve son
-          statut dans Mon profil → Demandes.
-        </p>
-      )}
+    );
+  return (
+    <form
+      className="pair-request"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        setError("");
+        try {
+          await request("/api/accompaniments", "POST", {
+            targetProfileId,
+            objective,
+          });
+          setSent(true);
+        } catch (e) {
+          setError((e as Error).message);
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <label className="request-objective">
+        {senderRole === "mentor"
+          ? "Ce que tu peux apporter à ce débutant"
+          : "Ce que tu aimerais que ce parrain t’apporte"}
+        <textarea
+          required
+          minLength={10}
+          maxLength={2000}
+          value={objective}
+          onChange={(e) => setObjective(e.target.value)}
+          disabled={busy}
+          placeholder={
+            senderRole === "mentor"
+              ? "Présente ton expérience et explique comment tu pourrais l’aider."
+              : "Présente tes objectifs et l’aide que tu recherches."
+          }
+        />
+      </label>
+      <p className="small-text">
+        La demande arrive dans son onglet Demandes. Une place est occupée et vos
+        contacts Discord sont partagés uniquement après acceptation.
+      </p>
+      <div className="pair-actions">
+        <button className="btn" disabled={busy || objective.trim().length < 10}>
+          {busy ? "Envoi…" : "Envoyer ma demande"}
+        </button>
+        <button
+          type="button"
+          className="text-btn"
+          disabled={busy}
+          onClick={() => setOpen(false)}
+        >
+          Annuler
+        </button>
+      </div>
       {error && (
         <p className="error" role="alert">
           {error}
         </p>
       )}
-    </div>
+    </form>
   );
 }
 export function Accompaniments({
@@ -184,11 +186,11 @@ export function Accompaniments({
       ? [
           {
             label: "Demandes reçues",
-            rows: items.filter((i) => i.side === "mentor"),
+            rows: items.filter((i) => i.direction === "received"),
           },
           {
             label: "Demandes envoyées",
-            rows: items.filter((i) => i.side === "beginner"),
+            rows: items.filter((i) => i.direction === "sent"),
           },
         ]
       : [
@@ -263,6 +265,8 @@ function Pair({
 }) {
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
+  const [declining, setDeclining] = useState(false),
+    [reason, setReason] = useState("");
   const [score, setScore] = useState(0);
   const [error, setError] = useState("");
   const labels = {
@@ -276,8 +280,13 @@ function Pair({
     setBusy(true);
     setError("");
     try {
-      await request("/api/accompaniments", "PATCH", { id: item.id, action });
+      await request("/api/accompaniments", "PATCH", {
+        id: item.id,
+        action,
+        ...(action === "decline" ? { reason } : {}),
+      });
       setConfirm(false);
+      setDeclining(false);
       await reload();
     } catch (e) {
       setError((e as Error).message);
@@ -300,14 +309,29 @@ function Pair({
         Demande du {new Date(item.created_at).toLocaleDateString("fr-FR")}
       </p>
       <div className="request-message">
-        <strong>Objectif du débutant</strong>
+        <strong>Message de la demande</strong>
         <p>
           {item.objective ||
             "Ancienne demande : aucun message d’objectif n’avait été renseigné."}
         </p>
       </div>
+      {item.status === "declined" && (
+        <div className="request-message">
+          <strong>Motif du refus</strong>
+          <p>
+            {item.decline_reason ||
+              "Ancienne demande : aucun motif n’avait été enregistré."}
+          </p>
+        </div>
+      )}
+      {item.partner_discord && (
+        <div className="contact-panel">
+          <strong>Discord de ton binôme : @{item.partner_discord}</strong>
+          <p>Sur Discord, ouvre Amis → Ajouter un ami et saisis ce pseudo.</p>
+        </div>
+      )}
       {item.status === "pending" &&
-        (item.side === "mentor" ? (
+        (item.direction === "received" ? (
           <div className="pair-actions">
             <button
               className="btn"
@@ -319,14 +343,14 @@ function Pair({
             <button
               className="text-btn"
               disabled={busy}
-              onClick={() => void act("decline")}
+              onClick={() => setDeclining(true)}
             >
               Refuser
             </button>
           </div>
         ) : (
           <div>
-            <p>Ton parrain doit accepter la demande depuis son profil.</p>
+            <p>Le destinataire doit répondre depuis son onglet Demandes.</p>
             <button
               className="text-btn"
               disabled={busy}
@@ -336,6 +360,45 @@ function Pair({
             </button>
           </div>
         ))}
+      {declining && item.status === "pending" && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void act("decline");
+          }}
+        >
+          <label className="request-objective">
+            Pourquoi refuses-tu cette demande ?
+            <textarea
+              required
+              minLength={10}
+              maxLength={2000}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              disabled={busy}
+            />
+          </label>
+          <p className="small-text">
+            Ce motif sera transmis à la personne dans Mentora et par email.
+          </p>
+          <div className="pair-actions">
+            <button
+              className="btn"
+              disabled={busy || reason.trim().length < 10}
+            >
+              Confirmer le refus
+            </button>
+            <button
+              type="button"
+              className="text-btn"
+              onClick={() => setDeclining(false)}
+              disabled={busy}
+            >
+              Annuler
+            </button>
+          </div>
+        </form>
+      )}
       {!requestsOnly &&
         item.status === "active" &&
         (confirm ? (

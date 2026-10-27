@@ -97,26 +97,39 @@ export async function processEvents() {
           discord: String(p.bdiscord),
           objective: String(p.objective || ""),
         };
+        const mentorInitiated =
+          (p.initiator_id || p.beginner_id) === p.mentor_id;
+        const senderId = String(mentorInitiated ? p.mentor_id : p.beginner_id);
+        const receiverId = String(
+          mentorInitiated ? p.beginner_id : p.mentor_id,
+        );
+        const sender = mentorInitiated ? mentor : beginner;
+        const receiver = mentorInitiated ? beginner : mentor;
         if (kind === "pending" && p.status === "pending") {
-          await enqueueMail(
-            id,
-            String(p.mentor_id),
-            "request_received",
-            mentor,
-          );
-          await enqueueMail(
-            id,
-            String(p.beginner_id),
-            "request_sent",
-            beginner,
-          );
+          await enqueueMail(id, receiverId, "request_received", {
+            ...receiver,
+            discord: undefined,
+          });
+          await enqueueMail(id, senderId, "request_sent", {
+            ...sender,
+            discord: undefined,
+          });
         }
-        if (kind === "active" && p.status === "active")
+        if (kind === "active" && p.status === "active") {
           await enqueueMail(id, String(p.beginner_id), "accepted", beginner);
+          await enqueueMail(id, String(p.mentor_id), "accepted", mentor);
+        }
         if (kind === "declined")
-          await enqueueMail(id, String(p.beginner_id), "declined", beginner);
+          await enqueueMail(id, senderId, "declined", {
+            ...sender,
+            discord: undefined,
+            declineReason: String(p.decline_reason || ""),
+          });
         if (kind === "cancelled")
-          await enqueueMail(id, String(p.mentor_id), "cancelled", mentor);
+          await enqueueMail(id, receiverId, "cancelled", {
+            ...receiver,
+            discord: undefined,
+          });
         if (kind === "completed") {
           await enqueueMail(
             id,
@@ -266,9 +279,22 @@ export async function runEmailWorker() {
         }
         if (job.kind === "reengagement") {
           const payload = JSON.parse(String(job.payload));
-          const activity = (await query("SELECT last_active_at FROM member_activity WHERE user_id=$1",[String(job.user_id)]))[0];
-          const blocked = await query("SELECT user_id FROM profile_blocks WHERE user_id=$1",[String(job.user_id)]);
-          skip = skip || !activity || !payload.inactiveCutoff || String(activity.last_active_at)>payload.inactiveCutoff || blocked.length>0;
+          const activity = (
+            await query(
+              "SELECT last_active_at FROM member_activity WHERE user_id=$1",
+              [String(job.user_id)],
+            )
+          )[0];
+          const blocked = await query(
+            "SELECT user_id FROM profile_blocks WHERE user_id=$1",
+            [String(job.user_id)],
+          );
+          skip =
+            skip ||
+            !activity ||
+            !payload.inactiveCutoff ||
+            String(activity.last_active_at) > payload.inactiveCutoff ||
+            blocked.length > 0;
         }
         if (skip) {
           await query(

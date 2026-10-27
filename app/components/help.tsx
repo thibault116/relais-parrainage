@@ -46,13 +46,13 @@ const chapters = [
   [
     "demande",
     "Faire une demande de parrainage",
-    "Depuis un profil parrain, un débutant peut envoyer une demande en expliquant son objectif et l’aide recherchée. Le parrain la retrouve dans Mon profil → Demandes et peut l’accepter ou la refuser. Une demande en attente ne réserve aucune place. Une place est occupée seulement après acceptation et se libère à la fin du binôme.",
+    "Parrains et débutants peuvent envoyer une demande depuis la fiche d’un membre : explique l’aide que tu peux apporter ou celle que tu recherches. Le destinataire la retrouve dans Mon profil → Demandes et peut l’accepter ou la refuser avec un motif obligatoire. Une demande en attente ne réserve aucune place. Une place est occupée seulement après acceptation et se libère à la fin du binôme.",
     "Le nombre de places libres dépend de la capacité choisie par le parrain et des accompagnements en cours. Le parrain choisit combien de débutants il peut aider et pour quelle durée. Un profil sans place libre ne peut pas accepter davantage de débutants tant qu’une place ne se libère pas.",
   ],
   [
     "discord",
     "Échanger sur Discord",
-    "Dans la fiche, clique sur Voir le contact Discord, puis copie le pseudo. Sur Discord, ouvre Amis → Ajouter un ami, colle le pseudo et présente-toi. Si le membre a renseigné son identifiant Discord, un bouton ouvre directement son profil.",
+    "Après acceptation du binôme, son pseudo Discord apparaît dans sa fiche et dans tes accompagnements. Copie le pseudo. Sur Discord, ouvre Amis → Ajouter un ami, colle le pseudo et présente-toi. Si le membre a renseigné son identifiant Discord, un bouton ouvre directement son profil.",
     "Les échanges se font sur Discord : Mentora ne contient pas de messagerie privée. Convenez ensemble des horaires, du délai de réponse et des objectifs. Les appels ne sont pas obligatoires. Le bouton Notre Discord permet aussi de rejoindre le groupe de la communauté.",
   ],
   [

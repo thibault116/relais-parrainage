@@ -58,6 +58,23 @@ export async function migrateAccompaniments() {
       "ALTER TABLE accompaniments ADD COLUMN objective TEXT NOT NULL DEFAULT ''",
     );
   }
+  for (const [name, definition] of [
+    ["initiator_id", "TEXT"],
+    ["decline_reason", "TEXT NOT NULL DEFAULT ''"],
+  ]) {
+    if (database() instanceof Pool)
+      await query(
+        `ALTER TABLE accompaniments ADD COLUMN IF NOT EXISTS ${name} ${definition}`,
+      );
+    else if (
+      !(await query("PRAGMA table_info(accompaniments)")).some(
+        (c) => c.name === name,
+      )
+    )
+      await query(
+        `ALTER TABLE accompaniments ADD COLUMN ${name} ${definition}`,
+      );
+  }
   await query(
     "CREATE INDEX IF NOT EXISTS accompaniments_mentor ON accompaniments (mentor_id,status)",
   );
@@ -163,54 +180,65 @@ export async function migrateSuggestions() {
   );
 }
 
-// Serialize acceptances per mentor so concurrent requests cannot take the same place.
-export async function acceptAccompaniment(id: string, mentorId: string) {
+// Lock both participants in a stable order: mentor capacity and one active mentor per beginner.
+export async function acceptAccompaniment(id: string, recipientId: string) {
   const db = database();
+  const execute = async (q: typeof query) => {
+    const pair = (await q("SELECT * FROM accompaniments WHERE id=$1", [id]))[0];
+    if (!pair || pair.status !== "pending") return false;
+    const initiator = String(pair.initiator_id || pair.beginner_id);
+    const recipient =
+      initiator === pair.beginner_id
+        ? String(pair.mentor_id)
+        : String(pair.beginner_id);
+    if (recipient !== recipientId) return false;
+    const profiles = await q(
+      `SELECT user_id,role,details FROM profiles WHERE user_id IN ($1,$2) ORDER BY user_id ${db instanceof Pool ? "FOR UPDATE" : ""}`,
+      [String(pair.mentor_id), String(pair.beginner_id)],
+    );
+    const mentor = profiles.find(
+      (p) => p.user_id === pair.mentor_id && p.role === "mentor",
+    );
+    if (
+      !mentor ||
+      !profiles.some(
+        (p) => p.user_id === pair.beginner_id && p.role === "beginner",
+      )
+    )
+      return false;
+    const capacity = Number(JSON.parse(String(mentor.details)).capacity) || 0;
+    const rows = await q(
+      `UPDATE accompaniments SET status='active' WHERE id=$1 AND status='pending'
+      AND (SELECT COUNT(*) FROM accompaniments WHERE mentor_id=$2 AND status='active')<$3
+      AND NOT EXISTS(SELECT 1 FROM accompaniments WHERE beginner_id=$4 AND status='active')
+      AND NOT EXISTS(SELECT 1 FROM profile_blocks WHERE user_id IN ($2,$4)) RETURNING id`,
+      [id, String(pair.mentor_id), capacity, String(pair.beginner_id)],
+    );
+    return rows.length > 0;
+  };
   if (db instanceof Pool) {
     const client = await db.connect();
     try {
       await client.query("BEGIN");
-      const profile = (
-        await client.query(
-          "SELECT details FROM profiles WHERE user_id=$1 AND role='mentor' FOR UPDATE",
-          [mentorId],
-        )
-      ).rows[0];
-      const capacity = profile
-        ? Number(JSON.parse(profile.details).capacity)
-        : 0;
-      const rows = (
-        await client.query(
-          `UPDATE accompaniments SET status='active' WHERE id=$1 AND mentor_id=$2 AND status='pending' AND (SELECT COUNT(*) FROM accompaniments WHERE mentor_id=$2 AND status='active') < $3 RETURNING id`,
-          [id, mentorId, capacity],
-        )
-      ).rows;
+      const result = await execute(
+        async (sql, params) => (await client.query(sql, params)).rows,
+      );
       await client.query("COMMIT");
-      return rows.length > 0;
-    } catch (error) {
+      return result;
+    } catch (e) {
       await client.query("ROLLBACK");
-      throw error;
+      throw e;
     } finally {
       client.release();
     }
   }
   db.exec("BEGIN IMMEDIATE");
   try {
-    const profile = db
-      .prepare("SELECT details FROM profiles WHERE user_id=? AND role='mentor'")
-      .get(mentorId);
-    const capacity = profile
-      ? Number(JSON.parse(String(profile.details)).capacity)
-      : 0;
-    const rows = db
-      .prepare(
-        "UPDATE accompaniments SET status='active' WHERE id=? AND mentor_id=? AND status='pending' AND (SELECT COUNT(*) FROM accompaniments WHERE mentor_id=? AND status='active') < ? RETURNING id",
-      )
-      .all(id, mentorId, mentorId, capacity);
+    const result = await execute(query);
     db.exec("COMMIT");
-    return rows.length > 0;
-  } catch (error) {
+    return result;
+  } catch (e) {
     db.exec("ROLLBACK");
-    throw error;
+    throw e;
   }
 }

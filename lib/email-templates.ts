@@ -22,6 +22,7 @@ export type MailData = {
   partner?: string;
   discord?: string;
   objective?: string;
+  declineReason?: string;
   feedback?: string;
   profileId?: string;
 };
@@ -49,11 +50,13 @@ const escape = (s: string) =>
 export function renderMail(kind: MailKind, d: MailData, test = false) {
   const partner = d.partner || "ton binôme";
   const descriptions: Record<MailKind, string> = {
-    reengagement: d.reminderMessage || "Retrouve la communauté et poursuis tes projets d’achat-revente sur Mentora.",
-    request_received: `${partner} souhaite être accompagné par toi. Lis son objectif, puis accepte ou refuse sa demande dans Mentora. Aucune place n’est occupée avant ton acceptation.`,
+    reengagement:
+      d.reminderMessage ||
+      "Retrouve la communauté et poursuis tes projets d’achat-revente sur Mentora.",
+    request_received: `${partner} t’a envoyé une demande de parrainage. Lis son message dans Mentora, puis accepte ou refuse en expliquant ta décision. Les contacts Discord sont partagés après acceptation.`,
     request_sent: `Ta demande a été envoyée à ${partner}. Tu seras averti de sa réponse. En attendant, aucune place n’est réservée.`,
-    accepted: `Bonne nouvelle : ${partner} a accepté ta demande ! Contacte ton parrain sur Discord pour définir votre rythme et commencer à avancer ensemble.`,
-    declined: `${partner} n’a pas accepté ta demande. Tu peux retrouver d’autres parrains sur Mentora et choisir un accompagnement adapté à tes objectifs.`,
+    accepted: `Bonne nouvelle : ton binôme avec ${partner} est confirmé ! Vous pouvez maintenant vous contacter sur Discord pour définir votre rythme et avancer ensemble.`,
+    declined: `${partner} a refusé ta demande. Consulte son explication ci-dessous et retrouve d’autres membres sur Mentora.`,
     cancelled: `${partner} a annulé sa demande de parrainage. Cette demande n’occupait aucune place.`,
     completed_beginner: `Ton accompagnement avec ${partner} est terminé. Prends un instant pour laisser une note à ton parrain depuis l’historique de tes accompagnements.`,
     completed_mentor: `Ton accompagnement avec ${partner} est terminé. Merci d’avoir partagé ton expérience en achat-revente ! La place occupée par ce binôme est maintenant libérée.`,
@@ -69,9 +72,11 @@ export function renderMail(kind: MailKind, d: MailData, test = false) {
       ? "accompaniments"
       : "requests";
   const url =
-    kind === "reengagement" ? `${MAIL_SITE}/#directory` : kind === "place_available"
-      ? `${MAIL_SITE}/?member=${encodeURIComponent(d.profileId || "")}#directory`
-      : `${MAIL_SITE}/?profileTab=${tab}#profile`;
+    kind === "reengagement"
+      ? `${MAIL_SITE}/#directory`
+      : kind === "place_available"
+        ? `${MAIL_SITE}/?member=${encodeURIComponent(d.profileId || "")}#directory`
+        : `${MAIL_SITE}/?profileTab=${tab}#profile`;
   const cta =
     kind === "request_received"
       ? "Voir la demande et accepter ou refuser"
@@ -85,10 +90,19 @@ export function renderMail(kind: MailKind, d: MailData, test = false) {
   const pieces = [
     kind === "reengagement" ? "" : `Bonjour ${d.name},`,
     descriptions[kind],
-    d.discord ? `Pseudo Discord de ${partner} : ${d.discord}` : "",
+    d.discord &&
+    ["accepted", "completed_beginner", "completed_mentor"].includes(kind)
+      ? `Pseudo Discord de ${partner} : ${d.discord}`
+      : "",
+    kind === "declined" && d.declineReason
+      ? `Motif du refus : ${d.declineReason}`
+      : "",
     d.feedback ? `Retour de l’administration : ${d.feedback}` : "",
   ].filter(Boolean);
-  const title = kind === "reengagement" ? (d.reminderSubject || mailLabels[kind]) : mailLabels[kind];
+  const title =
+    kind === "reengagement"
+      ? d.reminderSubject || mailLabels[kind]
+      : mailLabels[kind];
   const subject = `${test ? "[TEST Mentora]" : "Mentora —"} ${title}`;
   const settings = `${MAIL_SITE}/?profileTab=emails#profile`;
   const text = [

@@ -1351,7 +1351,7 @@ function ProfileForm({
           <ShieldCheck />
           <p>
             Ton e-mail reste privé. Ton pseudo Discord est accessible uniquement
-            aux membres ayant complété leur profil.
+            aux personnes avec lesquelles un binôme a été accepté.
           </p>
         </div>
       </aside>
@@ -1738,8 +1738,7 @@ function ProfileForm({
                 accompagnement gratuit et aucune promesse de gains.
                 <small>
                   Je consens à l’affichage de mon profil et au partage de mon
-                  contact Discord avec les membres inscrits, tant que mon profil
-                  est visible.
+                  contact Discord avec mes binômes acceptés.
                 </small>
               </span>
             </label>
@@ -2020,30 +2019,13 @@ function Directory({
       setSwitching(false);
     }
   }
-  async function showContact() {
-    if (!session) {
-      setSelected(null);
-      onJoin();
-      return;
-    }
-    if (!own) {
-      setSelected(null);
-      onProfile();
-      return;
-    }
-    const requestedId = selected?.id;
+  useEffect(() => {
+    let live=true;setContact(null);setContactError("");
+    if(!selected||!own||!session||preview)return;
     setContactBusy(true);
-    setContactError("");
-    try {
-      const data = await api("/api/profiles?contact=" + requestedId);
-      if (selectedRef.current === requestedId) setContact(data);
-    } catch (e) {
-      if (selectedRef.current === requestedId)
-        setContactError((e as Error).message);
-    } finally {
-      if (selectedRef.current === requestedId) setContactBusy(false);
-    }
-  }
+    api("/api/profiles?connection="+selected.id).then(data=>{if(live)setContact(data.accepted?data:null);}).catch(e=>{if(live)setContactError(e.message);}).finally(()=>{if(live)setContactBusy(false);});
+    return ()=>{live=false;};
+  },[selected?.id,own?.id,session,preview]);
   return (
     <section className="wrap directory">
       <div className="directory-heading">
@@ -2460,34 +2442,10 @@ function Directory({
                   explique ce que tu recherches.
                 </p>
               </div>
-            ) : (
-              <button
-                className="btn full"
-                disabled={contactBusy}
-                onClick={() => void showContact()}
-              >
-                <MessageCircle size={18} />
-                {contactBusy
-                  ? "Chargement…"
-                  : !session
-                    ? "M’inscrire pour échanger"
-                    : !own
-                      ? "Compléter mon profil pour échanger"
-                      : "Voir le contact Discord"}
-              </button>
-            )}
-            {selected.role === "mentor" && own?.role === "beginner" && (
-              <fieldset
-                className="preview-controls"
-                disabled={preview}
-                inert={preview}
-              >
-                <RequestAccompaniment
-                  key={selected.id}
-                  mentorProfileId={selected.id}
-                  verified={!!selected.verification}
-                />
-              </fieldset>
+            ) : contactBusy ? <p>Vérification du binôme…</p> : (
+              !session || !own ? <button className="btn full" onClick={!session?onJoin:onProfile}>Compléter mon profil pour envoyer une demande</button> : selected.role !== own.role && selected.id!==own.id ? <fieldset className="preview-controls" disabled={preview} inert={preview}>
+                <RequestAccompaniment key={selected.id} targetProfileId={selected.id} senderRole={own.role} verified={own.role==='mentor'?!!own.verification:!!selected.verification}/>
+              </fieldset> : null
             )}
             {contactError && (
               <p role="alert" className="error">
@@ -2737,7 +2695,7 @@ function FAQ() {
         ],
         [
           "Est-ce que Mentora envoie une demande d’amis automatiquement ?",
-          "Non. Tu copies le pseudo et l’ajoutes dans Discord. Si le membre a renseigné son identifiant numérique, un bouton ouvre directement son profil Discord.",
+          "Non. Après acceptation de votre demande, tu copies le pseudo de ton binôme et l’ajoutes dans Discord. Si le membre a renseigné son identifiant numérique, un bouton ouvre directement son profil Discord.",
         ],
         [
           "Puis-je accompagner plusieurs débutants ?",
@@ -2745,7 +2703,7 @@ function FAQ() {
         ],
         [
           "Qui peut voir mes informations ?",
-          "Le site et les profils visibles sont publics, sauf les pseudos Discord qui sont réservés aux membres connectés ayant un profil. Ton adresse e-mail n’est jamais affichée dans l’annuaire. Tu peux modifier, masquer ou supprimer ton profil depuis ton espace.",
+          "Le site et les profils visibles sont publics, sauf les pseudos Discord qui sont réservés aux binômes dont la demande a été acceptée. Ton adresse e-mail n’est jamais affichée dans l’annuaire. Tu peux modifier, masquer ou supprimer ton profil depuis ton espace.",
         ],
         [
           "Est-ce le site officiel de la formation ?",

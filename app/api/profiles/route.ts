@@ -8,7 +8,8 @@ export const runtime = "nodejs";
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const id = url.searchParams.get("contact");
+    const id =
+      url.searchParams.get("contact") || url.searchParams.get("connection");
     if (id) {
       const u = await user(request);
       if (!u)
@@ -25,13 +26,27 @@ export async function GET(request: Request) {
           403,
         );
       const rows = await query(
-        "SELECT * FROM profiles p WHERE id=$1 AND visible=1 AND NOT EXISTS (SELECT 1 FROM profile_blocks b WHERE b.user_id=p.user_id)",
-        [id],
+        `SELECT p.* FROM profiles p WHERE p.id=$1
+          AND NOT EXISTS(SELECT 1 FROM profile_blocks b WHERE b.user_id IN (p.user_id,$2))
+          AND EXISTS(SELECT 1 FROM accompaniments a WHERE a.status IN ('active','completed') AND ((a.beginner_id=$2 AND a.mentor_id=p.user_id) OR (a.mentor_id=$2 AND a.beginner_id=p.user_id)))`,
+        [id, u.id],
       );
       if (!rows.length)
-        return json({ error: "Ce profil n’est plus disponible." }, 404);
+        return url.searchParams.has("connection")
+          ? json({ accepted: false })
+          : json(
+              {
+                error:
+                  "Le contact Discord est accessible uniquement après acceptation du binôme.",
+              },
+              403,
+            );
       const p = decode(rows[0]);
-      return json({ discord: p.discord, discordId: p.discordId });
+      return json({
+        accepted: true,
+        discord: p.discord,
+        discordId: p.discordId,
+      });
     }
     const role =
       url.searchParams.get("role") === "beginner" ? "beginner" : "mentor";

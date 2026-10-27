@@ -116,8 +116,8 @@ try {
         undefined,
         beginner.cookie,
       )
-    ).data.discord,
-    p.discord,
+    ).status,
+    403,
   );
   assert.equal(
     (await call("/api/me", "PATCH", { visible: false }, mentor.cookie)).status,
@@ -137,7 +137,7 @@ try {
         beginner.cookie,
       )
     ).status,
-    404,
+    403,
   );
   assert.equal(
     (await call("/api/me", "GET", undefined, mentor.cookie)).data.profile
@@ -177,7 +177,7 @@ try {
         beginner.cookie,
       )
     ).status,
-    404,
+    403,
   );
   console.log(
     "PASS : inscription, connexion, persistance, validation, isolation des comptes, confidentialité Discord, recherche, masquage, réactivation et suppression.",
