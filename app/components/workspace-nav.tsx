@@ -1,4 +1,5 @@
 "use client";
+import { BrandLogo } from "./brand-logo";
 import { useState, useEffect, useRef } from "react";
 import {
   Compass,
@@ -249,7 +250,7 @@ export function WorkspaceNav({
             onClick={() => navigate("home")}
           >
             <span className="brand-mark">
-              <HeartHandshake size={25} />
+              <BrandLogo />
             </span>
             mentora<span className="brand-dot">.</span>
           </a>
@@ -320,7 +321,7 @@ export function WorkspaceNav({
           aria-label="Mentora, accueil"
           onClick={() => navigate("home")}
         >
-          <HeartHandshake size={23} />
+          <BrandLogo />
         </a>
         <div>
           <small>

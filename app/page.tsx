@@ -1,4 +1,5 @@
 "use client";
+import { BrandLogo } from "./components/brand-logo";
 import {
   useState,
   useEffect,
@@ -306,7 +307,7 @@ export default function App() {
               onClick={() => go("home")}
             >
               <span className="brand-mark">
-                <HeartHandshake size={25} />
+                <BrandLogo />
               </span>
               mentora<span className="brand-dot">.</span>
             </a>
@@ -1016,7 +1017,7 @@ export default function App() {
           <footer className="footer wrap">
             <a className="brand" href="#home" onClick={() => go("home")}>
               <span className="brand-mark">
-                <HeartHandshake size={21} />
+                <BrandLogo />
               </span>
               mentora<span className="brand-dot">.</span>
             </a>

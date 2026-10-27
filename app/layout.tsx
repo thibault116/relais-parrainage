@@ -5,6 +5,7 @@ import "./globals.css";
 import { SuggestionWidget } from "./components/suggestions";
 import { UpdateBanner } from "./components/update-banner";
 export const metadata: Metadata = {
+  icons: { icon: "/mentora-logo.png", apple: "/mentora-logo.png" },
   title: "Mentora — L’entraide entre revendeurs.",
   description:
     "Progresse dans l’achat-revente de vêtements (resell) sur Vinted, Leboncoin, eBay ou Whatnot. Mentora relie revendeurs débutants et expérimentés.",

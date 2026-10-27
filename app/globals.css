@@ -4213,3 +4213,9 @@ textarea {
 .appearance-neon svg { color:var(--purple); flex-shrink:0; }
 .appearance-neon small { display:block; color:var(--muted); margin-top:5px; }
 @media(max-width:480px) { .appearance-options { grid-template-columns:1fr; } }
+
+/* Use the supplied emblem unchanged in every theme, including the mobile dock. */
+.brand-mark, .footer .brand-mark { width:46px; height:46px; flex-shrink:0; transform:none; background:transparent; border-radius:12px; }
+.brand-emblem { display:block; width:100%; height:100%; object-fit:contain; border-radius:inherit; }
+:root[data-neon="true"] .brand-mark { background:transparent; box-shadow:0 0 15px #ba70d840; }
+@media(max-width:600px) { .brand-mark, .footer .brand-mark { width:40px; height:40px; } }
