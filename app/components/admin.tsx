@@ -53,9 +53,11 @@ const date = (v: string) => new Date(v).toLocaleDateString("fr-FR");
 export function AdminDashboard({
   tab,
   setTab,
+  onPreview,
 }: {
   tab: string;
   setTab: (tab: string) => void;
+  onPreview: (role: "mentor" | "beginner") => void;
 }) {
   const [data, setData] = useState<Data | null>(null),
     [error, setError] = useState(""),
@@ -140,6 +142,26 @@ export function AdminDashboard({
         <>
           {tab === "overview" && (
             <>
+              <section className="admin-role-preview">
+                <div>
+                  <h2>Voir Mentora comme un membre</h2>
+                  <p>
+                    Explore les menus parrain et débutant sans changer ton
+                    compte administrateur.
+                  </p>
+                </div>
+                <div className="role-preview-actions">
+                  <button className="btn" onClick={() => onPreview("mentor")}>
+                    Voir comme un parrain
+                  </button>
+                  <button
+                    className="btn secondary"
+                    onClick={() => onPreview("beginner")}
+                  >
+                    Voir comme un débutant
+                  </button>
+                </div>
+              </section>
               <div className="admin-stats">
                 {[
                   ["Comptes créés", s.accounts],

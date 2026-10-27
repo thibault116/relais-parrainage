@@ -114,12 +114,17 @@ export default function App() {
   const [mobile, setMobile] = useState(false);
   const { data: session, isPending } = authClient.useSession();
   const [moderator, setModerator] = useState(false);
+  const [previewRole, setPreviewRole] = useState<"mentor" | "beginner" | null>(
+    null,
+  );
+  const preview = moderator ? previewRole : null;
+  const showAdmin = moderator && !preview;
   const [moderationBlock, setModerationBlock] = useState<string | null>(null);
   const publicView = ["home", "guide", "faq", "help"].includes(requestedView);
   const view: View = publicView
     ? requestedView
     : session
-      ? requestedView === "moderation" && !moderator
+      ? requestedView === "moderation" && !showAdmin
         ? "directory"
         : requestedView
       : "home";
@@ -127,11 +132,13 @@ export default function App() {
     !!session && ["directory", "profile", "moderation", "help"].includes(view);
   const navigation: View[] =
     inWorkspace && session
-      ? moderator
+      ? showAdmin
         ? ["directory", "profile", "moderation", "help"]
         : ["directory", "profile", "help"]
       : ["home", "guide", "faq", "help"];
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [savedProfile, setProfile] = useState<Profile | null>(null);
+  const profile =
+    savedProfile && preview ? { ...savedProfile, role: preview } : savedProfile;
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [authMode, setAuthMode] = useState<"login" | "signup" | null>(null);
@@ -236,6 +243,7 @@ export default function App() {
     else {
       setProfile(null);
       setModerator(false);
+      setPreviewRole(null);
     }
   }, [session, loadMe]);
   const refreshProfile = useCallback(async () => {
@@ -274,7 +282,7 @@ export default function App() {
           profileTab={selectedProfileTab}
           adminTab={adminTab}
           mentor={profile?.role === "mentor"}
-          moderator={moderator}
+          moderator={showAdmin}
           name={session.user.name}
           discordUrl={DISCORD_GROUP}
           onNavigate={(next, tab) => {
@@ -377,6 +385,40 @@ export default function App() {
         </header>
       )}
       <main id="workspace-content">
+        {preview && (
+          <aside className="role-preview-banner" role="status">
+            <div>
+              <strong>
+                Aperçu {preview === "mentor" ? "parrain" : "débutant"}
+              </strong>
+              <p>
+                Navigation du rôle choisi · données de ton compte · profils en
+                lecture seule.
+              </p>
+            </div>
+            <div className="role-preview-actions">
+              <button
+                className="btn secondary small-btn"
+                onClick={() => {
+                  setPreviewRole(preview === "mentor" ? "beginner" : "mentor");
+                  setProfileTab("edit");
+                }}
+              >
+                Voir comme un {preview === "mentor" ? "débutant" : "parrain"}
+              </button>
+              <button
+                className="btn small-btn"
+                onClick={() => {
+                  setPreviewRole(null);
+                  setAdminTab("overview");
+                  go("moderation");
+                }}
+              >
+                Revenir à l’administration
+              </button>
+            </div>
+          </aside>
+        )}
         {session &&
           inWorkspace &&
           profile?.role === "mentor" &&
@@ -413,8 +455,16 @@ export default function App() {
             </aside>
           )}
 
-        {!isPending && session && moderator && view === "moderation" && (
-          <AdminDashboard tab={adminTab} setTab={setAdminTab} />
+        {!isPending && session && showAdmin && view === "moderation" && (
+          <AdminDashboard
+            tab={adminTab}
+            setTab={setAdminTab}
+            onPreview={(role) => {
+              setPreviewRole(role);
+              setProfileTab("edit");
+              go("directory");
+            }}
+          />
         )}
         {isPending && (
           <div className="empty">
@@ -726,11 +776,13 @@ export default function App() {
         )}
         {!isPending && session && view === "directory" && (
           <Directory
+            key={preview || "normal"}
+            preview={!!preview}
             session={!!session}
             onFollowChange={refreshProfile}
             initialTarget={focusMember}
             own={profile}
-            initialRole={role === "mentor" ? "beginner" : "mentor"}
+            initialRole={(preview || role) === "mentor" ? "beginner" : "mentor"}
             onJoin={() => setAuthMode("signup")}
             onProfile={() => go("profile")}
             notify={notify}
@@ -749,7 +801,7 @@ export default function App() {
           </section>
         )}
         {!isPending && session && view === "profile" && (
-          <section className="wrap profile-page">
+          <section className="wrap profile-page" inert={!!preview}>
             <div className="page-heading">
               <span className="eyebrow">TON ESPACE</span>
               <h1>
@@ -1820,6 +1872,7 @@ function ProfileCard({
   );
 }
 function Directory({
+  preview = false,
   onFollowChange,
   initialTarget,
   session,
@@ -1829,6 +1882,7 @@ function Directory({
   onProfile,
   notify,
 }: {
+  preview?: boolean;
   onFollowChange: () => Promise<void>;
   initialTarget: PublicProfile | null;
   session: boolean;
@@ -2260,19 +2314,29 @@ function Directory({
             <FollowCounts profile={selected} />
             <ProfileDates profile={selected} />
             {session && selected.id !== own?.id && (
-              <FollowButton
-                key={selected.id}
-                profile={selected}
-                onChange={(count) => {
-                  void onFollowChange();
-                  setSelected((p) => (p ? { ...p, followerCount: count } : p));
-                  setProfiles((list) =>
-                    list.map((p) =>
-                      p.id === selected.id ? { ...p, followerCount: count } : p,
-                    ),
-                  );
-                }}
-              />
+              <fieldset
+                className="preview-controls"
+                disabled={preview}
+                inert={preview}
+              >
+                <FollowButton
+                  key={selected.id}
+                  profile={selected}
+                  onChange={(count) => {
+                    void onFollowChange();
+                    setSelected((p) =>
+                      p ? { ...p, followerCount: count } : p,
+                    );
+                    setProfiles((list) =>
+                      list.map((p) =>
+                        p.id === selected.id
+                          ? { ...p, followerCount: count }
+                          : p,
+                      ),
+                    );
+                  }}
+                />
+              </fieldset>
             )}
             {selected.role === "mentor" && (
               <RatingSummary
@@ -2285,7 +2349,13 @@ function Directory({
             )}
             <p>{selected.bio}</p>
             {session && selected.id !== own?.id && (
-              <ReportProfile key={selected.id} profileId={selected.id} />
+              <fieldset
+                className="preview-controls"
+                disabled={preview}
+                inert={preview}
+              >
+                <ReportProfile key={selected.id} profileId={selected.id} />
+              </fieldset>
             )}
             <div className="detail-grid">
               <div>
@@ -2401,11 +2471,17 @@ function Directory({
               </button>
             )}
             {selected.role === "mentor" && own?.role === "beginner" && (
-              <RequestAccompaniment
-                key={selected.id}
-                mentorProfileId={selected.id}
-                verified={!!selected.verification}
-              />
+              <fieldset
+                className="preview-controls"
+                disabled={preview}
+                inert={preview}
+              >
+                <RequestAccompaniment
+                  key={selected.id}
+                  mentorProfileId={selected.id}
+                  verified={!!selected.verification}
+                />
+              </fieldset>
             )}
             {contactError && (
               <p role="alert" className="error">

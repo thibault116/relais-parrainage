@@ -4003,3 +4003,13 @@ textarea {
  .workspace-shell .verification-invite { bottom:calc(92px + env(safe-area-inset-bottom)); }
 }
 @media(max-width:480px) { .workspace-shell main>.wrap,.workspace-shell main>section.wrap { padding:24px 16px 32px; } .workspace-topbar { padding:14px 16px; } }
+
+.admin-role-preview { padding:24px; margin:22px 0; border:1px solid var(--line); border-radius:var(--radius); background:var(--lavender); }
+.admin-role-preview h2 { margin:0 0 8px; font-size:20px; }
+.admin-role-preview p { margin:0 0 18px; color:var(--muted); }
+.role-preview-banner { margin:20px 36px 0; padding:18px 20px; background:var(--lavender); border:1px solid #d9c9fa; border-radius:16px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.role-preview-banner strong { color:var(--purple-dark); }
+.role-preview-banner p { font-size:12px; margin:4px 0 0; color:var(--muted); }
+.role-preview-actions { display:flex; flex-wrap:wrap; gap:10px; }
+.preview-controls { border:0; padding:0; margin:0; min-width:0; }
+@media(max-width:600px) { .role-preview-banner { margin:16px 16px 0; } .role-preview-actions { width:100%; } .role-preview-actions .btn { flex:1 1 160px; } }
