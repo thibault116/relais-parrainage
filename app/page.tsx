@@ -483,14 +483,10 @@ export default function App() {
             <section className="hero wrap">
               <div className="hero-copy">
                 <span className="eyebrow">
-                  <span className="status-dot" /> L’ENTRAIDE ENTRE REVENDEURS
+                  <span className="status-dot" /> LA COMMUNAUTÉ DES RESELLERS
                 </span>
                 <h1>
-                  Ton prochain cap,
-                  <br />
-                  on le passe
-                  <br />
-                  <span>ensemble.</span>
+                  L’entraide entre resellers commence <span>ici.</span>
                   <svg
                     className="underline"
                     viewBox="0 0 350 20"
@@ -500,10 +496,9 @@ export default function App() {
                   </svg>
                 </h1>
                 <p>
-                  Débute et progresse dans{" "}
-                  <strong>l’achat-revente de vêtements (resell)</strong> avec un
-                  revendeur expérimenté. Sur Vinted, Leboncoin, eBay, Whatnot et
-                  d’autres plateformes, avance avec les bons conseils.
+                  Tu débutes dans <strong>l’achat-revente de vêtements</strong> ?
+                  Échange avec des revendeurs expérimentés pour progresser sur
+                  Vinted, Leboncoin, eBay, Whatnot et bien d’autres plateformes.
                 </p>
                 <div className="hero-buttons">
                   <Button
@@ -520,10 +515,10 @@ export default function App() {
                 </div>
                 <div className="hero-proof">
                   <span>
-                    <Check size={15} /> Gratuit & entre membres
+                    <Check size={15} /> Bêta gratuite pour le moment
                   </span>
                   <span>
-                    <Check size={15} /> À ton rythme
+                    <Check size={15} /> Entraide entre membres
                   </span>
                 </div>
               </div>
