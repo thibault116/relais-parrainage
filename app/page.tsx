@@ -72,8 +72,10 @@ type View =
   | "faq"
   | "profile"
   | "moderation"
-  | "help";
+  | "help"
+  | "menu";
 const views: Record<View, string> = {
+  menu: "Menu",
   help: "Aide",
   home: "Accueil",
   directory: "Trouver mon binôme",
@@ -109,7 +111,7 @@ async function api(path: string, options: RequestInit = {}) {
     throw new Error(data.error || "Une erreur est survenue. Réessaie.");
   return data;
 }
-import { WorkspaceNav } from "./components/workspace-nav";
+import { WorkspaceNav, WorkspaceMenuPage } from "./components/workspace-nav";
 export default function App() {
   const { discordUrl: DISCORD_GROUP } = usePlatformSettings();
   const [requestedView, setView] = useState<View>("home");
@@ -131,7 +133,7 @@ export default function App() {
         : requestedView
       : "home";
   const inWorkspace =
-    !!session && ["directory", "profile", "moderation", "help"].includes(view);
+    !!session && ["directory", "profile", "moderation", "help", "menu"].includes(view);
   const navigation: View[] =
     inWorkspace && session
       ? showAdmin
@@ -167,7 +169,7 @@ export default function App() {
     }
   }, [toast]);
   const go = (next: View) => {
-    if (!session && (next === "directory" || next === "profile")) {
+    if (!session && (next === "directory" || next === "profile" || next === "menu")) {
       setAuthMode("signup");
       return;
     }
@@ -388,6 +390,8 @@ export default function App() {
         </header>
       )}
       <main id="workspace-content">
+        {!isPending && session && view === "menu" && <WorkspaceMenuPage mentor={profile?.role === "mentor"} moderator={showAdmin} discordUrl={DISCORD_GROUP} onNavigate={(next,tab)=>{go(next);if(tab&&next==="profile")setProfileTab(tab);if(tab&&next==="moderation")setAdminTab(tab);}} onSignOut={()=>{void authClient.signOut().then(()=>go("home"));}}/>}
+
         {preview && (
           <aside className="role-preview-banner" role="status">
             <div>
@@ -992,6 +996,7 @@ export default function App() {
             )}
           </section>
         )}
+        {!isPending && inWorkspace && view !== "menu" && <aside className="member-discord"><MessageCircle size={25}/><div><strong>Retrouve la communauté sur Discord</strong><p>Échange avec d’autres revendeurs et continue la discussion avec ton binôme.</p></div><a className="btn secondary" href={DISCORD_GROUP} target="_blank" rel="noopener noreferrer">Rejoindre Discord <ArrowUpRight size={18}/></a></aside>}
       </main>
       {!inWorkspace && !isPending && (
         <>

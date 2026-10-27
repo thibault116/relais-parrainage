@@ -4219,3 +4219,17 @@ textarea {
 .brand-emblem { display:block; width:100%; height:100%; object-fit:contain; border-radius:inherit; }
 :root[data-neon="true"] .brand-mark { background:transparent; box-shadow:0 0 15px #ba70d840; }
 @media(max-width:600px) { .brand-mark, .footer .brand-mark { width:40px; height:40px; } }
+
+.workspace-menu-page h2 { font-size:18px; margin:26px 0 12px; }
+.menu-page-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.menu-page-grid button,.menu-page-grid a { display:flex; gap:14px; align-items:center; text-align:left; padding:20px; background:var(--surface,white); color:var(--ink); border:1px solid var(--line); border-radius:16px; min-height:68px; }
+.menu-page-grid svg { color:var(--purple); flex-shrink:0; }
+.menu-page-grid span { flex:1; }
+.member-discord { margin:0 36px 36px; display:flex; align-items:center; flex-wrap:wrap; gap:18px; padding:22px; background:var(--lavender); border:1px solid var(--line); border-radius:18px; }
+.member-discord>svg { color:var(--purple); }
+.member-discord>div { flex:1; min-width:180px; }
+.member-discord p { color:var(--muted); font-size:13px; margin:4px 0 0; }
+.brand-emblem-light { display:none; }
+:root[data-theme="light"] .brand-emblem-dark { display:none; }
+:root[data-theme="light"] .brand-emblem-light { display:block; }
+@media(max-width:600px) { .menu-page-grid { grid-template-columns:1fr; } .member-discord { margin:0 16px 28px; } .member-discord .btn { width:100%; } }

@@ -1,6 +1,9 @@
 import Image from "next/image";
 
-/** The supplied Mentora emblem, shared by every navigation layout. */
+/** Theme variants retain the same Mentora emblem. */
 export function BrandLogo() {
-  return <Image className="brand-emblem" src="/mentora-logo.png" alt="" width={48} height={48} sizes="48px" />;
+  return <>
+    <Image className="brand-emblem brand-emblem-dark" src="/mentora-logo.png" alt="" width={48} height={48} />
+    <Image className="brand-emblem brand-emblem-light" src="/mentora-logo-light.png" alt="" width={48} height={48} />
+  </>;
 }

@@ -1,6 +1,5 @@
 "use client";
 import { BrandLogo } from "./brand-logo";
-import { useState, useEffect, useRef } from "react";
 import {
   Compass,
   Inbox,
@@ -18,11 +17,10 @@ import {
   MessageCircle,
   LogOut,
   Menu,
-  X,
   ArrowUpRight,
   type LucideIcon,
 } from "lucide-react";
-type Destination = "home" | "directory" | "profile" | "moderation" | "help";
+type Destination = "home" | "directory" | "profile" | "moderation" | "help" | "menu";
 type Item = {
   id: string;
   label: string;
@@ -160,14 +158,11 @@ export function WorkspaceNav({
   onNavigate: (view: Destination, tab?: string) => void;
   onSignOut: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const panel = useRef<HTMLElement>(null);
-  const menuButton = useRef<HTMLButtonElement>(null);
   const active = (item: Item) =>
     view === item.view &&
     (!item.tab || (view === "profile" ? profileTab : adminTab) === item.tab);
   const title =
-    view === "profile"
+    view === "menu" ? "Menu" : view === "profile"
       ? memberItems.find((i) => i.tab === profileTab)?.label || "Mon profil"
       : view === "moderation"
         ? adminItems.find((i) => i.tab === adminTab)?.label || "Administration"
@@ -175,45 +170,8 @@ export function WorkspaceNav({
           ? "Aide"
           : "Trouver mon binôme";
   function navigate(v: Destination, tab?: string) {
-    setOpen(false);
     onNavigate(v, tab);
   }
-  useEffect(() => {
-    if (!open) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    panel.current?.querySelector<HTMLElement>("button")?.focus();
-    const keys = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-      if (e.key === "Tab") {
-        const list = Array.from(
-          panel.current?.querySelectorAll<HTMLElement>(
-            "a[href],button:not([disabled])",
-          ) || [],
-        ).filter((el) => el.getClientRects().length);
-        const first = list[0],
-          last = list.at(-1);
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last?.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first?.focus();
-        }
-      }
-    };
-    const resize = () => {
-      if (window.innerWidth > 900) setOpen(false);
-    };
-    document.addEventListener("keydown", keys);
-    window.addEventListener("resize", resize);
-    return () => {
-      document.body.style.overflow = previous;
-      document.removeEventListener("keydown", keys);
-      window.removeEventListener("resize", resize);
-      menuButton.current?.focus();
-    };
-  }, [open]);
   const itemButton = (item: Item) => (
     <button
       key={item.id}
@@ -227,19 +185,9 @@ export function WorkspaceNav({
   );
   return (
     <>
-      {open && (
-        <div
-          className="workspace-menu-shade"
-          onClick={() => setOpen(false)}
-          aria-hidden="true"
-        />
-      )}
       <aside
-        ref={panel}
         id="workspace-menu"
-        className={`workspace-sidebar ${open ? "is-open" : ""}`}
-        role={open ? "dialog" : undefined}
-        aria-modal={open ? true : undefined}
+        className="workspace-sidebar"
         aria-label="Menu de l’espace membre"
       >
         <div className="workspace-brand-row">
@@ -254,13 +202,6 @@ export function WorkspaceNav({
             </span>
             mentora<span className="brand-dot">.</span>
           </a>
-          <button
-            className="workspace-menu-close"
-            aria-label="Fermer le menu"
-            onClick={() => setOpen(false)}
-          >
-            <X size={22} />
-          </button>
         </div>
         <nav
           className="workspace-links"
@@ -350,11 +291,9 @@ export function WorkspaceNav({
           { ...memberItems[3], label: "Profil" },
         ].map(itemButton)}
         <button
-          ref={menuButton}
-          className={open ? "is-current" : ""}
-          aria-expanded={open}
-          aria-controls="workspace-menu"
-          onClick={() => setOpen(!open)}
+          className={view === "menu" ? "is-current" : ""}
+          aria-current={view === "menu" ? "page" : undefined}
+          onClick={() => navigate("menu")}
         >
           <Menu size={21} />
           <span>Menu</span>
@@ -362,4 +301,22 @@ export function WorkspaceNav({
       </nav>
     </>
   );
+}
+
+export function WorkspaceMenuPage({mentor, moderator, discordUrl, onNavigate, onSignOut}: {
+  mentor:boolean; moderator:boolean; discordUrl:string;
+  onNavigate:(view:Destination, tab?:string)=>void; onSignOut:()=>void;
+}) {
+  const render = (item:Item) => <button key={item.id} onClick={()=>onNavigate(item.view,item.tab)}><item.icon size={22}/><span>{item.label}</span><ArrowUpRight size={17}/></button>;
+  return <section className="wrap workspace-menu-page">
+    <div className="page-heading"><span className="eyebrow">TON ESPACE</span><h1>Menu</h1><p>Tous tes raccourcis, au même endroit.</p></div>
+    <h2>Mon espace</h2><div className="menu-page-grid">{memberItems.filter(i=>i.id!=="verification"||mentor).map(render)}</div>
+    {moderator&&<><h2>Administration</h2><div className="menu-page-grid">{adminItems.map(render)}</div></>}
+    <h2>Communauté</h2><div className="menu-page-grid">
+      {render({id:"help",label:"Aide",icon:CircleHelp,view:"help"})}
+      <a href={discordUrl} target="_blank" rel="noopener noreferrer"><MessageCircle size={22}/><span>Rejoindre la communauté Discord</span><ArrowUpRight size={17}/></a>
+      <button onClick={()=>onNavigate("home")}><Compass size={22}/><span>Accueil de Mentora</span></button>
+      <button onClick={onSignOut}><LogOut size={22}/><span>Se déconnecter</span></button>
+    </div>
+  </section>;
 }

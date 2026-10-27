@@ -8,7 +8,7 @@ import {
 } from "react";
 import { Sun, Moon, Sparkles } from "lucide-react";
 type Appearance = { dark: boolean; neon: boolean };
-const defaults: Appearance = { dark: false, neon: false };
+const defaults: Appearance = { dark: true, neon: true };
 const AppearanceContext = createContext({
   appearance: defaults,
   change: (_next: Appearance) => {},
@@ -17,7 +17,7 @@ const key = "mentora-appearance";
 function read(): Appearance {
   try {
     const v = JSON.parse(localStorage.getItem(key) || "{}");
-    return { dark: v.dark === true, neon: v.neon === true };
+    return { dark: v?.dark !== false, neon: v?.neon !== false };
   } catch {
     return defaults;
   }
