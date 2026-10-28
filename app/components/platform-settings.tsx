@@ -4,12 +4,14 @@ import {
   useContext,
   useState,
   useEffect,
+  useRef,
   type ReactNode,
 } from "react";
 import { defaultSettings, publicSettings } from "@/lib/platform-config";
 const SettingsContext = createContext(publicSettings(defaultSettings));
 export const usePlatformSettings = () => useContext(SettingsContext);
 export function PlatformProvider({ children }: { children: ReactNode }) {
+  const announcement = useRef<HTMLElement>(null);
   const [settings, setSettings] = useState(publicSettings(defaultSettings));
   useEffect(() => {
     let alive = true;
@@ -32,10 +34,28 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
       document.removeEventListener("visibilitychange", load);
     };
   }, []);
+  useEffect(() => {
+    const update = () =>
+      document.documentElement.style.setProperty(
+        "--announcement-height",
+        `${announcement.current?.getBoundingClientRect().height || 0}px`,
+      );
+    update();
+    const observer = new ResizeObserver(update);
+    if (announcement.current) observer.observe(announcement.current);
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.removeProperty("--announcement-height");
+    };
+  }, [settings.announcementEnabled, settings.announcement]);
   return (
     <SettingsContext.Provider value={settings}>
       {settings.announcementEnabled && settings.announcement && (
-        <aside className="platform-announcement" aria-label="Annonce Mentora">
+        <aside
+          ref={announcement}
+          className="platform-announcement"
+          aria-label="Annonce Mentora"
+        >
           {settings.announcement}
         </aside>
       )}

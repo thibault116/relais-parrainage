@@ -4242,3 +4242,29 @@ textarea {
 .reminder-compose input,.reminder-compose textarea { display:block; width:100%; padding:12px; margin-top:8px; border:1px solid var(--line); border-radius:10px; color:var(--ink); background:var(--surface,white); }
 .reminder-compose textarea { resize:vertical; }
 @media(max-width:600px) { .reminder-compose { padding:16px; } .retention-panel .email-actions { align-items:center; } }
+
+/* Keep the full announcement above both navigation layouts, including wrapped text. */
+.platform-announcement { position:sticky; top:var(--update-banner-height,0px); z-index:60; width:100%; height:auto; min-width:0; padding:14px max(20px,env(safe-area-inset-right)) 14px max(20px,env(safe-area-inset-left)); text-align:center; line-height:1.6; white-space:pre-wrap; overflow-wrap:anywhere; }
+.workspace-sidebar,.header { top:calc(var(--update-banner-height,0px) + var(--announcement-height,0px)); }
+.todo-panel { max-width:1000px; }
+.todo-panel h2 { display:flex; align-items:center; gap:12px; }
+.todo-selector { display:block; margin:22px 0; }
+.todo-selector select { display:block; width:100%; padding:12px; margin-top:8px; border:1px solid var(--line); border-radius:12px; background:var(--surface,white); color:var(--ink); }
+.todo-progress-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.todo-progress-heading strong { font-size:25px; color:var(--purple); white-space:nowrap; }
+.todo-progress { appearance:none; width:100%; height:12px; border:0; border-radius:10px; overflow:hidden; background:var(--lavender); color:var(--purple); }
+.todo-progress::-webkit-progress-bar { background:var(--lavender); border-radius:10px; }
+.todo-progress::-webkit-progress-value { background:var(--purple); border-radius:10px; }
+.todo-progress::-moz-progress-bar { background:var(--purple); border-radius:10px; }
+.todo-add { margin:24px 0; padding:20px; background:var(--paper); border:1px solid var(--line); border-radius:16px; }
+.todo-list textarea { display:block; resize:vertical; min-height:90px; width:100%; padding:12px; margin:8px 0 14px; background:var(--surface,white); color:var(--ink); border:1px solid var(--line); border-radius:10px; }
+.todo-items { list-style:none; padding:0; display:grid; gap:12px; }
+.todo-item { padding:18px; border:1px solid var(--line); border-radius:14px; background:var(--surface,white); }
+.todo-item-main { display:flex; gap:14px; align-items:flex-start; }
+.todo-item-main label { display:flex; gap:12px; align-items:flex-start; flex:1; min-width:0; }
+.todo-item-main label span { white-space:pre-wrap; overflow-wrap:anywhere; }
+.todo-item-main input { accent-color:var(--purple); width:22px; height:22px; margin-top:3px; flex-shrink:0; }
+.todo-item.is-done label span { text-decoration:line-through; color:var(--muted); }
+.todo-item-actions { display:flex; gap:4px; }
+.todo-item-actions button { min-width:40px; min-height:40px; display:grid; place-items:center; }
+@media(max-width:600px) { .todo-item-main { flex-wrap:wrap; } .todo-add { padding:14px; } .todo-item { padding:14px; } .todo-item-actions { margin-left:34px; } }

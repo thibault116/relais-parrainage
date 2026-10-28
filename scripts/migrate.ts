@@ -1,3 +1,4 @@
+import { migrateTasks } from "../lib/tasks";
 import { migratePlatformSettings } from "../lib/platform-settings";
 import { migrateProfileTiming } from "../lib/profile-timing";
 import { migrateEmail } from "../lib/email-migration";
@@ -17,6 +18,7 @@ await migrateProfiles();
 await migrateFollows();
 await migrateSuggestions();
 await migrateAccompaniments();
+await migrateTasks();
 await migrateVerifications();
 await migrateAdministration();
 await migrateVerificationFiles();

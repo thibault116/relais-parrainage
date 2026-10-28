@@ -2,6 +2,7 @@
 import { BrandLogo } from "./brand-logo";
 import {
   Compass,
+  ListChecks,
   Inbox,
   HeartHandshake,
   UserRound,
@@ -78,6 +79,7 @@ const memberItems: Item[] = [
     view: "profile",
     tab: "appearance",
   },
+  {id:"tasks",label:"To-do list",icon:ListChecks,view:"profile",tab:"tasks"},
 ];
 const adminItems: Item[] = [
   {

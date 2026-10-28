@@ -111,6 +111,7 @@ async function api(path: string, options: RequestInit = {}) {
     throw new Error(data.error || "Une erreur est survenue. Réessaie.");
   return data;
 }
+import { TodoLists } from "./components/todo-lists";
 import { WorkspaceNav, WorkspaceMenuPage } from "./components/workspace-nav";
 export default function App() {
   const { discordUrl: DISCORD_GROUP } = usePlatformSettings();
@@ -195,6 +196,7 @@ export default function App() {
         "requests",
         "emails",
         "appearance",
+        "tasks",
       ].includes(tab)
     )
       setProfileTab(tab);
@@ -843,6 +845,8 @@ export default function App() {
                   J’ai déjà un compte
                 </button>
               </div>
+            ) : selectedProfileTab === "tasks" ? (
+              <TodoLists />
             ) : selectedProfileTab === "appearance" ? (
               <AppearanceSettings />
             ) : profileError ? (
@@ -899,6 +903,7 @@ export default function App() {
                     ["requests", "Demandes"],
                     ["emails", "Notifications"],
                     ["appearance", "Paramètres"],
+                    ["tasks", "To-do list"],
                   ].map(([id, label]) => (
                     <button
                       key={id}
