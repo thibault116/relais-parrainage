@@ -49,7 +49,7 @@ import {
   RatingSummary,
   RequestAccompaniment,
 } from "./components/accompaniments";
-import { VerificationBadge, VerificationForm } from "./components/verification";
+import { VerificationBadge } from "./components/verification";
 import { AdminDashboard, ReportProfile } from "./components/admin";
 import { Avatar, ProfilePhoto } from "./components/profile-photo";
 import { Help } from "./components/help";
@@ -159,11 +159,9 @@ export default function App() {
   const [adminTab, setAdminTab] = useState("overview");
   const [verificationDismissed, setVerificationDismissed] = useState(false);
   const selectedProfileTab =
-    profileTab === "verification" && profile?.role !== "mentor"
-      ? "edit"
-      : profileTab === "emails"
-        ? "appearance"
-        : profileTab;
+    profileTab === "verification" || profileTab === "emails"
+      ? "appearance"
+      : profileTab;
   const [toast, setToast] = useState("");
   const notify = (text: string) => setToast(text);
   useEffect(() => {
@@ -469,7 +467,7 @@ export default function App() {
           !profile.verification &&
           !verificationDismissed &&
           !authMode &&
-          !(view === "profile" && selectedProfileTab === "verification") && (
+          !(view === "profile" && selectedProfileTab === "appearance") && (
             <aside
               className="verification-invite"
               aria-label={translateUi("Faire vérifier mon compte de parrain")}
@@ -969,8 +967,14 @@ export default function App() {
               <TodoLists />
             ) : selectedProfileTab === "appearance" ? (
               <MemberSettings
+                mentor={profile?.role === "mentor"}
+                onVerificationChange={refreshProfile}
                 initialSection={
-                  profileTab === "emails" ? "notifications" : "general"
+                  profileTab === "verification"
+                    ? "verification"
+                    : profileTab === "emails"
+                      ? "notifications"
+                      : "general"
                 }
               />
             ) : profileError ? (
@@ -1023,9 +1027,6 @@ export default function App() {
                   aria-label={translateUi("Rubriques de mon profil")}
                 >
                   {[
-                    ...(profile.role === "mentor"
-                      ? [["verification", "Vérification du compte"]]
-                      : []),
                     ["following", "Suivi"],
                     ["edit", "Modifier mon profil"],
                     ["accompaniments", "Mes accompagnements"],
@@ -1117,10 +1118,6 @@ export default function App() {
                       onChange={refreshProfile}
                     />
                   )}
-                  {selectedProfileTab === "verification" &&
-                    profile.role === "mentor" && (
-                      <VerificationForm onChange={refreshProfile} />
-                    )}
                 </div>
               </>
             )}

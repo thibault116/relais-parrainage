@@ -125,15 +125,19 @@ export function VerificationForm({
     [consent, setConsent] = useState(false);
   const load = useCallback(async () => {
     try {
-      const [d, f] = await Promise.all([
-        call("/api/verification"),
-        call("/api/verification-files"),
-      ]);
+      setError("");
+      const d = await call("/api/verification");
       setRecord(d.verification);
       setOpen(d.moderationOpen);
-      setFiles(f.files);
-      if (d.verification && isNew(d.verification.dossier))
-        setDraft(d.verification.dossier);
+      if (d.verification?.status === "approved") {
+        setFiles([]);
+        setDraft(empty());
+      } else {
+        const f = await call("/api/verification-files");
+        setFiles(f.files);
+        if (d.verification && isNew(d.verification.dossier))
+          setDraft(d.verification.dossier);
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -243,6 +247,24 @@ export function VerificationForm({
     } finally {
       setBusy(false);
     }
+  }
+  if (!loading && record?.status === "approved") {
+    return (
+      <section
+        className="verification-panel"
+        aria-label={translateUi("Vérification du compte")}
+      >
+        <h2>
+          <ShieldCheck size={24} aria-hidden="true" />{" "}
+          {translateUi("Ton compte parrain est vérifié")}
+        </h2>
+        <p>
+          {translateUi(
+            "Tu n’as rien à faire : ton compte est déjà validé et tu possèdes le badge « Parrain vérifié ».",
+          )}
+        </p>
+      </section>
+    );
   }
   return (
     <section className="verification-panel">

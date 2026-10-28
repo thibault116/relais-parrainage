@@ -66,13 +66,6 @@ const memberItems: Item[] = [
     tab: "edit",
   },
   {
-    id: "verification",
-    label: "Vérification du compte",
-    icon: ShieldCheck,
-    view: "profile",
-    tab: "verification",
-  },
-  {
     id: "appearance",
     label: "Paramètres",
     icon: Settings,

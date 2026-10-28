@@ -881,5 +881,8 @@
   "Ouvert": "Open",
   "manquante": "missing",
   "Ajout…": "Adding…",
-  "Gère ta langue, ton affichage, ta sécurité et tes notifications.": "Manage your language, appearance, security and notifications."
+  "Gère ta langue, ton affichage, ta sécurité et tes notifications.": "Manage your language, appearance, security and notifications.",
+  "Ton compte parrain est vérifié": "Your mentor account is verified",
+  "Tu n’as rien à faire : ton compte est déjà validé et tu possèdes le badge « Parrain vérifié ».": "Nothing else to do: your account is already approved and you have the Verified mentor badge.",
+  "La vérification concerne uniquement les comptes parrains.": "Verification is only required for mentor accounts."
 }

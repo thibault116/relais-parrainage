@@ -1,16 +1,22 @@
 "use client";
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { authClient } from "@/lib/auth-client";
 import { AppearanceSettings } from "./appearance";
+import { VerificationForm } from "./verification";
 import { EmailPreferences } from "./emails";
 import { useLanguage, t } from "./language";
 export function MemberSettings({
   initialSection = "general",
+  mentor = false,
+  onVerificationChange,
 }: {
   initialSection?: string;
+  mentor?: boolean;
+  onVerificationChange: () => Promise<void>;
 }) {
   const { language, changeLanguage } = useLanguage();
   const [section, setSection] = useState(initialSection);
+  useEffect(() => setSection(initialSection), [initialSection]);
   return (
     <div className="member-settings">
       <nav
@@ -21,6 +27,7 @@ export function MemberSettings({
           ["general", "Général"],
           ["security", "Sécurité"],
           ["notifications", "Notifications"],
+          ...(mentor ? [["verification", "Vérification du compte"]] : []),
         ].map(([id, label]) => (
           <button
             key={id}
@@ -63,6 +70,17 @@ export function MemberSettings({
       )}
       {section === "security" && <PasswordSettings />}
       {section === "notifications" && <EmailPreferences />}
+      {section === "verification" &&
+        (mentor ? (
+          <VerificationForm onChange={onVerificationChange} />
+        ) : (
+          <section className="verification-panel">
+            <h2>{t("Vérification du compte")}</h2>
+            <p>
+              {t("La vérification concerne uniquement les comptes parrains.")}
+            </p>
+          </section>
+        ))}
     </div>
   );
 }
