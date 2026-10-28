@@ -1,4 +1,5 @@
 "use client";
+import { t as translateUi } from "@/app/components/language";
 import { BrandLogo } from "./components/brand-logo";
 import {
   useState,
@@ -57,8 +58,7 @@ import {
   FollowCounts,
   FollowNetwork,
 } from "./components/follows";
-import { AppearanceSettings } from "./components/appearance";
-import { EmailPreferences } from "./components/emails";
+import { MemberSettings } from "./components/member-settings";
 import {
   AvailabilityBadge,
   ProfileDates,
@@ -85,7 +85,7 @@ const views: Record<View, string> = {
   moderation: "Administration",
 };
 const Icon = ({ children }: { children: React.ReactNode }) => (
-  <span className="icon-box">{children}</span>
+  <span className="icon-box">{translateUi(children)}</span>
 );
 const Button = ({
   children,
@@ -97,7 +97,7 @@ const Button = ({
   secondary?: boolean;
 }) => (
   <button className={`btn ${secondary ? "secondary" : ""}`} onClick={onClick}>
-    {children}
+    {translateUi(children)}
   </button>
 );
 async function api(path: string, options: RequestInit = {}) {
@@ -134,7 +134,8 @@ export default function App() {
         : requestedView
       : "home";
   const inWorkspace =
-    !!session && ["directory", "profile", "moderation", "help", "menu"].includes(view);
+    !!session &&
+    ["directory", "profile", "moderation", "help", "menu"].includes(view);
   const navigation: View[] =
     inWorkspace && session
       ? showAdmin
@@ -160,7 +161,9 @@ export default function App() {
   const selectedProfileTab =
     profileTab === "verification" && profile?.role !== "mentor"
       ? "edit"
-      : profileTab;
+      : profileTab === "emails"
+        ? "appearance"
+        : profileTab;
   const [toast, setToast] = useState("");
   const notify = (text: string) => setToast(text);
   useEffect(() => {
@@ -170,7 +173,10 @@ export default function App() {
     }
   }, [toast]);
   const go = (next: View) => {
-    if (!session && (next === "directory" || next === "profile" || next === "menu")) {
+    if (
+      !session &&
+      (next === "directory" || next === "profile" || next === "menu")
+    ) {
       setAuthMode("signup");
       return;
     }
@@ -178,7 +184,13 @@ export default function App() {
     setView(next);
     setMobile(false);
     window.location.hash = next;
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({
+      top: 0,
+      behavior:
+        document.documentElement.dataset.reduceMotion === "true"
+          ? "instant"
+          : "smooth",
+    });
   };
   useEffect(() => {
     const read = () => {
@@ -307,17 +319,18 @@ export default function App() {
             <a
               href="#home"
               className="brand"
-              aria-label="Mentora, accueil"
+              aria-label={translateUi("Mentora, accueil")}
               onClick={() => go("home")}
             >
               <span className="brand-mark">
                 <BrandLogo />
               </span>
-              mentora<span className="brand-dot">.</span>
+              {translateUi("mentora")}
+              <span className="brand-dot">.</span>
             </a>
             <nav
               id="main-navigation"
-              aria-label="Navigation principale"
+              aria-label={translateUi("Navigation principale")}
               className={mobile ? "open" : ""}
             >
               {navigation.map((v) => (
@@ -326,7 +339,7 @@ export default function App() {
                   onClick={() => go(v)}
                   className={view === v ? "active" : ""}
                 >
-                  {views[v]}
+                  {translateUi(views[v])}
                 </button>
               ))}
               {!session && (
@@ -337,20 +350,20 @@ export default function App() {
                     setAuthMode("login");
                   }}
                 >
-                  Se connecter
+                  {translateUi("Se connecter")}
                 </button>
               )}
             </nav>
             <div className="nav-actions">
               <a
                 className="discord-nav"
-                aria-label="Rejoindre le groupe Discord"
+                aria-label={translateUi("Rejoindre le groupe Discord")}
                 href={DISCORD_GROUP}
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 <MessageCircle size={17} />
-                <span>Notre Discord</span>
+                <span>{translateUi("Notre Discord")}</span>
               </a>
               {session ? (
                 <button
@@ -360,7 +373,9 @@ export default function App() {
                   <span className="avatar small">
                     {session.user.name.slice(0, 1).toUpperCase()}
                   </span>
-                  <span>{inWorkspace ? "Mon profil" : "Mon espace"}</span>
+                  <span>
+                    {translateUi(inWorkspace ? "Mon profil" : "Mon espace")}
+                  </span>
                 </button>
               ) : (
                 <>
@@ -368,19 +383,22 @@ export default function App() {
                     className="login-link"
                     onClick={() => setAuthMode("login")}
                   >
-                    Se connecter
+                    {translateUi("Se connecter")}
                   </button>
                   <button
                     className="btn small-btn"
                     onClick={() => join("beginner")}
                   >
-                    Rejoindre <ArrowUpRight size={16} />
+                    {translateUi("Rejoindre ")}
+                    <ArrowUpRight size={16} />
                   </button>
                 </>
               )}
               <button
                 className="mobile-toggle"
-                aria-label={mobile ? "Fermer le menu" : "Ouvrir le menu"}
+                aria-label={translateUi(
+                  mobile ? "Fermer le menu" : "Ouvrir le menu",
+                )}
                 aria-controls="main-navigation"
                 aria-expanded={mobile}
                 onClick={() => setMobile(!mobile)}
@@ -392,17 +410,33 @@ export default function App() {
         </header>
       )}
       <main id="workspace-content">
-        {!isPending && session && view === "menu" && <WorkspaceMenuPage mentor={profile?.role === "mentor"} moderator={showAdmin} discordUrl={DISCORD_GROUP} onNavigate={(next,tab)=>{go(next);if(tab&&next==="profile")setProfileTab(tab);if(tab&&next==="moderation")setAdminTab(tab);}} onSignOut={()=>{void authClient.signOut().then(()=>go("home"));}}/>}
+        {!isPending && session && view === "menu" && (
+          <WorkspaceMenuPage
+            mentor={profile?.role === "mentor"}
+            moderator={showAdmin}
+            discordUrl={DISCORD_GROUP}
+            onNavigate={(next, tab) => {
+              go(next);
+              if (tab && next === "profile") setProfileTab(tab);
+              if (tab && next === "moderation") setAdminTab(tab);
+            }}
+            onSignOut={() => {
+              void authClient.signOut().then(() => go("home"));
+            }}
+          />
+        )}
 
         {preview && (
           <aside className="role-preview-banner" role="status">
             <div>
               <strong>
-                Aperçu {preview === "mentor" ? "parrain" : "débutant"}
+                {translateUi("Aper\u00E7u ")}
+                {translateUi(preview === "mentor" ? "parrain" : "débutant")}
               </strong>
               <p>
-                Navigation du rôle choisi · données de ton compte · profils en
-                lecture seule.
+                {translateUi(
+                  "Navigation du r\u00F4le choisi \u00B7 donn\u00E9es de ton compte \u00B7 profils en lecture seule.",
+                )}
               </p>
             </div>
             <div className="role-preview-actions">
@@ -413,7 +447,8 @@ export default function App() {
                   setProfileTab("edit");
                 }}
               >
-                Voir comme un {preview === "mentor" ? "débutant" : "parrain"}
+                {translateUi("Voir comme un ")}
+                {translateUi(preview === "mentor" ? "débutant" : "parrain")}
               </button>
               <button
                 className="btn small-btn"
@@ -423,7 +458,7 @@ export default function App() {
                   go("moderation");
                 }}
               >
-                Revenir à l’administration
+                {translateUi("Revenir \u00E0 l\u2019administration")}
               </button>
             </div>
           </aside>
@@ -437,20 +472,23 @@ export default function App() {
           !(view === "profile" && selectedProfileTab === "verification") && (
             <aside
               className="verification-invite"
-              aria-label="Faire vérifier mon compte de parrain"
+              aria-label={translateUi("Faire vérifier mon compte de parrain")}
             >
               <button
                 className="verification-invite-close"
-                aria-label="Fermer le rappel de vérification"
+                aria-label={translateUi("Fermer le rappel de vérification")}
                 onClick={() => setVerificationDismissed(true)}
               >
                 <X size={18} />
               </button>
               <ShieldCheck size={26} />
-              <h2>Faire vérifier mon compte de parrain</h2>
+              <h2>
+                {translateUi("Faire v\u00E9rifier mon compte de parrain")}
+              </h2>
               <p>
-                Présente ton expérience en achat-revente pour obtenir ton badge.
-                Déjà envoyé ? Retrouve ici le suivi de ton dossier.
+                {translateUi(
+                  "Pr\u00E9sente ton exp\u00E9rience en achat-revente pour obtenir ton badge. D\u00E9j\u00E0 envoy\u00E9 ? Retrouve ici le suivi de ton dossier.",
+                )}
               </p>
               <button
                 className="btn"
@@ -459,7 +497,7 @@ export default function App() {
                   setProfileTab("verification");
                 }}
               >
-                Faire vérifier mon compte
+                {translateUi("Faire v\u00E9rifier mon compte")}
               </button>
             </aside>
           )}
@@ -477,7 +515,8 @@ export default function App() {
         )}
         {isPending && (
           <div className="empty">
-            <LoaderCircle className="spin" /> Chargement…
+            <LoaderCircle className="spin" />
+            {translateUi(" Chargement\u2026")}
           </div>
         )}
         {!isPending && view === "home" && (
@@ -485,10 +524,12 @@ export default function App() {
             <section className="hero wrap">
               <div className="hero-copy">
                 <span className="eyebrow">
-                  <span className="status-dot" /> LA COMMUNAUTÉ DES RESELLERS
+                  <span className="status-dot" />
+                  {translateUi(" LA COMMUNAUT\u00C9 DES RESELLERS")}
                 </span>
                 <h1>
-                  L’entraide entre resellers commence <span>ici.</span>
+                  {translateUi("L\u2019entraide entre resellers commence ")}
+                  <span>{translateUi("ici.")}</span>
                   <svg
                     className="underline"
                     viewBox="0 0 350 20"
@@ -498,9 +539,13 @@ export default function App() {
                   </svg>
                 </h1>
                 <p>
-                  Tu débutes dans <strong>l’achat-revente de vêtements</strong> ?
-                  Échange avec des revendeurs expérimentés pour progresser sur
-                  Vinted, Leboncoin, eBay, Whatnot et bien d’autres plateformes.
+                  {translateUi("Tu d\u00E9butes dans ")}
+                  <strong>
+                    {translateUi("l\u2019achat-revente de v\u00EAtements")}
+                  </strong>
+                  {translateUi(
+                    " ? \u00C9change avec des revendeurs exp\u00E9riment\u00E9s pour progresser sur Vinted, Leboncoin, eBay, Whatnot et bien d\u2019autres plateformes.",
+                  )}
                 </p>
                 <div className="hero-buttons">
                   <Button
@@ -509,77 +554,94 @@ export default function App() {
                       go("directory");
                     }}
                   >
-                    Trouver mon parrain <ArrowUpRight size={19} />
+                    {translateUi("Trouver mon parrain ")}
+                    <ArrowUpRight size={19} />
                   </Button>
                   <Button secondary onClick={() => join("mentor")}>
-                    Devenir parrain
+                    {translateUi("Devenir parrain")}
                   </Button>
                 </div>
                 <div className="hero-proof">
                   <span>
-                    <Check size={15} /> Bêta gratuite pour le moment
+                    <Check size={15} />
+                    {translateUi(" B\u00EAta gratuite pour le moment")}
                   </span>
                   <span>
-                    <Check size={15} /> Entraide entre membres
+                    <Check size={15} />
+                    {translateUi(" Entraide entre membres")}
                   </span>
                 </div>
               </div>
               <div
                 className="hero-art"
-                aria-label="Illustration d’un binôme : un débutant pose ses questions et un parrain partage son expérience"
+                aria-label={translateUi(
+                  "Illustration d’un binôme : un débutant pose ses questions et un parrain partage son expérience",
+                )}
               >
                 <div className="orbit orbit-one" />
                 <div className="orbit orbit-two" />
                 <div className="spark star-one">✳</div>
                 <div className="floating-note">
-                  <span className="status-dot" /> Un message peut tout
-                  débloquer.
+                  <span className="status-dot" />
+                  {translateUi(" Un message peut tout d\u00E9bloquer.")}
                 </div>
                 <div className="person-card mentor-card">
                   <span className="card-kicker">
-                    <Sparkles size={14} /> LE COUP DE POUCE
+                    <Sparkles size={14} />
+                    {translateUi(" LE COUP DE POUCE")}
                   </span>
                   <div className="person-heading">
                     <div className="illustrated-avatar purple">
                       <span>✦</span>
                     </div>
                     <div>
-                      <h3>Ton futur parrain</h3>
-                      <span>Déjà passé par là.</span>
+                      <h3>{translateUi("Ton futur parrain")}</h3>
+                      <span>
+                        {translateUi("D\u00E9j\u00E0 pass\u00E9 par l\u00E0.")}
+                      </span>
                     </div>
                     <span className="mini-check">
                       <Check size={16} />
                     </span>
                   </div>
                   <div className="mini-tags">
-                    <span>De l’expérience</span>
-                    <span>De bons conseils</span>
+                    <span>{translateUi("De l\u2019exp\u00E9rience")}</span>
+                    <span>{translateUi("De bons conseils")}</span>
                   </div>
                 </div>
                 <div className="connector-line" />
                 <div className="chat-bubble bubble-one">
-                  J’ai trouvé ma première pièce.
+                  {translateUi(
+                    "J\u2019ai trouv\u00E9 ma premi\u00E8re pi\u00E8ce.",
+                  )}
                   <br />
-                  Tu m’aides à fixer le prix ? <span>↗</span>
+                  {translateUi("Tu m\u2019aides \u00E0 fixer le prix ? ")}
+                  <span>↗</span>
                 </div>
                 <div className="chat-bubble bubble-two">
-                  Bien sûr, on regarde ça ensemble ! <CheckCheck size={16} />
+                  {translateUi("Bien s\u00FBr, on regarde \u00E7a ensemble ! ")}
+                  <CheckCheck size={16} />
                 </div>
                 <div className="person-card beginner-card">
                   <span className="card-kicker">
-                    <Sprout size={14} /> LE PROCHAIN CHAPITRE
+                    <Sprout size={14} />
+                    {translateUi(" LE PROCHAIN CHAPITRE")}
                   </span>
                   <div className="person-heading">
                     <div className="illustrated-avatar peach">
                       <span>↗</span>
                     </div>
                     <div>
-                      <h3>Toi, bien accompagné.</h3>
-                      <span>Un cap après l’autre.</span>
+                      <h3>{translateUi("Toi, bien accompagn\u00E9.")}</h3>
+                      <span>
+                        {translateUi("Un cap apr\u00E8s l\u2019autre.")}
+                      </span>
                     </div>
                   </div>
                   <div className="progress-label">
-                    <span>La confiance, ça se construit.</span>
+                    <span>
+                      {translateUi("La confiance, \u00E7a se construit.")}
+                    </span>
                     <HeartHandshake size={17} />
                   </div>
                   <div className="mini-progress">
@@ -591,15 +653,21 @@ export default function App() {
                   </div>
                 </div>
                 <span className="art-caption">
-                  Un binôme. Des échanges. De vraies avancées.
+                  {translateUi(
+                    "Un bin\u00F4me. Des \u00E9changes. De vraies avanc\u00E9es.",
+                  )}
                 </span>
               </div>
             </section>
             <section className="wrap concrete-help">
               <span className="eyebrow">
-                CONCRÈTEMENT, TON PARRAIN PEUT T’AIDER À…
+                {translateUi(
+                  "CONCR\u00C8TEMENT, TON PARRAIN PEUT T\u2019AIDER \u00C0\u2026",
+                )}
               </span>
-              <h2>Des réponses à tes vraies questions.</h2>
+              <h2>
+                {translateUi("Des r\u00E9ponses \u00E0 tes vraies questions.")}
+              </h2>
               <div className="help-grid">
                 {[
                   [
@@ -624,44 +692,50 @@ export default function App() {
                   ],
                 ].map(([n, title, description]) => (
                   <article key={n}>
-                    <span>{n}</span>
-                    <h3>{title}</h3>
-                    <p>{description}</p>
+                    <span>{translateUi(n)}</span>
+                    <h3>{translateUi(title)}</h3>
+                    <p>{translateUi(description)}</p>
                   </article>
                 ))}
               </div>
               <p className="small-text">
-                Selon ses spécialités, ton parrain t’explique sa démarche par
-                messages. Il t’aide à apprendre ; il ne certifie pas
-                l’authenticité de tes pièces.
+                {translateUi(
+                  "Selon ses sp\u00E9cialit\u00E9s, ton parrain t\u2019explique sa d\u00E9marche par messages. Il t\u2019aide \u00E0 apprendre ; il ne certifie pas l\u2019authenticit\u00E9 de tes pi\u00E8ces.",
+                )}
               </p>
             </section>
             <section className="promise-strip">
               <div className="wrap promise-inner">
                 <span>
-                  <MessageCircle /> Des échanges sur Discord
+                  <MessageCircle />
+                  {translateUi(" Des \u00E9changes sur Discord")}
                 </span>
                 <span>
-                  <Clock /> Pas d’appels imposés
+                  <Clock />
+                  {translateUi(" Pas d\u2019appels impos\u00E9s")}
                 </span>
                 <span>
-                  <Users /> Un réseau qui grandit
+                  <Users />
+                  {translateUi(" Un r\u00E9seau qui grandit")}
                 </span>
                 <span>
-                  <HeartHandshake /> L’expérience se partage
+                  <HeartHandshake />
+                  {translateUi(" L\u2019exp\u00E9rience se partage")}
                 </span>
               </div>
             </section>
             <section className="wrap section">
               <div className="section-top">
                 <div>
-                  <span className="eyebrow">CHACUN SON POINT DE DÉPART</span>
-                  <h2>Tu es au bon endroit.</h2>
+                  <span className="eyebrow">
+                    {translateUi("CHACUN SON POINT DE D\u00C9PART")}
+                  </span>
+                  <h2>{translateUi("Tu es au bon endroit.")}</h2>
                 </div>
                 <p>
-                  On a tous été débutants.
+                  {translateUi("On a tous \u00E9t\u00E9 d\u00E9butants.")}
                   <br />
-                  On peut tous faire la différence.
+                  {translateUi("On peut tous faire la diff\u00E9rence.")}
                 </p>
               </div>
               <div className="role-grid">
@@ -669,57 +743,76 @@ export default function App() {
                   <Icon>
                     <Sprout />
                   </Icon>
-                  <span className="role-label">JE DÉMARRE</span>
+                  <span className="role-label">
+                    {translateUi("JE D\u00C9MARRE")}
+                  </span>
                   <h3>
-                    Moins de doutes.
+                    {translateUi("Moins de doutes.")}
                     <br />
-                    Plus de premiers pas.
+                    {translateUi("Plus de premiers pas.")}
                   </h3>
                   <p>
-                    Sourcing, prix, annonces, premières ventes… Pose tes
-                    questions à quelqu’un qui connaît le chemin.
+                    {translateUi(
+                      "Sourcing, prix, annonces, premi\u00E8res ventes\u2026 Pose tes questions \u00E0 quelqu\u2019un qui conna\u00EEt le chemin.",
+                    )}
                   </p>
                   <ul>
                     <li>
-                      <Check /> Un interlocuteur qui te connaît
+                      <Check />
+                      {translateUi(" Un interlocuteur qui te conna\u00EEt")}
                     </li>
                     <li>
-                      <Check /> Des conseils adaptés à tes objectifs
+                      <Check />
+                      {translateUi(
+                        " Des conseils adapt\u00E9s \u00E0 tes objectifs",
+                      )}
                     </li>
                     <li>
-                      <Check /> Un accompagnement par messages
+                      <Check />
+                      {translateUi(" Un accompagnement par messages")}
                     </li>
                   </ul>
                   <button className="text-btn" onClick={() => join("beginner")}>
-                    Je cherche un parrain <ArrowRight size={18} />
+                    {translateUi("Je cherche un parrain ")}
+                    <ArrowRight size={18} />
                   </button>
                 </article>
                 <article className="role-card mentor-role">
                   <Icon>
                     <Sparkles />
                   </Icon>
-                  <span className="role-label">JE TRANSMETS</span>
+                  <span className="role-label">
+                    {translateUi("JE TRANSMETS")}
+                  </span>
                   <h3>
-                    Ton expérience a<br />
-                    de la valeur. Partage-la.
+                    {translateUi("Ton exp\u00E9rience a")}
+                    <br />
+                    {translateUi("de la valeur. Partage-la.")}
                   </h3>
                   <p>
-                    Tu fais de l’achat-revente depuis au moins 6 mois ? Aide un
-                    débutant à progresser et crée des liens qui durent.
+                    {translateUi(
+                      "Tu fais de l\u2019achat-revente depuis au moins 6 mois ? Aide un d\u00E9butant \u00E0 progresser et cr\u00E9e des liens qui durent.",
+                    )}
                   </p>
                   <ul>
                     <li>
-                      <Check /> Tu choisis tes disponibilités
+                      <Check />
+                      {translateUi(" Tu choisis tes disponibilit\u00E9s")}
                     </li>
                     <li>
-                      <Check /> Tu fixes le nombre de places
+                      <Check />
+                      {translateUi(" Tu fixes le nombre de places")}
                     </li>
                     <li>
-                      <Check /> Tu construis ton réseau, naturellement
+                      <Check />
+                      {translateUi(
+                        " Tu construis ton r\u00E9seau, naturellement",
+                      )}
                     </li>
                   </ul>
                   <button className="text-btn" onClick={() => join("mentor")}>
-                    Je deviens parrain <ArrowRight size={18} />
+                    {translateUi("Je deviens parrain ")}
+                    <ArrowRight size={18} />
                   </button>
                 </article>
               </div>
@@ -727,11 +820,16 @@ export default function App() {
             <section className="wrap steps-section">
               <div className="section-top">
                 <div>
-                  <span className="eyebrow">SIMPLE COMME UN BONJOUR</span>
-                  <h2>Le bon binôme, en trois étapes.</h2>
+                  <span className="eyebrow">
+                    {translateUi("SIMPLE COMME UN BONJOUR")}
+                  </span>
+                  <h2>
+                    {translateUi("Le bon bin\u00F4me, en trois \u00E9tapes.")}
+                  </h2>
                 </div>
                 <button className="text-btn" onClick={() => go("guide")}>
-                  Comment ça marche <ArrowUpRight size={18} />
+                  {translateUi("Comment \u00E7a marche ")}
+                  <ArrowUpRight size={18} />
                 </button>
               </div>
               <div className="steps-grid">
@@ -753,9 +851,9 @@ export default function App() {
                   ],
                 ].map(([n, t, d]) => (
                   <article key={n}>
-                    <span className="step-num">{n}</span>
-                    <h3>{t}</h3>
-                    <p>{d}</p>
+                    <span className="step-num">{translateUi(n)}</span>
+                    <h3>{translateUi(t)}</h3>
+                    <p>{translateUi(d)}</p>
                   </article>
                 ))}
               </div>
@@ -764,15 +862,21 @@ export default function App() {
               <div className="bottom-cta">
                 <span className="cta-spark">✳</span>
                 <div>
-                  <span className="eyebrow">LE RÉSEAU COMMENCE À DEUX.</span>
-                  <h2>Tu n’as pas à tout trouver seul.</h2>
+                  <span className="eyebrow">
+                    {translateUi("LE R\u00C9SEAU COMMENCE \u00C0 DEUX.")}
+                  </span>
+                  <h2>
+                    {translateUi("Tu n\u2019as pas \u00E0 tout trouver seul.")}
+                  </h2>
                   <p>
-                    Le prochain message pourrait être le début d’une belle
-                    rencontre.
+                    {translateUi(
+                      "Le prochain message pourrait \u00EAtre le d\u00E9but d\u2019une belle rencontre.",
+                    )}
                   </p>
                 </div>
                 <Button onClick={() => join("beginner")}>
-                  Créer mon profil <ArrowUpRight size={19} />
+                  {translateUi("Cr\u00E9er mon profil ")}
+                  <ArrowUpRight size={19} />
                 </Button>
               </div>
             </section>
@@ -799,7 +903,7 @@ export default function App() {
         {!isPending && view === "faq" && (
           <section className="wrap guide">
             <div className="page-heading">
-              <h1>Tes questions, nos réponses.</h1>
+              <h1>{translateUi("Tes questions, nos r\u00E9ponses.")}</h1>
             </div>
             <FAQ />
           </section>
@@ -807,52 +911,74 @@ export default function App() {
         {!isPending && session && view === "profile" && (
           <section className="wrap profile-page" inert={!!preview}>
             <div className="page-heading">
-              <span className="eyebrow">TON ESPACE</span>
+              <span className="eyebrow">{translateUi("TON ESPACE")}</span>
               <h1>
-                Mon profil<span>.</span>
+                {translateUi(
+                  selectedProfileTab === "appearance"
+                    ? "Paramètres"
+                    : "Mon profil",
+                )}
+                <span>.</span>
               </h1>
               <p>
-                Présente ton activité de revente et retrouve tes binômes et ton
-                réseau.
+                {translateUi(
+                  selectedProfileTab === "appearance"
+                    ? "Gère ta langue, ton affichage, ta sécurité et tes notifications."
+                    : "Pr\u00E9sente ton activit\u00E9 de revente et retrouve tes bin\u00F4mes et ton r\u00E9seau.",
+                )}
               </p>
             </div>
-            {moderationBlock && (
-              <p className="error" role="alert">
-                Ton profil est masqué par la modération : {moderationBlock}
-              </p>
+            {translateUi(
+              moderationBlock && (
+                <p className="error" role="alert">
+                  {translateUi(
+                    "Ton profil est masqu\u00E9 par la mod\u00E9ration : ",
+                  )}
+                  {translateUi(moderationBlock)}
+                </p>
+              ),
             )}
             {isPending || profileLoading ? (
               <div className="empty">
-                <LoaderCircle className="spin" /> Chargement de ton profil…
+                <LoaderCircle className="spin" />
+                {translateUi(" Chargement de ton profil\u2026")}
               </div>
             ) : !session ? (
               <div className="empty">
                 <Icon>
                   <Users />
                 </Icon>
-                <h2>Ton histoire commence ici.</h2>
+                <h2>{translateUi("Ton histoire commence ici.")}</h2>
                 <p>
-                  Crée ton profil pour rencontrer les membres et partager vos
-                  pseudos Discord.
+                  {translateUi(
+                    "Cr\u00E9e ton profil pour rencontrer les membres et partager vos pseudos Discord.",
+                  )}
                 </p>
                 <Button onClick={() => setAuthMode("signup")}>
-                  Créer mon compte <ArrowRight size={18} />
+                  {translateUi("Cr\u00E9er mon compte ")}
+                  <ArrowRight size={18} />
                 </Button>
                 <button
                   className="text-btn"
                   onClick={() => setAuthMode("login")}
                 >
-                  J’ai déjà un compte
+                  {translateUi("J\u2019ai d\u00E9j\u00E0 un compte")}
                 </button>
               </div>
             ) : selectedProfileTab === "tasks" ? (
               <TodoLists />
             ) : selectedProfileTab === "appearance" ? (
-              <AppearanceSettings />
+              <MemberSettings
+                initialSection={
+                  profileTab === "emails" ? "notifications" : "general"
+                }
+              />
             ) : profileError ? (
               <div className="empty">
-                <p role="alert">{profileError}</p>
-                <Button onClick={() => void loadMe()}>Réessayer</Button>
+                <p role="alert">{translateUi(profileError)}</p>
+                <Button onClick={() => void loadMe()}>
+                  {translateUi("R\u00E9essayer")}
+                </Button>
               </div>
             ) : !profile ? (
               <ProfileForm
@@ -875,9 +1001,11 @@ export default function App() {
                 <div className="profile-toolbar">
                   <span className={`badge ${profile.visible ? "green" : ""}`}>
                     {profile.visible ? <Eye size={14} /> : <EyeOff size={14} />}{" "}
-                    {profile.visible
-                      ? "Visible dans l’annuaire"
-                      : "Profil masqué"}
+                    {translateUi(
+                      profile.visible
+                        ? "Visible dans l’annuaire"
+                        : "Profil masqué",
+                    )}
                   </span>
                   <button
                     className="text-btn muted"
@@ -886,12 +1014,13 @@ export default function App() {
                       go("home");
                     }}
                   >
-                    <LogOut size={16} /> Se déconnecter
+                    <LogOut size={16} />
+                    {translateUi(" Se d\u00E9connecter")}
                   </button>
                 </div>
                 <nav
                   className="profile-tabs"
-                  aria-label="Rubriques de mon profil"
+                  aria-label={translateUi("Rubriques de mon profil")}
                 >
                   {[
                     ...(profile.role === "mentor"
@@ -901,7 +1030,6 @@ export default function App() {
                     ["edit", "Modifier mon profil"],
                     ["accompaniments", "Mes accompagnements"],
                     ["requests", "Demandes"],
-                    ["emails", "Notifications"],
                     ["appearance", "Paramètres"],
                     ["tasks", "To-do list"],
                   ].map(([id, label]) => (
@@ -914,12 +1042,11 @@ export default function App() {
                         setProfileTab(id);
                       }}
                     >
-                      {label}
+                      {translateUi(label)}
                     </button>
                   ))}
                 </nav>
                 <div className="profile-tab-content">
-                  {selectedProfileTab === "emails" && <EmailPreferences />}
                   {selectedProfileTab === "edit" && (
                     <>
                       <ProfilePhoto
@@ -951,9 +1078,11 @@ export default function App() {
                           ) : (
                             <Eye size={18} />
                           )}
-                          {profile.visible
-                            ? "Masquer mon profil"
-                            : "Rendre mon profil visible"}
+                          {translateUi(
+                            profile.visible
+                              ? "Masquer mon profil"
+                              : "Rendre mon profil visible",
+                          )}
                         </button>
                         <DeleteProfile
                           onDeleted={() => {
@@ -965,8 +1094,9 @@ export default function App() {
                         />
                       </div>
                       <p className="small-text">
-                        Un profil masqué disparaît de l’annuaire. Les contacts
-                        déjà échangés sur Discord restent disponibles.
+                        {translateUi(
+                          "Un profil masqu\u00E9 dispara\u00EEt de l\u2019annuaire. Les contacts d\u00E9j\u00E0 \u00E9chang\u00E9s sur Discord restent disponibles.",
+                        )}
                       </p>
                     </>
                   )}
@@ -996,17 +1126,43 @@ export default function App() {
             )}
           </section>
         )}
-        {!isPending && inWorkspace && view !== "menu" && <aside className="member-discord"><MessageCircle size={25}/><div><strong>Retrouve la communauté sur Discord</strong><p>Échange avec d’autres revendeurs et continue la discussion avec ton binôme.</p></div><a className="btn secondary" href={DISCORD_GROUP} target="_blank" rel="noopener noreferrer">Rejoindre Discord <ArrowUpRight size={18}/></a></aside>}
+        {!isPending && inWorkspace && view !== "menu" && (
+          <aside className="member-discord">
+            <MessageCircle size={25} />
+            <div>
+              <strong>
+                {translateUi("Retrouve la communaut\u00E9 sur Discord")}
+              </strong>
+              <p>
+                {translateUi(
+                  "\u00C9change avec d\u2019autres revendeurs et continue la discussion avec ton bin\u00F4me.",
+                )}
+              </p>
+            </div>
+            <a
+              className="btn secondary"
+              href={DISCORD_GROUP}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {translateUi("Rejoindre Discord ")}
+              <ArrowUpRight size={18} />
+            </a>
+          </aside>
+        )}
       </main>
       {!inWorkspace && !isPending && (
         <>
           <section className="wrap discord-community">
             <div>
-              <span className="eyebrow">ON SE RETROUVE SUR DISCORD</span>
-              <h2>La communauté t’attend.</h2>
+              <span className="eyebrow">
+                {translateUi("ON SE RETROUVE SUR DISCORD")}
+              </span>
+              <h2>{translateUi("La communaut\u00E9 t\u2019attend.")}</h2>
               <p>
-                Rejoins le groupe pour échanger avec les membres et retrouver
-                ton binôme.
+                {translateUi(
+                  "Rejoins le groupe pour \u00E9changer avec les membres et retrouver ton bin\u00F4me.",
+                )}
               </p>
             </div>
             <a
@@ -1015,7 +1171,8 @@ export default function App() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <MessageCircle size={19} /> Rejoindre le groupe Discord{" "}
+              <MessageCircle size={19} />
+              {translateUi(" Rejoindre le groupe Discord")}{" "}
               <ArrowUpRight size={17} />
             </a>
           </section>
@@ -1024,11 +1181,16 @@ export default function App() {
               <span className="brand-mark">
                 <BrandLogo />
               </span>
-              mentora<span className="brand-dot">.</span>
+              {translateUi("mentora")}
+              <span className="brand-dot">.</span>
             </a>
-            <p>On avance mieux ensemble.</p>
-            <button onClick={() => go("guide")}>La charte d’entraide</button>
-            <span>Une initiative indépendante, entre membres.</span>
+            <p>{translateUi("On avance mieux ensemble.")}</p>
+            <button onClick={() => go("guide")}>
+              {translateUi("La charte d\u2019entraide")}
+            </button>
+            <span>
+              {translateUi("Une initiative ind\u00E9pendante, entre membres.")}
+            </span>
           </footer>
         </>
       )}
@@ -1051,17 +1213,19 @@ export default function App() {
           }}
         />
       )}
-      {toast && (
-        <div className="toast" role="status">
-          <CheckCircle2 size={18} />
-          {toast}
-          <button
-            onClick={() => setToast("")}
-            aria-label="Fermer la notification"
-          >
-            <X size={15} />
-          </button>
-        </div>
+      {translateUi(
+        toast && (
+          <div className="toast" role="status">
+            <CheckCircle2 size={18} />
+            {translateUi(toast)}
+            <button
+              onClick={() => setToast("")}
+              aria-label={translateUi("Fermer la notification")}
+            >
+              <X size={15} />
+            </button>
+          </div>
+        ),
       )}
     </div>
   );
@@ -1156,22 +1320,30 @@ function AuthModal({
           }
         }}
       >
-        <button className="close-btn" onClick={close} aria-label="Fermer">
+        <button
+          className="close-btn"
+          onClick={close}
+          aria-label={translateUi("Fermer")}
+        >
           <X />
         </button>
         <Icon>
           <HeartHandshake />
         </Icon>
-        <span className="eyebrow">BIENVENUE CHEZ MENTORA</span>
+        <span className="eyebrow">{translateUi("BIENVENUE CHEZ MENTORA")}</span>
         <h2 id="auth-title">
-          {mode === "signup"
-            ? "Les bonnes rencontres commencent ici."
-            : "Heureux de te retrouver."}
+          {translateUi(
+            mode === "signup"
+              ? "Les bonnes rencontres commencent ici."
+              : "Heureux de te retrouver.",
+          )}
         </h2>
         <p>
-          {mode === "signup"
-            ? "Un compte, puis quelques questions pour trouver ton binôme."
-            : "Connecte-toi pour retrouver ton profil."}
+          {translateUi(
+            mode === "signup"
+              ? "Un compte, puis quelques questions pour trouver ton binôme."
+              : "Connecte-toi pour retrouver ton profil.",
+          )}
         </p>
         {mode === "signup" && (
           <div className="role-switch">
@@ -1179,20 +1351,22 @@ function AuthModal({
               className={role === "beginner" ? "selected" : ""}
               onClick={() => setRole("beginner")}
             >
-              <Sprout /> Je suis débutant
+              <Sprout />
+              {translateUi(" Je suis d\u00E9butant")}
             </button>
             <button
               className={role === "mentor" ? "selected" : ""}
               onClick={() => setRole("mentor")}
             >
-              <Sparkles /> Je suis parrain
+              <Sparkles />
+              {translateUi(" Je suis parrain")}
             </button>
           </div>
         )}
         <form onSubmit={submit}>
           {mode === "signup" && (
             <label>
-              Prénom ou surnom
+              {translateUi("Pr\u00E9nom ou surnom")}
               <input
                 name="name"
                 autoComplete="nickname"
@@ -1204,7 +1378,8 @@ function AuthModal({
             </label>
           )}
           <label>
-            Adresse e-mail <span className="optional">privée</span>
+            {translateUi("Adresse e-mail ")}
+            <span className="optional">{translateUi("priv\u00E9e")}</span>
             <input
               name="email"
               type="email"
@@ -1214,7 +1389,7 @@ function AuthModal({
             />
           </label>
           <label>
-            Mot de passe
+            {translateUi("Mot de passe")}
             <input
               name="password"
               type="password"
@@ -1228,35 +1403,44 @@ function AuthModal({
           </label>
           {mode === "signup" && (
             <p className="small-text">
-              Au moins 12 caractères. Conserve-le dans ton gestionnaire de mots
-              de passe.
+              {translateUi(
+                "Au moins 12 caract\u00E8res. Conserve-le dans ton gestionnaire de mots de passe.",
+              )}
             </p>
           )}
-          {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
+          {translateUi(
+            error && (
+              <p className="error" role="alert">
+                {translateUi(error)}
+              </p>
+            ),
           )}
           <button className="btn full" disabled={busy}>
             {busy ? (
               <LoaderCircle className="spin" size={18} />
             ) : (
               <>
-                {mode === "signup" ? "Créer mon compte" : "Me connecter"}{" "}
+                {translateUi(
+                  mode === "signup" ? "Créer mon compte" : "Me connecter",
+                )}{" "}
                 <ArrowRight size={18} />
               </>
             )}
           </button>
         </form>
         <p className="auth-switch">
-          {mode === "signup" ? "Déjà membre ?" : "Pas encore membre ?"}{" "}
+          {translateUi(
+            mode === "signup" ? "Déjà membre ?" : "Pas encore membre ?",
+          )}{" "}
           <button
             onClick={() => {
               setMode(mode === "signup" ? "login" : "signup");
               setError("");
             }}
           >
-            {mode === "signup" ? "Se connecter" : "Créer un compte"}
+            {translateUi(
+              mode === "signup" ? "Se connecter" : "Créer un compte",
+            )}
           </button>
         </p>
       </section>
@@ -1274,9 +1458,11 @@ function Field({
 }) {
   return (
     <label>
-      {label}
-      {children}
-      {hint && <span className="field-hint">{hint}</span>}
+      {translateUi(label)}
+      {translateUi(children)}
+      {translateUi(
+        hint && <span className="field-hint">{translateUi(hint)}</span>,
+      )}
     </label>
   );
 }
@@ -1329,17 +1515,21 @@ function ProfileForm({
     <div className="onboarding">
       <aside>
         <span className="eyebrow">
-          {onCancel ? "MON PROFIL" : "FAISONS CONNAISSANCE"}
+          {translateUi(onCancel ? "MON PROFIL" : "FAISONS CONNAISSANCE")}
         </span>
         <h2>
-          {onCancel
-            ? "Mets ton profil à jour."
-            : "Le bon binôme commence par toi."}
+          {translateUi(
+            onCancel
+              ? "Mets ton profil à jour."
+              : "Le bon binôme commence par toi.",
+          )}
         </h2>
         <p>
-          {onCancel
-            ? "Modifie ta présentation, ton parcours et tes disponibilités, puis enregistre à la dernière étape."
-            : "Quelques informations pour se rencontrer autour des mêmes envies."}
+          {translateUi(
+            onCancel
+              ? "Modifie ta présentation, ton parcours et tes disponibilités, puis enregistre à la dernière étape."
+              : "Quelques informations pour se rencontrer autour des mêmes envies.",
+          )}
         </p>
         <ol className="form-steps">
           {["Qui tu es", "Ton parcours", "Votre rythme"].map((s, i) => (
@@ -1348,15 +1538,16 @@ function ProfileForm({
               className={step === i ? "current" : step > i ? "done" : ""}
             >
               <span>{step > i ? <Check size={15} /> : i + 1}</span>
-              {s}
+              {translateUi(s)}
             </li>
           ))}
         </ol>
         <div className="privacy-note">
           <ShieldCheck />
           <p>
-            Ton e-mail reste privé. Ton pseudo Discord est accessible uniquement
-            aux personnes avec lesquelles un binôme a été accepté.
+            {translateUi(
+              "Ton e-mail reste priv\u00E9. Ton pseudo Discord est accessible uniquement aux personnes avec lesquelles un bin\u00F4me a \u00E9t\u00E9 accept\u00E9.",
+            )}
           </p>
         </div>
       </aside>
@@ -1364,27 +1555,33 @@ function ProfileForm({
         {!onCancel && (
           <div className="questionnaire-login">
             <p>
-              Tu as déjà un compte Mentora ? Retrouve ton profil avec ton e-mail
-              et ton mot de passe.
+              {translateUi(
+                "Tu as d\u00E9j\u00E0 un compte Mentora ? Retrouve ton profil avec ton e-mail et ton mot de passe.",
+              )}
             </p>
             <button type="button" className="btn secondary" onClick={onLogin}>
-              Se connecter à mon compte
+              {translateUi("Se connecter \u00E0 mon compte")}
             </button>
             <small>
-              Si tu changes de compte, les réponses non enregistrées de ce
-              questionnaire ne seront pas conservées.
+              {translateUi(
+                "Si tu changes de compte, les r\u00E9ponses non enregistr\u00E9es de ce questionnaire ne seront pas conserv\u00E9es.",
+              )}
             </small>
           </div>
         )}
-        <span className="eyebrow">ÉTAPE {step + 1} SUR 3</span>
+        <span className="eyebrow">
+          {translateUi("\u00C9TAPE ")}
+          {step + 1}
+          {translateUi(" SUR 3")}
+        </span>
         <h2>
-          {
+          {translateUi(
             [
               "Présente-toi.",
               "À chacun son parcours.",
               "Un rythme qui vous ressemble.",
-            ][step]
-          }
+            ][step],
+          )}
         </h2>
         {step === 0 && (
           <>
@@ -1396,7 +1593,8 @@ function ProfileForm({
                 }}
                 className={draft.role === "beginner" ? "selected" : ""}
               >
-                <Sprout /> Débutant
+                <Sprout />
+                {translateUi(" D\u00E9butant")}
               </button>
               <button
                 type="button"
@@ -1409,11 +1607,12 @@ function ProfileForm({
                 }}
                 className={draft.role === "mentor" ? "selected" : ""}
               >
-                <Sparkles /> Parrain
+                <Sparkles />
+                {translateUi(" Parrain")}
               </button>
             </div>
             <div className="fields">
-              <Field label="Prénom ou surnom">
+              <Field label={translateUi("Prénom ou surnom")}>
                 <input
                   required
                   minLength={2}
@@ -1423,8 +1622,10 @@ function ProfileForm({
                 />
               </Field>
               <Field
-                label="Tranche d’âge"
-                hint="Facultatif. N’indique pas ta date de naissance."
+                label={translateUi("Tranche d’âge")}
+                hint={translateUi(
+                  "Facultatif. N’indique pas ta date de naissance.",
+                )}
               >
                 <select
                   value={draft.age}
@@ -1439,13 +1640,15 @@ function ProfileForm({
                     "25–34 ans",
                     "35 ans et plus",
                   ].map((x) => (
-                    <option key={x}>{x}</option>
+                    <option key={x} value={x}>
+                      {translateUi(x)}
+                    </option>
                   ))}
                 </select>
               </Field>
               <Field
-                label="Pseudo Discord"
-                hint="Ton nom d’utilisateur unique, sans @."
+                label={translateUi("Pseudo Discord")}
+                hint={translateUi("Ton nom d’utilisateur unique, sans @.")}
               >
                 <input
                   required
@@ -1456,23 +1659,25 @@ function ProfileForm({
                   onChange={(e) =>
                     update("discord", e.target.value.toLowerCase())
                   }
-                  placeholder="ex. alex.resell"
+                  placeholder={translateUi("ex. alex.resell")}
                 />
               </Field>
             </div>
             <Field
-              label="Identifiant Discord numérique (facultatif)"
-              hint="Active le mode développeur sur Discord, puis « Copier l’identifiant utilisateur ». Il permet un lien direct vers ton profil ; sinon, ton pseudo pourra être copié."
+              label={translateUi("Identifiant Discord numérique (facultatif)")}
+              hint={translateUi(
+                "Active le mode développeur sur Discord, puis « Copier l’identifiant utilisateur ». Il permet un lien direct vers ton profil ; sinon, ton pseudo pourra être copié.",
+              )}
             >
               <input
                 value={draft.discordId}
                 inputMode="numeric"
                 pattern="[0-9]{17,20}"
                 onChange={(e) => update("discordId", e.target.value)}
-                placeholder="17 à 20 chiffres"
+                placeholder={translateUi("17 à 20 chiffres")}
               />
             </Field>
-            <Field label="Quelques mots sur toi">
+            <Field label={translateUi("Quelques mots sur toi")}>
               <textarea
                 required
                 minLength={20}
@@ -1480,7 +1685,9 @@ function ProfileForm({
                 rows={4}
                 value={draft.bio}
                 onChange={(e) => update("bio", e.target.value)}
-                placeholder="Ton état d’esprit, ce que tu aimes, ce que tu aimerais partager…"
+                placeholder={translateUi(
+                  "Ton état d’esprit, ce que tu aimes, ce que tu aimerais partager…",
+                )}
               />
             </Field>
           </>
@@ -1489,16 +1696,16 @@ function ProfileForm({
           <>
             <div className="fields">
               <Field
-                label={
+                label={translateUi(
                   draft.role === "mentor"
                     ? "Expérience en achat-revente (mois)"
-                    : "Depuis combien de mois pratiques-tu ?"
-                }
-                hint={
+                    : "Depuis combien de mois pratiques-tu ?",
+                )}
+                hint={translateUi(
                   draft.role === "mentor"
                     ? "Au moins 6 mois pour devenir parrain."
-                    : "Mets 0 si tu commences tout juste."
-                }
+                    : "Mets 0 si tu commences tout juste.",
+                )}
               >
                 <input
                   type="number"
@@ -1511,9 +1718,11 @@ function ProfileForm({
               </Field>
               <fieldset className="specialty-options">
                 <legend>
-                  {draft.role === "mentor"
-                    ? "Tes spécialités (plusieurs choix possibles)"
-                    : "Tes centres d’intérêt"}
+                  {translateUi(
+                    draft.role === "mentor"
+                      ? "Tes spécialités (plusieurs choix possibles)"
+                      : "Tes centres d’intérêt",
+                  )}
                 </legend>
                 {specialties.map((x) => (
                   <label key={x}>
@@ -1529,15 +1738,17 @@ function ProfileForm({
                         )
                       }
                     />
-                    {x}
+                    {translateUi(x)}
                   </label>
                 ))}
               </fieldset>
 
               {draft.role === "mentor" && (
                 <Field
-                  label="Ce que tu peux apprendre à un débutant"
-                  hint="Exemples : sourcing en brocante, calcul des marges, photos et annonces…"
+                  label={translateUi("Ce que tu peux apprendre à un débutant")}
+                  hint={translateUi(
+                    "Exemples : sourcing en brocante, calcul des marges, photos et annonces…",
+                  )}
                 >
                   <textarea
                     maxLength={500}
@@ -1548,8 +1759,10 @@ function ProfileForm({
               )}
               {draft.role === "mentor" ? (
                 <Field
-                  label="Chiffre d’affaires mensuel"
-                  hint="Déclaratif et facultatif. Le chiffre d’affaires n’est pas le bénéfice."
+                  label={translateUi("Chiffre d’affaires mensuel")}
+                  hint={translateUi(
+                    "Déclaratif et facultatif. Le chiffre d’affaires n’est pas le bénéfice.",
+                  )}
                 >
                   <select
                     value={draft.revenue}
@@ -1570,12 +1783,14 @@ function ProfileForm({
                       "7 000–10 000 €",
                       "10 000 € et plus",
                     ].map((x) => (
-                      <option key={x}>{x}</option>
+                      <option key={x} value={x}>
+                        {translateUi(x)}
+                      </option>
                     ))}
                   </select>
                 </Field>
               ) : (
-                <Field label="Budget de départ (facultatif)">
+                <Field label={translateUi("Budget de départ (facultatif)")}>
                   <select
                     value={draft.budget}
                     onChange={(e) =>
@@ -1589,18 +1804,20 @@ function ProfileForm({
                       "300–500 €",
                       "500 € et plus",
                     ].map((x) => (
-                      <option key={x}>{x}</option>
+                      <option key={x} value={x}>
+                        {translateUi(x)}
+                      </option>
                     ))}
                   </select>
                 </Field>
               )}
             </div>
             <Field
-              label={
+              label={translateUi(
                 draft.role === "mentor"
                   ? "Qu’aimerais-tu transmettre ?"
-                  : "Quels sont tes objectifs et tes difficultés ?"
-              }
+                  : "Quels sont tes objectifs et tes difficultés ?",
+              )}
             >
               <textarea
                 required
@@ -1609,20 +1826,22 @@ function ProfileForm({
                 rows={4}
                 value={draft.goals}
                 onChange={(e) => update("goals", e.target.value)}
-                placeholder={
+                placeholder={translateUi(
                   draft.role === "mentor"
                     ? "Aider à choisir les premières pièces, améliorer les annonces…"
-                    : "Faire mes premières ventes, mieux sourcer, comprendre les prix…"
-                }
+                    : "Faire mes premières ventes, mieux sourcer, comprendre les prix…",
+                )}
               />
             </Field>
             <Field
-              label={
+              label={translateUi(
                 draft.role === "mentor"
                   ? "Marques, pièces et références"
-                  : "Marques ou pièces qui t’intéressent (facultatif)"
-              }
-              hint="Ex. Nike, Ralph Lauren, Carhartt, jeans, vestes…"
+                  : "Marques ou pièces qui t’intéressent (facultatif)",
+              )}
+              hint={translateUi(
+                "Ex. Nike, Ralph Lauren, Carhartt, jeans, vestes…",
+              )}
             >
               <input
                 maxLength={300}
@@ -1635,7 +1854,7 @@ function ProfileForm({
         {step === 2 && (
           <>
             <div className="fields">
-              <Field label="Tes créneaux préférés">
+              <Field label={translateUi("Tes créneaux préférés")}>
                 <select
                   value={draft.availability}
                   onChange={(e) =>
@@ -1646,11 +1865,13 @@ function ProfileForm({
                   }
                 >
                   {times.map((x) => (
-                    <option key={x}>{x}</option>
+                    <option key={x} value={x}>
+                      {translateUi(x)}
+                    </option>
                   ))}
                 </select>
               </Field>
-              <Field label="Durée souhaitée">
+              <Field label={translateUi("Durée souhaitée")}>
                 <select
                   value={draft.duration}
                   onChange={(e) =>
@@ -1667,16 +1888,18 @@ function ProfileForm({
                     "6 mois",
                     "Sans durée définie",
                   ].map((x) => (
-                    <option key={x}>{x}</option>
+                    <option key={x} value={x}>
+                      {translateUi(x)}
+                    </option>
                   ))}
                 </select>
               </Field>
               <Field
-                label={
+                label={translateUi(
                   draft.role === "mentor"
                     ? "Ton délai habituel de réponse"
-                    : "Le délai de réponse qui te convient"
-                }
+                    : "Le délai de réponse qui te convient",
+                )}
               >
                 <select
                   value={draft.responseTime}
@@ -1693,14 +1916,20 @@ function ProfileForm({
                     "Sous 72 h",
                     "À convenir ensemble",
                   ].map((x) => (
-                    <option key={x}>{x}</option>
+                    <option key={x} value={x}>
+                      {translateUi(x)}
+                    </option>
                   ))}
                 </select>
               </Field>
               {draft.role === "mentor" && (
                 <Field
-                  label="Nombre maximum de débutants en même temps"
-                  hint="De 0 à 10. Avec 0 place, tu ne figures pas dans l’annuaire."
+                  label={translateUi(
+                    "Nombre maximum de débutants en même temps",
+                  )}
+                  hint={translateUi(
+                    "De 0 à 10. Avec 0 place, tu ne figures pas dans l’annuaire.",
+                  )}
                 >
                   <input
                     required
@@ -1716,8 +1945,9 @@ function ProfileForm({
             <div className="info-box">
               <MessageCircle />
               <p>
-                Vous échangez sur Discord, par messages. Aucun appel imposé. Les
-                horaires et la durée se confirment ensemble au premier échange.
+                {translateUi(
+                  "Vous \u00E9changez sur Discord, par messages. Aucun appel impos\u00E9. Les horaires et la dur\u00E9e se confirment ensemble au premier \u00E9change.",
+                )}
               </p>
             </div>
             <label className="check-label">
@@ -1727,8 +1957,12 @@ function ProfileForm({
                 onChange={(e) => update("visible", e.target.checked)}
               />
               <span>
-                Rendre mon profil visible dans l’annuaire public.
-                <small>Tu pourras le masquer à tout moment.</small>
+                {translateUi(
+                  "Rendre mon profil visible dans l\u2019annuaire public.",
+                )}
+                <small>
+                  {translateUi("Tu pourras le masquer \u00E0 tout moment.")}
+                </small>
               </span>
             </label>
             <label className="check-label">
@@ -1739,20 +1973,24 @@ function ProfileForm({
                 onChange={(e) => setConsent(e.target.checked)}
               />
               <span>
-                J’accepte la charte d’entraide : respect, confidentialité,
-                accompagnement gratuit et aucune promesse de gains.
+                {translateUi(
+                  "J\u2019accepte la charte d\u2019entraide : respect, confidentialit\u00E9, accompagnement gratuit et aucune promesse de gains.",
+                )}
                 <small>
-                  Je consens à l’affichage de mon profil et au partage de mon
-                  contact Discord avec mes binômes acceptés.
+                  {translateUi(
+                    "Je consens \u00E0 l\u2019affichage de mon profil et au partage de mon contact Discord avec mes bin\u00F4mes accept\u00E9s.",
+                  )}
                 </small>
               </span>
             </label>
           </>
         )}
-        {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
+        {translateUi(
+          error && (
+            <p className="error" role="alert">
+              {translateUi(error)}
+            </p>
+          ),
         )}
         <div className="form-actions">
           {step > 0 ? (
@@ -1764,11 +2002,12 @@ function ProfileForm({
                 setStep(step - 1);
               }}
             >
-              <ChevronLeft size={18} /> Retour
+              <ChevronLeft size={18} />
+              {translateUi(" Retour")}
             </button>
           ) : onCancel ? (
             <button type="button" className="text-btn" onClick={onCancel}>
-              Annuler
+              {translateUi("Annuler")}
             </button>
           ) : (
             <span />
@@ -1778,7 +2017,7 @@ function ProfileForm({
               <LoaderCircle className="spin" />
             ) : (
               <>
-                {step < 2 ? "Continuer" : "Enregistrer mon profil"}{" "}
+                {translateUi(step < 2 ? "Continuer" : "Enregistrer mon profil")}{" "}
                 <ArrowRight size={18} />
               </>
             )}
@@ -1810,17 +2049,20 @@ function ProfileCard({
         <div className="mentor-card-title">
           <h3>{p.name}</h3>
           <p>
-            {p.role === "mentor" ? (
-              <>
-                <ShieldCheck size={17} />
-                {p.verification
-                  ? "Parrain vérifié"
-                  : "Parrain non vérifié"} · {experience}
-              </>
-            ) : p.availableSince ? (
-              "Revendeur débutant · cherche un parrain"
-            ) : (
-              "Revendeur débutant · accompagné"
+            {translateUi(
+              p.role === "mentor" ? (
+                <>
+                  <ShieldCheck size={17} />
+                  {translateUi(
+                    p.verification ? "Parrain vérifié" : "Parrain non vérifié",
+                  )}{" "}
+                  · {translateUi(experience)}
+                </>
+              ) : p.availableSince ? (
+                "Revendeur débutant · cherche un parrain"
+              ) : (
+                "Revendeur débutant · accompagné"
+              ),
             )}
           </p>
         </div>
@@ -1828,7 +2070,7 @@ function ProfileCard({
       </div>
       <div className="mini-tags">
         {p.specialty.map((s) => (
-          <span key={s}>{s}</span>
+          <span key={s}>{translateUi(s)}</span>
         ))}
         {p.references && <span>{p.references.split(",")[0].slice(0, 50)}</span>}
       </div>
@@ -1839,29 +2081,37 @@ function ProfileCard({
           <div className="card-stats">
             <div>
               <strong>
-                {p.ratingCount
-                  ? `${Number(p.ratingAverage).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}/5`
-                  : "—"}
+                {translateUi(
+                  p.ratingCount
+                    ? `${Number(p.ratingAverage).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}/5`
+                    : "—",
+                )}
               </strong>
               <span>
-                {p.ratingCount ? `${p.ratingCount} avis` : "Pas encore d’avis"}
+                {translateUi(
+                  p.ratingCount ? `${p.ratingCount} avis` : "Pas encore d’avis",
+                )}
               </span>
             </div>
             <div>
               <strong>{p.completedCount ?? 0}</strong>
-              <span>Binômes terminés</span>
+              <span>{translateUi("Bin\u00F4mes termin\u00E9s")}</span>
             </div>
             <div>
-              <strong>{p.responseTime.replace("Sous ", "")}</strong>
-              <span>Délai annoncé</span>
+              <strong>
+                {translateUi(p.responseTime.replace("Sous ", ""))}
+              </strong>
+              <span>{translateUi("D\u00E9lai annonc\u00E9")}</span>
             </div>
           </div>
           <p className="card-active">
-            {p.activeCount ?? 0} accompagnement
-            {(p.activeCount ?? 0) > 1 ? "s" : ""} en cours
+            {p.activeCount ?? 0}
+            {translateUi(" accompagnement")}
+            {translateUi((p.activeCount ?? 0) > 1 ? "s" : "")}
+            {translateUi(" en cours")}
           </p>
           <div className="card-teaching">
-            <h4>Ce qu’il peut t’apprendre</h4>
+            <h4>{translateUi("Ce qu\u2019il peut t\u2019apprendre")}</h4>
             <p>
               {p.teaching ||
                 "Ses conseils précis sont à définir ensemble selon ses spécialités."}
@@ -1870,12 +2120,12 @@ function ProfileCard({
         </>
       ) : (
         <div className="card-teaching">
-          <h4>Ses objectifs</h4>
+          <h4>{translateUi("Ses objectifs")}</h4>
           <p>{p.goals}</p>
         </div>
       )}
       <button className="card-btn" onClick={onOpen}>
-        {own ? "Modifier mon profil" : "Découvrir le profil"}{" "}
+        {translateUi(own ? "Modifier mon profil" : "Découvrir le profil")}{" "}
         <ArrowUpRight size={17} />
       </button>
     </article>
@@ -2025,31 +2275,48 @@ function Directory({
     }
   }
   useEffect(() => {
-    let live=true;setContact(null);setContactError("");
-    if(!selected||!own||!session||preview)return;
+    let live = true;
+    setContact(null);
+    setContactError("");
+    if (!selected || !own || !session || preview) return;
     setContactBusy(true);
-    api("/api/profiles?connection="+selected.id).then(data=>{if(live)setContact(data.accepted?data:null);}).catch(e=>{if(live)setContactError(e.message);}).finally(()=>{if(live)setContactBusy(false);});
-    return ()=>{live=false;};
-  },[selected?.id,own?.id,session,preview]);
+    api("/api/profiles?connection=" + selected.id)
+      .then((data) => {
+        if (live) setContact(data.accepted ? data : null);
+      })
+      .catch((e) => {
+        if (live) setContactError(e.message);
+      })
+      .finally(() => {
+        if (live) setContactBusy(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [selected?.id, own?.id, session, preview]);
   return (
     <section className="wrap directory">
       <div className="directory-heading">
         <div className="page-heading">
-          <span className="eyebrow">LES BONNES PERSONNES, AU BON MOMENT</span>
+          <span className="eyebrow">
+            {translateUi("LES BONNES PERSONNES, AU BON MOMENT")}
+          </span>
           <h1>
-            Trouve ton binôme<span>.</span>
+            {translateUi("Trouve ton bin\u00F4me")}
+            <span>.</span>
           </h1>
           <p>
-            Des revendeurs débutants et expérimentés, réunis pour progresser
-            dans l’achat-revente.
+            {translateUi(
+              "Des revendeurs d\u00E9butants et exp\u00E9riment\u00E9s, r\u00E9unis pour progresser dans l\u2019achat-revente.",
+            )}
           </p>
         </div>
         <div className="directory-doodle">
           <Users size={40} />
           <span>
-            Ça commence
+            {translateUi("\u00C7a commence")}
             <br />
-            par un bonjour.
+            {translateUi("par un bonjour.")}
           </span>
         </div>
       </div>
@@ -2061,7 +2328,8 @@ function Directory({
             setPage(0);
           }}
         >
-          <Sparkles size={18} /> Les parrains
+          <Sparkles size={18} />
+          {translateUi(" Les parrains")}
         </button>
         <button
           className={role === "beginner" ? "selected" : ""}
@@ -2070,15 +2338,16 @@ function Directory({
             setPage(0);
           }}
         >
-          <Sprout size={18} /> Les débutants
+          <Sprout size={18} />
+          {translateUi(" Les d\u00E9butants")}
         </button>
       </div>
       <div className="filters">
         <div className="search-field">
           <Search size={19} />
           <input
-            aria-label="Rechercher un membre"
-            placeholder="Un prénom, une marque, un mot-clé…"
+            aria-label={translateUi("Rechercher un membre")}
+            placeholder={translateUi("Un prénom, une marque, un mot-clé…")}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -2089,53 +2358,67 @@ function Directory({
         <label className="filter-select">
           <SlidersHorizontal size={16} />
           <select
-            aria-label="Spécialité"
+            aria-label={translateUi("Spécialité")}
             value={specialty}
             onChange={(e) => {
               setSpecialty(e.target.value);
               setPage(0);
             }}
           >
-            <option value="">Toutes les spécialités</option>
+            <option value="">
+              {translateUi("Toutes les sp\u00E9cialit\u00E9s")}
+            </option>
             {specialties.map((s) => (
-              <option key={s}>{s}</option>
+              <option key={s} value={s}>
+                {translateUi(s)}
+              </option>
             ))}
           </select>
         </label>
         <label className="filter-select">
           <Clock size={16} />
           <select
-            aria-label="Disponibilités"
+            aria-label={translateUi("Disponibilités")}
             value={time}
             onChange={(e) => {
               setTime(e.target.value);
               setPage(0);
             }}
           >
-            <option value="">Toutes les disponibilités</option>
+            <option value="">
+              {translateUi("Toutes les disponibilit\u00E9s")}
+            </option>
             {times.map((s) => (
-              <option key={s}>{s}</option>
+              <option key={s} value={s}>
+                {translateUi(s)}
+              </option>
             ))}
           </select>
         </label>
       </div>
       <div className="results-label">
         <span>
-          {busy
-            ? "Recherche en cours…"
-            : `${total} ${role === "mentor" ? "parrain" : "débutant"}${total > 1 ? "s" : ""} disponible${total > 1 ? "s" : ""}`}
+          {translateUi(
+            busy
+              ? "Recherche en cours…"
+              : `${total} ${role === "mentor" ? "parrain" : "débutant"}${total > 1 ? "s" : ""} disponible${total > 1 ? "s" : ""}`,
+          )}
         </span>
         <span>
-          <ShieldCheck size={14} /> Badges vérifiés après examen · autres
-          informations déclaratives
+          <ShieldCheck size={14} />
+          {translateUi(
+            " Badges v\u00E9rifi\u00E9s apr\u00E8s examen \u00B7 autres informations d\u00E9claratives",
+          )}
         </span>
       </div>
       {error ? (
         <div className="empty">
           <CircleHelp />
-          <h2>Une petite interruption.</h2>
-          <p role="alert">{error}</p>
-          <Button onClick={() => setReload(reload + 1)}>Réessayer</Button>
+          <h2>{translateUi("Une petite interruption.")}</h2>
+          <p role="alert">{translateUi(error)}</p>
+          <Button onClick={() => setReload(reload + 1)}>
+            {translateUi("R\u00E9essayer")}
+          </Button>
         </div>
       ) : busy ? (
         <div className="member-grid" aria-busy="true">
@@ -2161,14 +2444,18 @@ function Directory({
             <span>✦</span>
           </div>
           <h2>
-            {search || specialty || time
-              ? "Pas encore de profil pour ces critères."
-              : "Les belles rencontres commencent avec les premiers membres."}
+            {translateUi(
+              search || specialty || time
+                ? "Pas encore de profil pour ces critères."
+                : "Les belles rencontres commencent avec les premiers membres.",
+            )}
           </h2>
           <p>
-            {search || specialty || time
-              ? "Essaie une autre spécialité ou élargis tes disponibilités."
-              : `L’annuaire attend ses premiers ${role === "mentor" ? "parrains" : "débutants"}. Crée ton profil et fais connaître Mentora aux membres de ta formation.`}
+            {translateUi(
+              search || specialty || time
+                ? "Essaie une autre spécialité ou élargis tes disponibilités."
+                : `L’annuaire attend ses premiers ${role === "mentor" ? "parrains" : "débutants"}. Crée ton profil et fais connaître Mentora aux membres de ta formation.`,
+            )}
           </p>
           <Button
             onClick={
@@ -2184,9 +2471,11 @@ function Directory({
                   : onJoin
             }
           >
-            {search || specialty || time
-              ? "Réinitialiser les filtres"
-              : "Créer mon profil"}{" "}
+            {translateUi(
+              search || specialty || time
+                ? "Réinitialiser les filtres"
+                : "Créer mon profil",
+            )}{" "}
             <ArrowRight size={18} />
           </Button>
         </div>
@@ -2198,17 +2487,20 @@ function Directory({
             disabled={page === 0}
             onClick={() => setPage(page - 1)}
           >
-            Précédent
+            {translateUi("Pr\u00E9c\u00E9dent")}
           </button>
           <span>
-            Page {page + 1} sur {Math.ceil(total / 12)}
+            {translateUi("Page ")}
+            {page + 1}
+            {translateUi(" sur ")}
+            {Math.ceil(total / 12)}
           </span>
           <button
             className="btn secondary"
             disabled={(page + 1) * 12 >= total}
             onClick={() => setPage(page + 1)}
           >
-            Suivant
+            {translateUi("Suivant")}
           </button>
         </div>
       )}
@@ -2217,10 +2509,15 @@ function Directory({
           <HeartHandshake />
         </Icon>
         <div>
-          <strong>Le feeling compte autant que l’expérience.</strong>
+          <strong>
+            {translateUi(
+              "Le feeling compte autant que l\u2019exp\u00E9rience.",
+            )}
+          </strong>
           <p>
-            Commence par un petit message. Parlez de vos objectifs et de vos
-            disponibilités avant de vous engager.
+            {translateUi(
+              "Commence par un petit message. Parlez de vos objectifs et de vos disponibilit\u00E9s avant de vous engager.",
+            )}
           </p>
         </div>
       </div>
@@ -2259,7 +2556,7 @@ function Directory({
               autoFocus
               className="close-btn"
               onClick={() => setSelected(null)}
-              aria-label="Fermer le profil"
+              aria-label={translateUi("Fermer le profil")}
             >
               <X />
             </button>
@@ -2268,7 +2565,7 @@ function Directory({
               hidden={!profiles.some((p) => p.id === selected.id)}
             >
               <button
-                aria-label="Profil précédent"
+                aria-label={translateUi("Profil précédent")}
                 disabled={
                   switching || (page === 0 && profiles[0]?.id === selected.id)
                 }
@@ -2277,14 +2574,15 @@ function Directory({
                 ←
               </button>
               <span>
-                Profil{" "}
+                {translateUi("Profil")}{" "}
                 {page * 12 +
                   profiles.findIndex((p) => p.id === selected.id) +
                   1}{" "}
-                sur {total}
+                {translateUi("sur ")}
+                {total}
               </span>
               <button
-                aria-label="Profil suivant"
+                aria-label={translateUi("Profil suivant")}
                 disabled={
                   switching ||
                   page * 12 +
@@ -2299,8 +2597,11 @@ function Directory({
             </div>
             <Avatar profile={selected} />
             <span className="eyebrow">
-              {selected.role === "mentor" ? "PARRAIN" : "DÉBUTANT"} ·{" "}
-              {selected.specialty.join(" · ") || "Spécialités à préciser"}
+              {translateUi(selected.role === "mentor" ? "PARRAIN" : "DÉBUTANT")}{" "}
+              ·{" "}
+              {translateUi(
+                selected.specialty.join(" · ") || "Spécialités à préciser",
+              )}
             </span>
             <h2 id="member-title">{selected.name}</h2>
             <VerificationBadge profile={selected} />
@@ -2352,47 +2653,52 @@ function Directory({
             )}
             <div className="detail-grid">
               <div>
-                <small>Expérience</small>
-                <strong>{selected.experience} mois</strong>
+                <small>{translateUi("Exp\u00E9rience")}</small>
+                <strong>
+                  {selected.experience}
+                  {translateUi(" mois")}
+                </strong>
               </div>
 
               <div>
-                <small>Disponibilités</small>
-                <strong>{selected.availability}</strong>
+                <small>{translateUi("Disponibilit\u00E9s")}</small>
+                <strong>{translateUi(selected.availability)}</strong>
               </div>
               <div>
-                <small>Durée souhaitée</small>
-                <strong>{selected.duration}</strong>
+                <small>{translateUi("Dur\u00E9e souhait\u00E9e")}</small>
+                <strong>{translateUi(selected.duration)}</strong>
               </div>
               <div>
-                <small>Réponses</small>
-                <strong>{selected.responseTime}</strong>
+                <small>{translateUi("R\u00E9ponses")}</small>
+                <strong>{translateUi(selected.responseTime)}</strong>
               </div>
               {selected.age !== "Non précisé" && (
                 <div>
-                  <small>Tranche d’âge</small>
-                  <strong>{selected.age}</strong>
+                  <small>{translateUi("Tranche d\u2019\u00E2ge")}</small>
+                  <strong>{translateUi(selected.age)}</strong>
                 </div>
               )}
               {selected.role === "mentor" &&
                 selected.revenue !== "Je préfère ne pas préciser" && (
                   <div>
-                    <small>CA mensuel déclaré</small>
-                    <strong>{selected.revenue}</strong>
+                    <small>{translateUi("CA mensuel d\u00E9clar\u00E9")}</small>
+                    <strong>{translateUi(selected.revenue)}</strong>
                   </div>
                 )}
               {selected.role === "beginner" &&
                 selected.budget !== "Non précisé" && (
                   <div>
-                    <small>Budget de départ</small>
-                    <strong>{selected.budget}</strong>
+                    <small>{translateUi("Budget de d\u00E9part")}</small>
+                    <strong>{translateUi(selected.budget)}</strong>
                   </div>
                 )}
             </div>
             <h3>
-              {selected.role === "mentor"
-                ? "Ce que je peux t’apporter"
-                : "Mes objectifs"}
+              {translateUi(
+                selected.role === "mentor"
+                  ? "Ce que je peux t’apporter"
+                  : "Mes objectifs",
+              )}
             </h3>
             <p>
               {selected.role === "mentor"
@@ -2401,13 +2707,14 @@ function Directory({
             </p>
             {selected.references && (
               <>
-                <h3>Marques & références</h3>
+                <h3>{translateUi("Marques & r\u00E9f\u00E9rences")}</h3>
                 <p>{selected.references}</p>
               </>
             )}
             <p className="small-text">
-              Informations déclarées par le membre, non vérifiées. Aucun
-              résultat financier garanti.
+              {translateUi(
+                "Informations d\u00E9clar\u00E9es par le membre, non v\u00E9rifi\u00E9es. Aucun r\u00E9sultat financier garanti.",
+              )}
             </p>
             {contact ? (
               <div className="contact-panel">
@@ -2425,7 +2732,8 @@ function Directory({
                     }
                   }}
                 >
-                  <Copy size={16} /> Copier le pseudo Discord
+                  <Copy size={16} />
+                  {translateUi(" Copier le pseudo Discord")}
                 </button>
                 <a
                   className="text-btn"
@@ -2437,25 +2745,54 @@ function Directory({
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  {contact.discordId
-                    ? "Ouvrir son profil Discord"
-                    : "Ouvrir Discord"}{" "}
+                  {translateUi(
+                    contact.discordId
+                      ? "Ouvrir son profil Discord"
+                      : "Ouvrir Discord",
+                  )}{" "}
                   <ArrowUpRight size={16} />
                 </a>
                 <p className="small-text">
-                  La demande d’amis se fait sur Discord. Présente-toi et
-                  explique ce que tu recherches.
+                  {translateUi(
+                    "La demande d\u2019amis se fait sur Discord. Pr\u00E9sente-toi et explique ce que tu recherches.",
+                  )}
                 </p>
               </div>
-            ) : contactBusy ? <p>Vérification du binôme…</p> : (
-              !session || !own ? <button className="btn full" onClick={!session?onJoin:onProfile}>Compléter mon profil pour envoyer une demande</button> : selected.role !== own.role && selected.id!==own.id ? <fieldset className="preview-controls" disabled={preview} inert={preview}>
-                <RequestAccompaniment key={selected.id} targetProfileId={selected.id} senderRole={own.role} verified={own.role==='mentor'?!!own.verification:!!selected.verification}/>
-              </fieldset> : null
-            )}
-            {contactError && (
-              <p role="alert" className="error">
-                {contactError}
-              </p>
+            ) : contactBusy ? (
+              <p>{translateUi("V\u00E9rification du bin\u00F4me\u2026")}</p>
+            ) : !session || !own ? (
+              <button
+                className="btn full"
+                onClick={!session ? onJoin : onProfile}
+              >
+                {translateUi(
+                  "Compl\u00E9ter mon profil pour envoyer une demande",
+                )}
+              </button>
+            ) : selected.role !== own.role && selected.id !== own.id ? (
+              <fieldset
+                className="preview-controls"
+                disabled={preview}
+                inert={preview}
+              >
+                <RequestAccompaniment
+                  key={selected.id}
+                  targetProfileId={selected.id}
+                  senderRole={own.role}
+                  verified={
+                    own.role === "mentor"
+                      ? !!own.verification
+                      : !!selected.verification
+                  }
+                />
+              </fieldset>
+            ) : null}
+            {translateUi(
+              contactError && (
+                <p role="alert" className="error">
+                  {translateUi(contactError)}
+                </p>
+              ),
             )}
           </section>
         </div>
@@ -2472,8 +2809,9 @@ function DeleteProfile({ onDeleted }: { onDeleted: () => void }) {
       {confirm ? (
         <>
           <p>
-            Supprimer définitivement ton profil et ton contact de l’annuaire ?
-            Ton compte restera disponible.
+            {translateUi(
+              "Supprimer d\u00E9finitivement ton profil et ton contact de l\u2019annuaire ? Ton compte restera disponible.",
+            )}
           </p>
           <button
             className="text-btn danger"
@@ -2490,18 +2828,18 @@ function DeleteProfile({ onDeleted }: { onDeleted: () => void }) {
               }
             }}
           >
-            Oui, supprimer mon profil
+            {translateUi("Oui, supprimer mon profil")}
           </button>
           <button className="text-btn" onClick={() => setConfirm(false)}>
-            Annuler
+            {translateUi("Annuler")}
           </button>
         </>
       ) : (
         <button className="text-btn muted" onClick={() => setConfirm(true)}>
-          Supprimer mon profil
+          {translateUi("Supprimer mon profil")}
         </button>
       )}
-      {error && <p role="alert">{error}</p>}
+      {translateUi(error && <p role="alert">{translateUi(error)}</p>)}
     </div>
   );
 }
@@ -2509,15 +2847,18 @@ function Guide({ onJoin }: { onJoin: () => void }) {
   return (
     <section className="wrap guide">
       <div className="page-heading">
-        <span className="eyebrow">L’ENTRAIDE, TOUT SIMPLEMENT</span>
+        <span className="eyebrow">
+          {translateUi("L\u2019ENTRAIDE, TOUT SIMPLEMENT")}
+        </span>
         <h1>
-          Un binôme aujourd’hui.
+          {translateUi("Un bin\u00F4me aujourd\u2019hui.")}
           <br />
-          <span>Un réseau pour demain.</span>
+          <span>{translateUi("Un r\u00E9seau pour demain.")}</span>
         </h1>
         <p>
-          Quand les questions se perdent parmi des centaines de messages, un
-          interlocuteur dédié peut faire toute la différence.
+          {translateUi(
+            "Quand les questions se perdent parmi des centaines de messages, un interlocuteur d\u00E9di\u00E9 peut faire toute la diff\u00E9rence.",
+          )}
         </p>
       </div>
       <div className="guide-intro">
@@ -2525,17 +2866,16 @@ function Guide({ onJoin }: { onJoin: () => void }) {
           <HeartHandshake />
         </Icon>
         <div>
-          <h2>Le principe de Mentora</h2>
+          <h2>{translateUi("Le principe de Mentora")}</h2>
           <p>
-            Un membre expérimenté accompagne un débutant en achat-revente de
-            vêtements. Il répond à ses questions, partage son expérience et
-            l’aide à avancer. Les échanges se passent sur Discord, sans
-            obligation d’appel, selon le rythme choisi ensemble.
+            {translateUi(
+              "Un membre exp\u00E9riment\u00E9 accompagne un d\u00E9butant en achat-revente de v\u00EAtements. Il r\u00E9pond \u00E0 ses questions, partage son exp\u00E9rience et l\u2019aide \u00E0 avancer. Les \u00E9changes se passent sur Discord, sans obligation d\u2019appel, selon le rythme choisi ensemble.",
+            )}
           </p>
           <p>
-            À mesure que les débutants progressent, les liens restent. Et ceux
-            qui ont été aidés peuvent, à leur tour, transmettre. C’est ainsi
-            qu’un réseau d’entraide se construit.
+            {translateUi(
+              "\u00C0 mesure que les d\u00E9butants progressent, les liens restent. Et ceux qui ont \u00E9t\u00E9 aid\u00E9s peuvent, \u00E0 leur tour, transmettre. C\u2019est ainsi qu\u2019un r\u00E9seau d\u2019entraide se construit.",
+            )}
           </p>
         </div>
       </div>
@@ -2568,37 +2908,33 @@ function Guide({ onJoin }: { onJoin: () => void }) {
               <Icon>
                 <Component />
               </Icon>
-              <h3>{String(title)}</h3>
-              <p>{String(text)}</p>
+              <h3>{translateUi(String(title))}</h3>
+              <p>{translateUi(String(text))}</p>
             </article>
           );
         })}
       </div>
       <section className="guide-intro">
         <div>
-          <h2>Une note après l’accompagnement</h2>
+          <h2>{translateUi("Une note apr\u00E8s l\u2019accompagnement")}</h2>
           <p>
-            Dans l’annuaire, le débutant clique sur « Choisir ce parrain ». Le
-            parrain accepte depuis « Mon profil », dans « Demandes ». À la fin,
-            l’un des deux clique sur « Terminer l’accompagnement ». Le débutant
-            peut alors publier une note de 1 à 5 étoiles, une seule fois pour ce
-            binôme. La moyenne et le nombre de notes apparaissent sur la fiche
-            du parrain.
+            {translateUi(
+              "Dans l\u2019annuaire, le d\u00E9butant clique sur \u00AB Choisir ce parrain \u00BB. Le parrain accepte depuis \u00AB Mon profil \u00BB, dans \u00AB Demandes \u00BB. \u00C0 la fin, l\u2019un des deux clique sur \u00AB Terminer l\u2019accompagnement \u00BB. Le d\u00E9butant peut alors publier une note de 1 \u00E0 5 \u00E9toiles, une seule fois pour ce bin\u00F4me. La moyenne et le nombre de notes apparaissent sur la fiche du parrain.",
+            )}
           </p>
           <p>
-            Les notes proviennent de binômes confirmés sur Mentora. Elles
-            reflètent l’expérience des membres, sans vérifier le contenu de
-            leurs échanges sur Discord. Un profil masqué reste absent de
-            l’annuaire.
+            {translateUi(
+              "Les notes proviennent de bin\u00F4mes confirm\u00E9s sur Mentora. Elles refl\u00E8tent l\u2019exp\u00E9rience des membres, sans v\u00E9rifier le contenu de leurs \u00E9changes sur Discord. Un profil masqu\u00E9 reste absent de l\u2019annuaire.",
+            )}
           </p>
         </div>
       </section>
       <section className="charter">
-        <span className="eyebrow">LA CHARTE MENTORA</span>
+        <span className="eyebrow">{translateUi("LA CHARTE MENTORA")}</span>
         <h2>
-          De bonnes rencontres,
+          {translateUi("De bonnes rencontres,")}
           <br />
-          avec de bonnes bases.
+          {translateUi("avec de bonnes bases.")}
         </h2>
         <div className="charter-grid">
           {[
@@ -2634,65 +2970,77 @@ function Guide({ onJoin }: { onJoin: () => void }) {
             ],
           ].map(([n, t, d]) => (
             <article key={n}>
-              <span>{n}</span>
+              <span>{translateUi(n)}</span>
               <div>
-                <h3>{t}</h3>
-                <p>{d}</p>
+                <h3>{translateUi(t)}</h3>
+                <p>{translateUi(d)}</p>
               </div>
             </article>
           ))}
         </div>
       </section>
       <section className="verification-panel">
-        <h2>Un badge fondé sur un dossier, pas seulement sur l’ancienneté.</h2>
+        <h2>
+          {translateUi(
+            "Un badge fond\u00E9 sur un dossier, pas seulement sur l\u2019anciennet\u00E9.",
+          )}
+        </h2>
         <p>
-          Pour demander le badge « Dossier vérifié », le parrain renseigne son
-          expérience, ses plateformes, son volume de ventes, ses domaines d’aide
-          et sa motivation. La modération examine ses justificatifs de façon
-          confidentielle avant de prendre une décision.
+          {translateUi(
+            "Pour demander le badge \u00AB Dossier v\u00E9rifi\u00E9 \u00BB, le parrain renseigne son exp\u00E9rience, ses plateformes, son volume de ventes, ses domaines d\u2019aide et sa motivation. La mod\u00E9ration examine ses justificatifs de fa\u00E7on confidentielle avant de prendre une d\u00E9cision.",
+          )}
         </p>
         <p>
-          Le badge affiche les domaines examinés et la date de vérification.
-          Sans validation, le profil indique « Expérience déclarée · non
-          vérifiée ». Ce contrôle ne garantit pas les résultats, la pédagogie ou
-          l’authenticité d’un article.
+          {translateUi(
+            "Le badge affiche les domaines examin\u00E9s et la date de v\u00E9rification. Sans validation, le profil indique \u00AB Exp\u00E9rience d\u00E9clar\u00E9e \u00B7 non v\u00E9rifi\u00E9e \u00BB. Ce contr\u00F4le ne garantit pas les r\u00E9sultats, la p\u00E9dagogie ou l\u2019authenticit\u00E9 d\u2019un article.",
+          )}
         </p>
       </section>
       <FAQ />
       <div className="bottom-cta">
         <div>
-          <h2>Prêt à faire le premier pas ?</h2>
+          <h2>{translateUi("Pr\u00EAt \u00E0 faire le premier pas ?")}</h2>
           <p>
-            Présente-toi. Quelqu’un a peut-être exactement le conseil qu’il te
-            faut.
+            {translateUi(
+              "Pr\u00E9sente-toi. Quelqu\u2019un a peut-\u00EAtre exactement le conseil qu\u2019il te faut.",
+            )}
           </p>
         </div>
         <Button onClick={onJoin}>
-          Rejoindre Mentora <ArrowUpRight size={18} />
+          {translateUi("Rejoindre Mentora ")}
+          <ArrowUpRight size={18} />
         </Button>
       </div>
     </section>
   );
 }
-
 function MentorAvailability({ profile }: { profile: PublicProfile }) {
   const active = profile.activeCount ?? 0;
   const remaining = Math.max(0, profile.capacity - active);
   return (
     <p className="mentor-availability">
-      <strong>{active} en cours</strong>
+      <strong>
+        {active}
+        {translateUi(" en cours")}
+      </strong>
       <span> · </span>
-      {remaining} place{remaining > 1 ? "s" : ""} libre
-      {remaining > 1 ? "s" : ""} restante{remaining > 1 ? "s" : ""}
+      {remaining}
+      {translateUi(" place")}
+      {translateUi(remaining > 1 ? "s" : "")}
+      {translateUi(" libre")}
+      {translateUi(remaining > 1 ? "s" : "")}
+      {translateUi(" restante")}
+      {translateUi(remaining > 1 ? "s" : "")}
     </p>
   );
 }
-
 function FAQ() {
   return (
     <section className="faq">
-      <span className="eyebrow">ON RÉPOND À TES QUESTIONS</span>
-      <h2>Avant de te lancer.</h2>
+      <span className="eyebrow">
+        {translateUi("ON R\u00C9POND \u00C0 TES QUESTIONS")}
+      </span>
+      <h2>{translateUi("Avant de te lancer.")}</h2>
       {[
         [
           "Dois-je avoir un certain chiffre d’affaires pour être parrain ?",
@@ -2717,10 +3065,10 @@ function FAQ() {
       ].map(([q, a]) => (
         <details key={q}>
           <summary>
-            {q}
+            {translateUi(q)}
             <ChevronDown size={18} />
           </summary>
-          <p>{a}</p>
+          <p>{translateUi(a)}</p>
         </details>
       ))}
     </section>

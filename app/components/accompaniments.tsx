@@ -1,4 +1,5 @@
 "use client";
+import { t as translateUi, locale } from "@/app/components/language";
 import { usePlatformSettings } from "./platform-settings";
 import { useCallback, useEffect, useState } from "react";
 import { Star, CheckCircle2 } from "lucide-react";
@@ -40,19 +41,24 @@ export function RatingSummary({
       {count ? (
         <>
           <strong>
-            {average.toLocaleString("fr-FR", {
-              maximumFractionDigits: 1,
-              minimumFractionDigits: 1,
-            })}
+            {translateUi(
+              average.toLocaleString("fr-FR", {
+                maximumFractionDigits: 1,
+                minimumFractionDigits: 1,
+              }),
+            )}
             /5
           </strong>
           <span>
-            · {count} avis{" "}
-            {count === 1 ? "après accompagnement" : "après accompagnements"}
+            · {count}
+            {translateUi(" avis")}{" "}
+            {translateUi(
+              count === 1 ? "après accompagnement" : "après accompagnements",
+            )}
           </span>
         </>
       ) : (
-        <span>Pas encore de note</span>
+        <span>{translateUi("Pas encore de note")}</span>
       )}
     </p>
   );
@@ -73,25 +79,32 @@ export function RequestAccompaniment({
     [error, setError] = useState("");
   const settings = usePlatformSettings();
   if (!settings.requestsEnabled)
-    return <p>Les nouvelles demandes sont temporairement en pause.</p>;
+    return (
+      <p>
+        {translateUi("Les nouvelles demandes sont temporairement en pause.")}
+      </p>
+    );
   if (settings.verifiedMentorsOnly && !verified)
     return (
       <p>
-        Le compte parrain doit être vérifié pour envoyer ou recevoir une
-        demande.
+        {translateUi(
+          "Le compte parrain doit \u00EAtre v\u00E9rifi\u00E9 pour envoyer ou recevoir une demande.",
+        )}
       </p>
     );
   if (sent)
     return (
       <p role="status">
-        <CheckCircle2 size={17} /> Demande envoyée. Retrouve sa réponse dans Mon
-        profil → Demandes.
+        <CheckCircle2 size={17} />
+        {translateUi(
+          " Demande envoy\u00E9e. Retrouve sa r\u00E9ponse dans Mon profil \u2192 Demandes.",
+        )}
       </p>
     );
   if (!open)
     return (
       <button className="btn full" onClick={() => setOpen(true)}>
-        Envoyer une demande
+        {translateUi("Envoyer une demande")}
       </button>
     );
   return (
@@ -115,9 +128,11 @@ export function RequestAccompaniment({
       }}
     >
       <label className="request-objective">
-        {senderRole === "mentor"
-          ? "Ce que tu peux apporter à ce débutant"
-          : "Ce que tu aimerais que ce parrain t’apporte"}
+        {translateUi(
+          senderRole === "mentor"
+            ? "Ce que tu peux apporter à ce débutant"
+            : "Ce que tu aimerais que ce parrain t’apporte",
+        )}
         <textarea
           required
           minLength={10}
@@ -125,20 +140,21 @@ export function RequestAccompaniment({
           value={objective}
           onChange={(e) => setObjective(e.target.value)}
           disabled={busy}
-          placeholder={
+          placeholder={translateUi(
             senderRole === "mentor"
               ? "Présente ton expérience et explique comment tu pourrais l’aider."
-              : "Présente tes objectifs et l’aide que tu recherches."
-          }
+              : "Présente tes objectifs et l’aide que tu recherches.",
+          )}
         />
       </label>
       <p className="small-text">
-        La demande arrive dans son onglet Demandes. Une place est occupée et vos
-        contacts Discord sont partagés uniquement après acceptation.
+        {translateUi(
+          "La demande arrive dans son onglet Demandes. Une place est occup\u00E9e et vos contacts Discord sont partag\u00E9s uniquement apr\u00E8s acceptation.",
+        )}
       </p>
       <div className="pair-actions">
         <button className="btn" disabled={busy || objective.trim().length < 10}>
-          {busy ? "Envoi…" : "Envoyer ma demande"}
+          {translateUi(busy ? "Envoi…" : "Envoyer ma demande")}
         </button>
         <button
           type="button"
@@ -146,13 +162,15 @@ export function RequestAccompaniment({
           disabled={busy}
           onClick={() => setOpen(false)}
         >
-          Annuler
+          {translateUi("Annuler")}
         </button>
       </div>
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
+      {translateUi(
+        error && (
+          <p className="error" role="alert">
+            {translateUi(error)}
+          </p>
+        ),
       )}
     </form>
   );
@@ -207,13 +225,17 @@ export function Accompaniments({
     <section className="accompaniments">
       <div className="section-top">
         <div>
-          <span className="eyebrow">MON BINÔME, ÉTAPE PAR ÉTAPE</span>
+          <span className="eyebrow">
+            {translateUi("MON BIN\u00D4ME, \u00C9TAPE PAR \u00C9TAPE")}
+          </span>
           <h2>
-            {mode === "requests" ? "Mes demandes" : "Mes accompagnements"}
+            {translateUi(
+              mode === "requests" ? "Mes demandes" : "Mes accompagnements",
+            )}
           </h2>
         </div>
         <button className="text-btn" onClick={() => void load()}>
-          Actualiser
+          {translateUi("Actualiser")}
         </button>
       </div>
       <p>
@@ -222,16 +244,17 @@ export function Accompaniments({
           : "Retrouve tes binômes en cours et terminés. À la fin, le débutant peut laisser une note à son parrain."}
       </p>
       {loading ? (
-        <p>Chargement…</p>
+        <p>{translateUi("Chargement\u2026")}</p>
       ) : error ? (
         <p className="error" role="alert">
-          {error}
+          {translateUi(error)}
         </p>
       ) : (
         groups.map((group) => (
           <section key={group.label} className="pair-group">
             <h3>
-              {group.label} <span className="badge">{group.rows.length}</span>
+              {translateUi(group.label)}{" "}
+              <span className="badge">{group.rows.length}</span>
             </h3>
             {group.rows.length ? (
               <div className="pair-list">
@@ -245,7 +268,9 @@ export function Accompaniments({
                 ))}
               </div>
             ) : (
-              <p className="small-text">Rien à afficher pour le moment.</p>
+              <p className="small-text">
+                {translateUi("Rien \u00E0 afficher pour le moment.")}
+              </p>
             )}
           </section>
         ))
@@ -253,7 +278,6 @@ export function Accompaniments({
     </section>
   );
 }
-
 function Pair({
   item,
   reload,
@@ -299,17 +323,20 @@ function Pair({
       <div className="pair-heading">
         <div>
           <span className="eyebrow">
-            {item.side === "beginner" ? "MON PARRAIN" : "MON DÉBUTANT"}
+            {translateUi(
+              item.side === "beginner" ? "MON PARRAIN" : "MON DÉBUTANT",
+            )}
           </span>
           <h3>{item.partner_name}</h3>
         </div>
-        <span className="badge">{labels[item.status]}</span>
+        <span className="badge">{translateUi(labels[item.status])}</span>
       </div>
       <p className="small-text">
-        Demande du {new Date(item.created_at).toLocaleDateString("fr-FR")}
+        {translateUi("Demande du ")}
+        {translateUi(new Date(item.created_at).toLocaleDateString(locale()))}
       </p>
       <div className="request-message">
-        <strong>Message de la demande</strong>
+        <strong>{translateUi("Message de la demande")}</strong>
         <p>
           {item.objective ||
             "Ancienne demande : aucun message d’objectif n’avait été renseigné."}
@@ -317,18 +344,27 @@ function Pair({
       </div>
       {item.status === "declined" && (
         <div className="request-message">
-          <strong>Motif du refus</strong>
+          <strong>{translateUi("Motif du refus")}</strong>
           <p>
             {item.decline_reason ||
               "Ancienne demande : aucun motif n’avait été enregistré."}
           </p>
         </div>
       )}
-      {item.partner_discord && (
-        <div className="contact-panel">
-          <strong>Discord de ton binôme : @{item.partner_discord}</strong>
-          <p>Sur Discord, ouvre Amis → Ajouter un ami et saisis ce pseudo.</p>
-        </div>
+      {translateUi(
+        item.partner_discord && (
+          <div className="contact-panel">
+            <strong>
+              {translateUi("Discord de ton bin\u00F4me : @")}
+              {translateUi(item.partner_discord)}
+            </strong>
+            <p>
+              {translateUi(
+                "Sur Discord, ouvre Amis \u2192 Ajouter un ami et saisis ce pseudo.",
+              )}
+            </p>
+          </div>
+        ),
       )}
       {item.status === "pending" &&
         (item.direction === "received" ? (
@@ -338,25 +374,29 @@ function Pair({
               disabled={busy}
               onClick={() => void act("accept")}
             >
-              Accepter le binôme
+              {translateUi("Accepter le bin\u00F4me")}
             </button>
             <button
               className="text-btn"
               disabled={busy}
               onClick={() => setDeclining(true)}
             >
-              Refuser
+              {translateUi("Refuser")}
             </button>
           </div>
         ) : (
           <div>
-            <p>Le destinataire doit répondre depuis son onglet Demandes.</p>
+            <p>
+              {translateUi(
+                "Le destinataire doit r\u00E9pondre depuis son onglet Demandes.",
+              )}
+            </p>
             <button
               className="text-btn"
               disabled={busy}
               onClick={() => void act("cancel")}
             >
-              Annuler la demande
+              {translateUi("Annuler la demande")}
             </button>
           </div>
         ))}
@@ -368,7 +408,7 @@ function Pair({
           }}
         >
           <label className="request-objective">
-            Pourquoi refuses-tu cette demande ?
+            {translateUi("Pourquoi refuses-tu cette demande ?")}
             <textarea
               required
               minLength={10}
@@ -379,14 +419,16 @@ function Pair({
             />
           </label>
           <p className="small-text">
-            Ce motif sera transmis à la personne dans Mentora et par email.
+            {translateUi(
+              "Ce motif sera transmis \u00E0 la personne dans Mentora et par email.",
+            )}
           </p>
           <div className="pair-actions">
             <button
               className="btn"
               disabled={busy || reason.trim().length < 10}
             >
-              Confirmer le refus
+              {translateUi("Confirmer le refus")}
             </button>
             <button
               type="button"
@@ -394,7 +436,7 @@ function Pair({
               onClick={() => setDeclining(false)}
               disabled={busy}
             >
-              Annuler
+              {translateUi("Annuler")}
             </button>
           </div>
         </form>
@@ -404,8 +446,9 @@ function Pair({
         (confirm ? (
           <div>
             <p>
-              Confirmer que l’accompagnement est terminé ? Cette action ouvre la
-              notation au débutant et ne peut pas être annulée.
+              {translateUi(
+                "Confirmer que l\u2019accompagnement est termin\u00E9 ? Cette action ouvre la notation au d\u00E9butant et ne peut pas \u00EAtre annul\u00E9e.",
+              )}
             </p>
             <div className="pair-actions">
               <button
@@ -413,16 +456,16 @@ function Pair({
                 disabled={busy}
                 onClick={() => void act("complete")}
               >
-                Confirmer la fin
+                {translateUi("Confirmer la fin")}
               </button>
               <button className="text-btn" onClick={() => setConfirm(false)}>
-                Continuer l’accompagnement
+                {translateUi("Continuer l\u2019accompagnement")}
               </button>
             </div>
           </div>
         ) : (
           <button className="btn secondary" onClick={() => setConfirm(true)}>
-            Terminer l’accompagnement
+            {translateUi("Terminer l\u2019accompagnement")}
           </button>
         ))}
       {!requestsOnly &&
@@ -457,17 +500,21 @@ function Pair({
               }
             }}
           >
-            <h4>Comment s’est passé ton accompagnement ?</h4>
+            <h4>
+              {translateUi(
+                "Comment s\u2019est pass\u00E9 ton accompagnement ?",
+              )}
+            </h4>
             <div
               className="stars-input"
               role="group"
-              aria-label="Note de l’accompagnement"
+              aria-label={translateUi("Note de l’accompagnement")}
             >
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
                   type="button"
                   key={n}
-                  aria-label={`${n} étoile${n > 1 ? "s" : ""}`}
+                  aria-label={translateUi(`${n} étoile${n > 1 ? "s" : ""}`)}
                   aria-pressed={score === n}
                   disabled={busy}
                   onClick={() => setScore(n)}
@@ -478,20 +525,25 @@ function Pair({
               <span>{score ? `${score}/5` : "Choisis ta note"}</span>
             </div>
             <p className="small-text">
-              Ta note contribuera à la moyenne publique du parrain. Un seul avis
-              par binôme, non modifiable après envoi.
+              {translateUi(
+                "Ta note contribuera \u00E0 la moyenne publique du parrain. Un seul avis par bin\u00F4me, non modifiable apr\u00E8s envoi.",
+              )}
             </p>
             <button className="btn" disabled={!score || busy}>
               {busy ? "Enregistrement…" : "Publier ma note"}
             </button>
           </form>
         ) : (
-          <p>Le débutant peut maintenant laisser sa note.</p>
+          <p>
+            {translateUi("Le d\u00E9butant peut maintenant laisser sa note.")}
+          </p>
         ))}
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
+      {translateUi(
+        error && (
+          <p className="error" role="alert">
+            {translateUi(error)}
+          </p>
+        ),
       )}
     </article>
   );

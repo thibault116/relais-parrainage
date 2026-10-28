@@ -1,4 +1,5 @@
 "use client";
+import { t as translateUi, locale } from "@/app/components/language";
 import { useEffect, useState, useCallback } from "react";
 import { mailLabels, type MailKind } from "@/lib/email-templates";
 async function call(path: string, body?: unknown, method = "POST") {
@@ -46,18 +47,21 @@ export function EmailPreferences() {
   }
   return (
     <section className="verification-panel email-panel">
-      <h2>Mes notifications par e-mail</h2>
+      <h2>{translateUi("Mes notifications par e-mail")}</h2>
       <p>
-        Les nouvelles demandes, les réponses et les fins d’accompagnement
-        arrivent à l’adresse de ton compte.
+        {translateUi(
+          "Les nouvelles demandes, les r\u00E9ponses et les fins d\u2019accompagnement arrivent \u00E0 l\u2019adresse de ton compte.",
+        )}
       </p>
-      {error && (
-        <p className="error" role="alert">
-          {error}{" "}
-          <button className="text-btn" onClick={() => void load()}>
-            Réessayer
-          </button>
-        </p>
+      {translateUi(
+        error && (
+          <p className="error" role="alert">
+            {translateUi(error)}{" "}
+            <button className="text-btn" onClick={() => void load()}>
+              {translateUi("R\u00E9essayer")}
+            </button>
+          </p>
+        ),
       )}
       {prefs ? (
         <>
@@ -69,7 +73,7 @@ export function EmailPreferences() {
                 setPrefs({ ...prefs, enabled: e.target.checked })
               }
             />
-            Recevoir les notifications de Mentora
+            {translateUi("Recevoir les notifications de Mentora")}
           </label>
           <label className="email-choice">
             <input
@@ -80,20 +84,25 @@ export function EmailPreferences() {
                 setPrefs({ ...prefs, vacancies: e.target.checked })
               }
             />
-            M’avertir quand un parrain que je suis a de nouveau une place
+            {translateUi(
+              "M\u2019avertir quand un parrain que je suis a de nouveau une place",
+            )}
           </label>
           <p className="small-text">
-            Ces alertes concernent les parrains qui étaient complets. Une place
-            reste disponible jusqu’à l’acceptation d’une demande.
+            {translateUi(
+              "Ces alertes concernent les parrains qui \u00E9taient complets. Une place reste disponible jusqu\u2019\u00E0 l\u2019acceptation d\u2019une demande.",
+            )}
           </p>
           <button className="btn" disabled={busy} onClick={() => void save()}>
-            {busy ? "Enregistrement…" : "Enregistrer mes préférences"}
+            {translateUi(
+              busy ? "Enregistrement…" : "Enregistrer mes préférences",
+            )}
           </button>
         </>
       ) : (
-        !error && <p>Chargement…</p>
+        !error && <p>{translateUi("Chargement\u2026")}</p>
       )}
-      {message && <p role="status">{message}</p>}
+      {translateUi(message && <p role="status">{translateUi(message)}</p>)}
     </section>
   );
 }
@@ -110,7 +119,10 @@ type MailRow = {
 };
 type Data = {
   configured: boolean;
-  counts: { status: string; count: number }[];
+  counts: {
+    status: string;
+    count: number;
+  }[];
   recent: MailRow[];
 };
 const statuses: Record<string, string> = {
@@ -156,24 +168,28 @@ export function AdminEmails() {
   }
   return (
     <section className="verification-panel email-panel">
-      <h2>Suivi des e-mails</h2>
+      <h2>{translateUi("Suivi des e-mails")}</h2>
       <p>
-        Expéditeur : mentora.officiel@gmail.com. Les envois sont automatiques et
-        les erreurs temporaires sont réessayées.
+        {translateUi(
+          "Exp\u00E9diteur : mentora.officiel@gmail.com. Les envois sont automatiques et les erreurs temporaires sont r\u00E9essay\u00E9es.",
+        )}
       </p>
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
+      {translateUi(
+        error && (
+          <p className="error" role="alert">
+            {translateUi(error)}
+          </p>
+        ),
       )}
-      {message && <p role="status">{message}</p>}
+      {translateUi(message && <p role="status">{translateUi(message)}</p>)}
       {data && (
         <>
           <p>
-            Configuration Gmail :{" "}
-            {data.configured ? "enregistrée" : "manquante"}. « Accepté par Gmail
-            » confirme l’envoi, pas l’arrivée dans la boîte principale du
-            destinataire.
+            {translateUi("Configuration Gmail :")}{" "}
+            {translateUi(data.configured ? "enregistrée" : "manquante")}
+            {translateUi(
+              ". \u00AB Accept\u00E9 par Gmail \u00BB confirme l\u2019envoi, pas l\u2019arriv\u00E9e dans la bo\u00EEte principale du destinataire.",
+            )}
           </p>
           <div className="email-actions">
             <button
@@ -181,38 +197,42 @@ export function AdminEmails() {
               disabled={busy || !data.configured}
               onClick={() => void action("test")}
             >
-              Envoyer les 10 exemples
+              {translateUi("Envoyer les 10 exemples")}
             </button>
             <button
               className="btn secondary"
               disabled={busy || !data.configured}
               onClick={() => void action("retry")}
             >
-              Réessayer les échecs
+              {translateUi("R\u00E9essayer les \u00E9checs")}
             </button>
             <button className="text-btn" onClick={() => void load()}>
-              Actualiser les envois
+              {translateUi("Actualiser les envois")}
             </button>
           </div>
           <p>
-            {data.counts
-              .map((c) => `${statuses[c.status] || c.status} : ${c.count}`)
-              .join(" · ") || "Aucun envoi pour le moment."}
+            {translateUi(
+              data.counts
+                .map((c) => `${statuses[c.status] || c.status} : ${c.count}`)
+                .join(" · ") || "Aucun envoi pour le moment.",
+            )}
           </p>
           <div className="email-history">
             {data.recent.map((r) => (
               <article key={r.id}>
                 <strong>
-                  {mailLabels[r.kind] || r.kind}
-                  {Number(r.test) ? " · Test" : ""}
+                  {translateUi(mailLabels[r.kind] || r.kind)}
+                  {translateUi(Number(r.test) ? " · Test" : "")}
                 </strong>
                 <p>
                   {r.name || "Test administrateur"} ·{" "}
-                  {statuses[r.status] || r.status}
+                  {translateUi(statuses[r.status] || r.status)}
                 </p>
                 <small>
-                  {new Date(r.created_at).toLocaleString("fr-FR")}
-                  {r.error ? ` · ${r.error} · ${r.attempts} tentative(s)` : ""}
+                  {translateUi(new Date(r.created_at).toLocaleString(locale()))}
+                  {translateUi(
+                    r.error ? ` · ${r.error} · ${r.attempts} tentative(s)` : "",
+                  )}
                 </small>
               </article>
             ))}

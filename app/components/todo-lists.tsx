@@ -1,7 +1,12 @@
 "use client";
+import { t as translateUi } from "@/app/components/language";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ListChecks, Plus, Pencil, Trash2 } from "lucide-react";
-type Task = { id: string; body: string; done: boolean };
+type Task = {
+  id: string;
+  body: string;
+  done: boolean;
+};
 type List = {
   id: string;
   side: "mentor" | "beginner";
@@ -65,33 +70,40 @@ export function TodoLists() {
   const list = lists.find((l) => l.id === selected);
   return (
     <section className="verification-panel todo-panel">
-      <span className="eyebrow">UN PAS APRÈS L’AUTRE</span>
+      <span className="eyebrow">
+        {translateUi("UN PAS APR\u00C8S L\u2019AUTRE")}
+      </span>
       <h2>
-        <ListChecks size={25} /> To-do list
+        <ListChecks size={25} />
+        {translateUi(" To-do list")}
       </h2>
       <p>
-        Le parrain prépare les actions à réaliser. Le débutant coche ses
-        avancées, à son rythme.
+        {translateUi(
+          "Le parrain pr\u00E9pare les actions \u00E0 r\u00E9aliser. Le d\u00E9butant coche ses avanc\u00E9es, \u00E0 son rythme.",
+        )}
       </p>
       <button className="text-btn" onClick={() => void load()}>
-        Actualiser les listes
+        {translateUi("Actualiser les listes")}
       </button>
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
+      {translateUi(
+        error && (
+          <p className="error" role="alert">
+            {translateUi(error)}
+          </p>
+        ),
       )}
       {loading ? (
-        <p>Chargement…</p>
+        <p>{translateUi("Chargement\u2026")}</p>
       ) : !lists.length ? (
         <p>
-          Ta liste sera disponible dès qu’une demande de parrainage aura été
-          acceptée.
+          {translateUi(
+            "Ta liste sera disponible d\u00E8s qu\u2019une demande de parrainage aura \u00E9t\u00E9 accept\u00E9e.",
+          )}
         </p>
       ) : (
         <>
           <label className="todo-selector">
-            Mon binôme
+            {translateUi("Mon bin\u00F4me")}
             <select
               value={selected}
               onChange={(e) => setSelected(e.target.value)}
@@ -99,7 +111,7 @@ export function TodoLists() {
               {lists.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.partner_name} ·{" "}
-                  {l.status === "active" ? "En cours" : "Terminé"}
+                  {translateUi(l.status === "active" ? "En cours" : "Terminé")}
                 </option>
               ))}
             </select>
@@ -138,52 +150,67 @@ function TaskList({
   return (
     <div className="todo-list">
       <div className="todo-progress-heading">
-        <h3>Avec {list.partner_name}</h3>
+        <h3>
+          {translateUi("Avec ")}
+          {list.partner_name}
+        </h3>
         <strong>{list.progress} %</strong>
       </div>
       <progress
         className="todo-progress"
         value={list.progress}
         max={100}
-        aria-label={`Progression des tâches avec ${list.partner_name}`}
+        aria-label={translateUi(
+          `Progression des tâches avec ${list.partner_name}`,
+        )}
       />
       <p className="small-text" aria-live="polite">
-        {list.completed} tâche(s) terminée(s) sur {list.total}
-        {list.total > 0 && list.progress === 100
-          ? " · Bravo, tout est fait !"
-          : ""}
+        {list.completed}
+        {translateUi(" t\u00E2che(s) termin\u00E9e(s) sur ")}
+        {list.total}
+        {translateUi(
+          list.total > 0 && list.progress === 100
+            ? " · Bravo, tout est fait !"
+            : "",
+        )}
       </p>
       {!writable && (
         <p>
-          Cette liste est conservée en lecture seule
-          {list.status === "completed"
-            ? " : l’accompagnement est terminé."
-            : "."}
+          {translateUi("Cette liste est conserv\u00E9e en lecture seule")}
+          {translateUi(
+            list.status === "completed"
+              ? " : l’accompagnement est terminé."
+              : ".",
+          )}
         </p>
       )}
       {list.side === "mentor" && writable && (
         <form className="todo-add" onSubmit={add}>
           <label>
-            Nouvelle tâche ou amélioration
+            {translateUi("Nouvelle t\u00E2che ou am\u00E9lioration")}
             <textarea
               required
               maxLength={1000}
               value={body}
               disabled={busy}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="Ex. Refaire les photos de tes trois annonces les plus anciennes à la lumière naturelle."
+              placeholder={translateUi(
+                "Ex. Refaire les photos de tes trois annonces les plus anciennes à la lumière naturelle.",
+              )}
             />
           </label>
           <button className="btn" disabled={busy || !body.trim()}>
             <Plus size={18} />
-            {busy ? "Ajout…" : "Ajouter la tâche"}
+            {translateUi(busy ? "Ajout…" : "Ajouter la tâche")}
           </button>
         </form>
       )}
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
+      {translateUi(
+        error && (
+          <p role="alert" className="error">
+            {translateUi(error)}
+          </p>
+        ),
       )}
       {list.tasks.length ? (
         <ul className="todo-items">
@@ -199,9 +226,11 @@ function TaskList({
         </ul>
       ) : (
         <p>
-          {list.side === "mentor"
-            ? "Ajoute une première action pour guider ton débutant."
-            : "Ton parrain n’a pas encore ajouté de tâche."}
+          {translateUi(
+            list.side === "mentor"
+              ? "Ajoute une première action pour guider ton débutant."
+              : "Ton parrain n’a pas encore ajouté de tâche.",
+          )}
         </p>
       )}
     </div>
@@ -247,7 +276,7 @@ function TaskRow({
           }}
         >
           <label>
-            Modifier la tâche
+            {translateUi("Modifier la t\u00E2che")}
             <textarea
               required
               maxLength={1000}
@@ -258,7 +287,7 @@ function TaskRow({
           </label>
           <div className="pair-actions">
             <button className="btn" disabled={busy || !draft.trim()}>
-              Enregistrer
+              {translateUi("Enregistrer")}
             </button>
             <button
               type="button"
@@ -266,7 +295,7 @@ function TaskRow({
               disabled={busy}
               onClick={() => setEditing(false)}
             >
-              Annuler
+              {translateUi("Annuler")}
             </button>
           </div>
         </form>
@@ -287,7 +316,7 @@ function TaskRow({
             <div className="todo-item-actions">
               <button
                 className="text-btn"
-                aria-label="Modifier la tâche"
+                aria-label={translateUi("Modifier la tâche")}
                 disabled={busy}
                 onClick={() => {
                   setDraft(task.body);
@@ -299,7 +328,7 @@ function TaskRow({
               </button>
               <button
                 className="text-btn"
-                aria-label="Supprimer la tâche"
+                aria-label={translateUi("Supprimer la tâche")}
                 disabled={busy}
                 onClick={() => setDeleting(true)}
               >
@@ -311,29 +340,31 @@ function TaskRow({
       )}
       {deleting && writable && (
         <div>
-          <p>Supprimer cette tâche de la liste ?</p>
+          <p>{translateUi("Supprimer cette t\u00E2che de la liste ?")}</p>
           <div className="pair-actions">
             <button
               className="btn secondary"
               disabled={busy}
               onClick={() => void change("DELETE", { id: task.id })}
             >
-              Confirmer la suppression
+              {translateUi("Confirmer la suppression")}
             </button>
             <button
               className="text-btn"
               disabled={busy}
               onClick={() => setDeleting(false)}
             >
-              Annuler
+              {translateUi("Annuler")}
             </button>
           </div>
         </div>
       )}
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
+      {translateUi(
+        error && (
+          <p className="error" role="alert">
+            {translateUi(error)}
+          </p>
+        ),
       )}
     </li>
   );

@@ -1,4 +1,5 @@
 "use client";
+import { t as translateUi, locale } from "@/app/components/language";
 import { useEffect, useState, useCallback, type FormEvent } from "react";
 import { type PlatformSettings } from "@/lib/platform-config";
 type Data = {
@@ -74,33 +75,37 @@ export function AdminSettings() {
         onChange={(e) => change(key, e.target.checked)}
       />
       <span>
-        <strong>{label}</strong>
-        <small>{description}</small>
+        <strong>{translateUi(label)}</strong>
+        <small>{translateUi(description)}</small>
       </span>
     </label>
   );
   return (
     <section className="verification-panel admin-settings">
-      <h2>Paramètres de Mentora</h2>
+      <h2>{translateUi("Param\u00E8tres de Mentora")}</h2>
       <p>
-        Ces réglages s’appliquent à toute la plateforme après enregistrement.
+        {translateUi(
+          "Ces r\u00E9glages s\u2019appliquent \u00E0 toute la plateforme apr\u00E8s enregistrement.",
+        )}
       </p>
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
+      {translateUi(
+        error && (
+          <p className="error" role="alert">
+            {translateUi(error)}
+          </p>
+        ),
       )}
-      {message && <p role="status">{message}</p>}
+      {translateUi(message && <p role="status">{translateUi(message)}</p>)}
       {!data ? (
         <button className="btn secondary" onClick={() => void load()}>
-          Charger les paramètres
+          {translateUi("Charger les param\u00E8tres")}
         </button>
       ) : (
         <form onSubmit={save}>
           <fieldset disabled={busy}>
-            <legend>Communauté et annonce</legend>
+            <legend>{translateUi("Communaut\u00E9 et annonce")}</legend>
             <label>
-              Lien du groupe Discord
+              {translateUi("Lien du groupe Discord")}
               <input
                 type="url"
                 required
@@ -114,18 +119,20 @@ export function AdminSettings() {
               "Un bandeau apparaît sur toutes les pages, sur ordinateur et téléphone.",
             )}
             <label>
-              Texte de l’annonce
+              {translateUi("Texte de l\u2019annonce")}
               <textarea
                 maxLength={300}
                 rows={3}
                 value={data.settings.announcement}
                 onChange={(e) => change("announcement", e.target.value)}
-                placeholder="Une information à partager avec les membres…"
+                placeholder={translateUi(
+                  "Une information à partager avec les membres…",
+                )}
               />
             </label>
           </fieldset>
           <fieldset disabled={busy}>
-            <legend>Demandes et suggestions</legend>
+            <legend>{translateUi("Demandes et suggestions")}</legend>
             {toggle(
               "requestsEnabled",
               "Autoriser les nouvelles demandes de parrainage",
@@ -143,7 +150,7 @@ export function AdminSettings() {
             )}
           </fieldset>
           <fieldset disabled={busy}>
-            <legend>E-mails automatiques</legend>
+            <legend>{translateUi("E-mails automatiques")}</legend>
             {toggle(
               "emailsEnabled",
               "Activer les notifications par e-mail",
@@ -156,12 +163,15 @@ export function AdminSettings() {
             )}
           </fieldset>
           <p className="small-text">
-            Les identifiants Gmail et les droits administrateur restent gérés
-            séparément.
+            {translateUi(
+              "Les identifiants Gmail et les droits administrateur restent g\u00E9r\u00E9s s\u00E9par\u00E9ment.",
+            )}
           </p>
           <div className="email-actions">
             <button className="btn" disabled={busy}>
-              {busy ? "Enregistrement…" : "Enregistrer les paramètres"}
+              {translateUi(
+                busy ? "Enregistrement…" : "Enregistrer les paramètres",
+              )}
             </button>
             <button
               type="button"
@@ -169,14 +179,16 @@ export function AdminSettings() {
               disabled={busy}
               onClick={() => void load()}
             >
-              Recharger les paramètres enregistrés
+              {translateUi("Recharger les param\u00E8tres enregistr\u00E9s")}
             </button>
           </div>
-          {data.updatedAt && (
-            <p className="small-text">
-              Dernière modification :{" "}
-              {new Date(data.updatedAt).toLocaleString("fr-FR")}
-            </p>
+          {translateUi(
+            data.updatedAt && (
+              <p className="small-text">
+                {translateUi("Derni\u00E8re modification :")}{" "}
+                {translateUi(new Date(data.updatedAt).toLocaleString(locale()))}
+              </p>
+            ),
           )}
         </form>
       )}

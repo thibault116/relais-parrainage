@@ -4268,3 +4268,14 @@ textarea {
 .todo-item-actions { display:flex; gap:4px; }
 .todo-item-actions button { min-width:40px; min-height:40px; display:grid; place-items:center; }
 @media(max-width:600px) { .todo-item-main { flex-wrap:wrap; } .todo-add { padding:14px; } .todo-item { padding:14px; } .todo-item-actions { margin-left:34px; } }
+
+.settings-sections {display:flex;gap:8px;flex-wrap:wrap;margin:0 0 24px;}
+.settings-sections button {border:1px solid var(--line);background:var(--paper);color:var(--ink);padding:12px 18px;border-radius:14px;font:inherit;cursor:pointer;min-height:44px;}
+.settings-sections button.selected {color:var(--purple);border-color:var(--purple);font-weight:700;}
+.member-settings {min-width:0;}
+.member-settings .verification-panel {margin-bottom:24px;}
+.password-settings {display:grid;gap:18px;max-width:580px;}
+.password-settings label:not(.email-choice) {display:grid;gap:8px;}
+.password-settings input:not([type=checkbox]),.member-settings select {width:100%;min-width:0;padding:13px;border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--ink);font:inherit;}
+html[data-reduce-motion=true] *,html[data-reduce-motion=true] *::before,html[data-reduce-motion=true] *::after {animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important;scroll-behavior:auto!important;}
+@media(prefers-reduced-motion:reduce){html:not([data-reduce-motion=false]) *,html:not([data-reduce-motion=false]) *::before,html:not([data-reduce-motion=false]) *::after{animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important;scroll-behavior:auto!important;}}

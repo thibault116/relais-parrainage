@@ -1,4 +1,5 @@
 "use client";
+import { t as translateUi, locale } from "@/app/components/language";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Lightbulb, X, Paperclip } from "lucide-react";
 import { usePlatformSettings } from "./platform-settings";
@@ -75,10 +76,12 @@ export function SuggestionWidget() {
       <button
         ref={launcher}
         className="suggestion-launcher"
-        aria-label={open ? "Fermer les suggestions" : "Proposer une idée"}
+        aria-label={translateUi(
+          open ? "Fermer les suggestions" : "Proposer une idée",
+        )}
         aria-expanded={open}
         aria-controls="suggestion-dialog"
-        title="Proposer une idée"
+        title={translateUi("Proposer une idée")}
         onClick={() => {
           setOpen((v) => !v);
           setSent(false);
@@ -120,23 +123,30 @@ export function SuggestionWidget() {
           >
             <button
               className="suggestion-close"
-              aria-label="Fermer la fenêtre de suggestion"
+              aria-label={translateUi("Fermer la fenêtre de suggestion")}
               onClick={() => setOpen(false)}
             >
               <X size={20} />
             </button>
             <h2 id="suggestion-title">
-              <Lightbulb size={22} /> Une idée pour Mentora ?
+              <Lightbulb size={22} />
+              {translateUi(" Une id\u00E9e pour Mentora ?")}
             </h2>
             {sent ? (
               <p role="status">
-                Merci ! Ta suggestion a été envoyée à l’administration.
+                {translateUi(
+                  "Merci ! Ta suggestion a \u00E9t\u00E9 envoy\u00E9e \u00E0 l\u2019administration.",
+                )}
               </p>
             ) : (
               <form onSubmit={submit}>
-                <p>Une amélioration, une idée ou un souci ? Écris-nous.</p>
+                <p>
+                  {translateUi(
+                    "Une am\u00E9lioration, une id\u00E9e ou un souci ? \u00C9cris-nous.",
+                  )}
+                </p>
                 <label>
-                  Ta suggestion
+                  {translateUi("Ta suggestion")}
                   <textarea
                     required
                     minLength={5}
@@ -144,11 +154,12 @@ export function SuggestionWidget() {
                     value={message}
                     disabled={busy}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Ce qui m’aiderait, ce serait…"
+                    placeholder={translateUi("Ce qui m’aiderait, ce serait…")}
                   />
                 </label>
                 <label className="suggestion-file">
-                  <Paperclip size={17} /> Ajouter une photo ou un fichier
+                  <Paperclip size={17} />
+                  {translateUi(" Ajouter une photo ou un fichier")}
                   <input
                     type="file"
                     accept="image/*,.pdf,application/pdf"
@@ -160,8 +171,9 @@ export function SuggestionWidget() {
                   />
                 </label>
                 <small>
-                  Une image ou un PDF, 4 Mo maximum. Visible uniquement par
-                  l’administration.
+                  {translateUi(
+                    "Une image ou un PDF, 4 Mo maximum. Visible uniquement par l\u2019administration.",
+                  )}
                 </small>
                 {file && (
                   <p className="suggestion-filename">
@@ -178,14 +190,16 @@ export function SuggestionWidget() {
                         if (input) input.value = "";
                       }}
                     >
-                      Retirer
+                      {translateUi("Retirer")}
                     </button>
                   </p>
                 )}
-                {error && (
-                  <p className="error" role="alert">
-                    {error}
-                  </p>
+                {translateUi(
+                  error && (
+                    <p className="error" role="alert">
+                      {translateUi(error)}
+                    </p>
+                  ),
                 )}
                 {session ? (
                   <button className="btn" disabled={busy}>
@@ -193,7 +207,9 @@ export function SuggestionWidget() {
                   </button>
                 ) : (
                   <>
-                    <p>Connecte-toi pour envoyer ta suggestion.</p>
+                    <p>
+                      {translateUi("Connecte-toi pour envoyer ta suggestion.")}
+                    </p>
                     <button
                       className="btn"
                       type="button"
@@ -203,7 +219,7 @@ export function SuggestionWidget() {
                         window.dispatchEvent(new Event("mentora-login"));
                       }}
                     >
-                      Se connecter
+                      {translateUi("Se connecter")}
                     </button>
                   </>
                 )}
@@ -223,7 +239,10 @@ type Suggestion = {
   created_at: string;
   name: string;
   email: string;
-  attachment: { name: string; size: number } | null;
+  attachment: {
+    name: string;
+    size: number;
+  } | null;
 };
 export function AdminSuggestions() {
   const [items, setItems] = useState<Suggestion[]>([]),
@@ -279,46 +298,53 @@ export function AdminSuggestions() {
   }
   return (
     <section>
-      <h2>Suggestions des membres</h2>
+      <h2>{translateUi("Suggestions des membres")}</h2>
       <p>
-        {total} suggestion{total === 1 ? "" : "s"} · Les nouvelles sont
-        affichées en premier.
+        {total}
+        {translateUi(" suggestion")}
+        {translateUi(total === 1 ? "" : "s")}
+        {translateUi(" \u00B7 Les nouvelles sont affich\u00E9es en premier.")}
       </p>
       <button className="text-btn" onClick={() => setReload((v) => v + 1)}>
-        Actualiser les suggestions
+        {translateUi("Actualiser les suggestions")}
       </button>
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
+      {translateUi(
+        error && (
+          <p role="alert" className="error">
+            {translateUi(error)}
+          </p>
+        ),
       )}
       {loading ? (
-        <p>Chargement…</p>
+        <p>{translateUi("Chargement\u2026")}</p>
       ) : !items.length ? (
-        <p>Aucune suggestion pour le moment.</p>
+        <p>{translateUi("Aucune suggestion pour le moment.")}</p>
       ) : (
         items.map((s) => (
           <article className="verification-panel" key={s.id}>
             <span className="badge">
-              {s.status === "new" ? "Nouvelle" : "Examinée"}
+              {translateUi(s.status === "new" ? "Nouvelle" : "Examinée")}
             </span>
             <h3>{s.name || "Ancien membre"}</h3>
             <p>
-              {s.email} · {new Date(s.created_at).toLocaleString("fr-FR")} ·
-              Page :{" "}
-              {(
-                {
-                  home: "Accueil",
-                  directory: "Trouver mon binôme",
-                  guide: "Comment ça marche",
-                  faq: "FAQ",
-                  profile: "Mon profil",
-                  moderation: "Administration",
-                  help: "Aide",
-                } as Record<string, string>
-              )[s.page] || "Accueil"}
+              {s.email} ·{" "}
+              {translateUi(new Date(s.created_at).toLocaleString(locale()))}
+              {translateUi(" \u00B7 Page :")}{" "}
+              {translateUi(
+                (
+                  {
+                    home: "Accueil",
+                    directory: "Trouver mon binôme",
+                    guide: "Comment ça marche",
+                    faq: "FAQ",
+                    profile: "Mon profil",
+                    moderation: "Administration",
+                    help: "Aide",
+                  } as Record<string, string>
+                )[s.page] || "Accueil",
+              )}
             </p>
-            <p className="suggestion-message">{s.message}</p>
+            <p className="suggestion-message">{translateUi(s.message)}</p>
             {s.attachment && (
               <p>
                 <a
@@ -326,9 +352,11 @@ export function AdminSuggestions() {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Télécharger : {s.attachment.name}
+                  {translateUi("T\u00E9l\u00E9charger : ")}
+                  {s.attachment.name}
                 </a>{" "}
-                ({Math.ceil(s.attachment.size / 1024)} Ko)
+                ({Math.ceil(s.attachment.size / 1024)}
+                {translateUi(" Ko)")}
               </p>
             )}
             <button
@@ -336,11 +364,13 @@ export function AdminSuggestions() {
               disabled={!!busy}
               onClick={() => void mark(s)}
             >
-              {busy === s.id
-                ? "Enregistrement…"
-                : s.status === "new"
-                  ? "Marquer comme examinée"
-                  : "Remettre dans les nouvelles"}
+              {translateUi(
+                busy === s.id
+                  ? "Enregistrement…"
+                  : s.status === "new"
+                    ? "Marquer comme examinée"
+                    : "Remettre dans les nouvelles",
+              )}
             </button>
           </article>
         ))
@@ -348,14 +378,17 @@ export function AdminSuggestions() {
       {total > 30 && (
         <div className="pagination">
           <button disabled={!page} onClick={() => setPage((v) => v - 1)}>
-            Précédent
+            {translateUi("Pr\u00E9c\u00E9dent")}
           </button>
-          <span>Page {page + 1}</span>
+          <span>
+            {translateUi("Page ")}
+            {page + 1}
+          </span>
           <button
             disabled={(page + 1) * 30 >= total}
             onClick={() => setPage((v) => v + 1)}
           >
-            Suivant
+            {translateUi("Suivant")}
           </button>
         </div>
       )}

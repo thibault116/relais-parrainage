@@ -1,4 +1,5 @@
 "use client";
+import { t as translateUi } from "@/app/components/language";
 import {
   createContext,
   useContext,
@@ -54,12 +55,12 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
         <aside
           ref={announcement}
           className="platform-announcement"
-          aria-label="Annonce Mentora"
+          aria-label={translateUi("Annonce Mentora")}
         >
           {settings.announcement}
         </aside>
       )}
-      {children}
+      {translateUi(children)}
     </SettingsContext.Provider>
   );
 }

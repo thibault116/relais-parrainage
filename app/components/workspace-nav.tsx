@@ -1,4 +1,5 @@
 "use client";
+import { t as translateUi } from "@/app/components/language";
 import { BrandLogo } from "./brand-logo";
 import {
   Compass,
@@ -21,7 +22,13 @@ import {
   ArrowUpRight,
   type LucideIcon,
 } from "lucide-react";
-type Destination = "home" | "directory" | "profile" | "moderation" | "help" | "menu";
+type Destination =
+  | "home"
+  | "directory"
+  | "profile"
+  | "moderation"
+  | "help"
+  | "menu";
 type Item = {
   id: string;
   label: string;
@@ -66,20 +73,19 @@ const memberItems: Item[] = [
     tab: "verification",
   },
   {
-    id: "emails",
-    label: "Notifications",
-    icon: Mail,
-    view: "profile",
-    tab: "emails",
-  },
-  {
     id: "appearance",
     label: "Paramètres",
     icon: Settings,
     view: "profile",
     tab: "appearance",
   },
-  {id:"tasks",label:"To-do list",icon:ListChecks,view:"profile",tab:"tasks"},
+  {
+    id: "tasks",
+    label: "To-do list",
+    icon: ListChecks,
+    view: "profile",
+    tab: "tasks",
+  },
 ];
 const adminItems: Item[] = [
   {
@@ -164,13 +170,16 @@ export function WorkspaceNav({
     view === item.view &&
     (!item.tab || (view === "profile" ? profileTab : adminTab) === item.tab);
   const title =
-    view === "menu" ? "Menu" : view === "profile"
-      ? memberItems.find((i) => i.tab === profileTab)?.label || "Mon profil"
-      : view === "moderation"
-        ? adminItems.find((i) => i.tab === adminTab)?.label || "Administration"
-        : view === "help"
-          ? "Aide"
-          : "Trouver mon binôme";
+    view === "menu"
+      ? "Menu"
+      : view === "profile"
+        ? memberItems.find((i) => i.tab === profileTab)?.label || "Mon profil"
+        : view === "moderation"
+          ? adminItems.find((i) => i.tab === adminTab)?.label ||
+            "Administration"
+          : view === "help"
+            ? "Aide"
+            : "Trouver mon binôme";
   function navigate(v: Destination, tab?: string) {
     onNavigate(v, tab);
   }
@@ -182,7 +191,7 @@ export function WorkspaceNav({
       onClick={() => navigate(item.view, item.tab)}
     >
       <item.icon size={19} />
-      <span>{item.label}</span>
+      <span>{translateUi(item.label)}</span>
     </button>
   );
   return (
@@ -190,24 +199,25 @@ export function WorkspaceNav({
       <aside
         id="workspace-menu"
         className="workspace-sidebar"
-        aria-label="Menu de l’espace membre"
+        aria-label={translateUi("Menu de l’espace membre")}
       >
         <div className="workspace-brand-row">
           <a
             href="#home"
             className="brand"
-            aria-label="Mentora, accueil"
+            aria-label={translateUi("Mentora, accueil")}
             onClick={() => navigate("home")}
           >
             <span className="brand-mark">
               <BrandLogo />
             </span>
-            mentora<span className="brand-dot">.</span>
+            {translateUi("mentora")}
+            <span className="brand-dot">.</span>
           </a>
         </div>
         <nav
           className="workspace-links"
-          aria-label="Navigation de l’espace membre"
+          aria-label={translateUi("Navigation de l’espace membre")}
         >
           {itemButton({
             id: "directory",
@@ -215,17 +225,21 @@ export function WorkspaceNav({
             icon: Compass,
             view: "directory",
           })}
-          <p className="workspace-group-title">Mon espace</p>
+          <p className="workspace-group-title">{translateUi("Mon espace")}</p>
           {memberItems
             .filter((i) => i.id !== "verification" || mentor)
             .map(itemButton)}
           {moderator && (
             <>
-              <p className="workspace-group-title">Administration</p>
+              <p className="workspace-group-title">
+                {translateUi("Administration")}
+              </p>
               {adminItems.map(itemButton)}
             </>
           )}
-          <p className="workspace-group-title">Communauté</p>
+          <p className="workspace-group-title">
+            {translateUi("Communaut\u00E9")}
+          </p>
           {itemButton({
             id: "help",
             label: "Aide",
@@ -234,7 +248,7 @@ export function WorkspaceNav({
           })}
           <a href={discordUrl} target="_blank" rel="noopener noreferrer">
             <MessageCircle size={19} />
-            <span>Rejoindre Discord</span>
+            <span>{translateUi("Rejoindre Discord")}</span>
             <ArrowUpRight size={15} />
           </a>
         </nav>
@@ -245,12 +259,12 @@ export function WorkspaceNav({
             </span>
             <span>
               <strong>{name}</strong>
-              <small>Mon profil</small>
+              <small>{translateUi("Mon profil")}</small>
             </span>
           </button>
           <button
-            aria-label="Se déconnecter"
-            title="Se déconnecter"
+            aria-label={translateUi("Se déconnecter")}
+            title={translateUi("Se déconnecter")}
             onClick={onSignOut}
           >
             <LogOut size={18} />
@@ -261,26 +275,31 @@ export function WorkspaceNav({
         <a
           href="#home"
           className="brand-mark workspace-mobile-logo"
-          aria-label="Mentora, accueil"
+          aria-label={translateUi("Mentora, accueil")}
           onClick={() => navigate("home")}
         >
           <BrandLogo />
         </a>
         <div>
           <small>
-            {view === "moderation" ? "ADMINISTRATION" : "MON ESPACE MENTORA"}
+            {translateUi(
+              view === "moderation" ? "ADMINISTRATION" : "MON ESPACE MENTORA",
+            )}
           </small>
-          <strong>{title}</strong>
+          <strong>{translateUi(title)}</strong>
         </div>
         <button
           className="workspace-top-help"
-          aria-label="Ouvrir l’aide"
+          aria-label={translateUi("Ouvrir l’aide")}
           onClick={() => navigate("help")}
         >
           <CircleHelp size={21} />
         </button>
       </header>
-      <nav className="workspace-bottom-nav" aria-label="Navigation mobile">
+      <nav
+        className="workspace-bottom-nav"
+        aria-label={translateUi("Navigation mobile")}
+      >
         {[
           {
             id: "directory",
@@ -298,27 +317,68 @@ export function WorkspaceNav({
           onClick={() => navigate("menu")}
         >
           <Menu size={21} />
-          <span>Menu</span>
+          <span>{translateUi("Menu")}</span>
         </button>
       </nav>
     </>
   );
 }
-
-export function WorkspaceMenuPage({mentor, moderator, discordUrl, onNavigate, onSignOut}: {
-  mentor:boolean; moderator:boolean; discordUrl:string;
-  onNavigate:(view:Destination, tab?:string)=>void; onSignOut:()=>void;
+export function WorkspaceMenuPage({
+  mentor,
+  moderator,
+  discordUrl,
+  onNavigate,
+  onSignOut,
+}: {
+  mentor: boolean;
+  moderator: boolean;
+  discordUrl: string;
+  onNavigate: (view: Destination, tab?: string) => void;
+  onSignOut: () => void;
 }) {
-  const render = (item:Item) => <button key={item.id} onClick={()=>onNavigate(item.view,item.tab)}><item.icon size={22}/><span>{item.label}</span><ArrowUpRight size={17}/></button>;
-  return <section className="wrap workspace-menu-page">
-    <div className="page-heading"><span className="eyebrow">TON ESPACE</span><h1>Menu</h1><p>Tous tes raccourcis, au même endroit.</p></div>
-    <h2>Mon espace</h2><div className="menu-page-grid">{memberItems.filter(i=>i.id!=="verification"||mentor).map(render)}</div>
-    {moderator&&<><h2>Administration</h2><div className="menu-page-grid">{adminItems.map(render)}</div></>}
-    <h2>Communauté</h2><div className="menu-page-grid">
-      {render({id:"help",label:"Aide",icon:CircleHelp,view:"help"})}
-      <a href={discordUrl} target="_blank" rel="noopener noreferrer"><MessageCircle size={22}/><span>Rejoindre la communauté Discord</span><ArrowUpRight size={17}/></a>
-      <button onClick={()=>onNavigate("home")}><Compass size={22}/><span>Accueil de Mentora</span></button>
-      <button onClick={onSignOut}><LogOut size={22}/><span>Se déconnecter</span></button>
-    </div>
-  </section>;
+  const render = (item: Item) => (
+    <button key={item.id} onClick={() => onNavigate(item.view, item.tab)}>
+      <item.icon size={22} />
+      <span>{translateUi(item.label)}</span>
+      <ArrowUpRight size={17} />
+    </button>
+  );
+  return (
+    <section className="wrap workspace-menu-page">
+      <div className="page-heading">
+        <span className="eyebrow">{translateUi("TON ESPACE")}</span>
+        <h1>{translateUi("Menu")}</h1>
+        <p>{translateUi("Tous tes raccourcis, au m\u00EAme endroit.")}</p>
+      </div>
+      <h2>{translateUi("Mon espace")}</h2>
+      <div className="menu-page-grid">
+        {memberItems
+          .filter((i) => i.id !== "verification" || mentor)
+          .map(render)}
+      </div>
+      {moderator && (
+        <>
+          <h2>{translateUi("Administration")}</h2>
+          <div className="menu-page-grid">{adminItems.map(render)}</div>
+        </>
+      )}
+      <h2>{translateUi("Communaut\u00E9")}</h2>
+      <div className="menu-page-grid">
+        {render({ id: "help", label: "Aide", icon: CircleHelp, view: "help" })}
+        <a href={discordUrl} target="_blank" rel="noopener noreferrer">
+          <MessageCircle size={22} />
+          <span>{translateUi("Rejoindre la communaut\u00E9 Discord")}</span>
+          <ArrowUpRight size={17} />
+        </a>
+        <button onClick={() => onNavigate("home")}>
+          <Compass size={22} />
+          <span>{translateUi("Accueil de Mentora")}</span>
+        </button>
+        <button onClick={onSignOut}>
+          <LogOut size={22} />
+          <span>{translateUi("Se d\u00E9connecter")}</span>
+        </button>
+      </div>
+    </section>
+  );
 }

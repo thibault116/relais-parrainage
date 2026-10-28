@@ -1,4 +1,5 @@
 "use client";
+import { t as translateUi } from "@/app/components/language";
 import { useEffect, useRef, useState } from "react";
 export function UpdateBanner() {
   const [version, setVersion] = useState("");
@@ -70,8 +71,10 @@ export function UpdateBanner() {
       <div className="update-banner-space" aria-hidden="true" />
       <aside ref={banner} className="update-banner" role="status">
         <span>
-          <strong>Une nouvelle version de Mentora est disponible.</strong>{" "}
-          Enregistre tes modifications, puis recharge la page.
+          <strong>
+            {translateUi("Une nouvelle version de Mentora est disponible.")}
+          </strong>{" "}
+          {translateUi("Enregistre tes modifications, puis recharge la page.")}
         </span>
         <button
           type="button"
@@ -81,7 +84,7 @@ export function UpdateBanner() {
             window.location.replace(url.href);
           }}
         >
-          Recharger la page
+          {translateUi("Recharger la page")}
         </button>
       </aside>
     </>

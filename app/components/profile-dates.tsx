@@ -1,4 +1,5 @@
 "use client";
+import { t as translateUi, locale } from "@/app/components/language";
 import { useEffect, useState } from "react";
 import { type PublicProfile } from "@/lib/profile";
 import { frenchDate, elapsedLabel } from "@/lib/profile-dates";
@@ -11,36 +12,53 @@ export function ProfileDates({ profile: p }: { profile: PublicProfile }) {
   return (
     <div className="profile-dates">
       <p>
-        Membre depuis{" "}
-        {p.memberSince ? (
-          <time dateTime={p.memberSince}>le {frenchDate(p.memberSince)}</time>
-        ) : (
-          "une date non renseignée"
+        {translateUi("Membre depuis")}{" "}
+        {translateUi(
+          p.memberSince ? (
+            <time dateTime={p.memberSince}>
+              {translateUi("le ")}
+              {translateUi(frenchDate(p.memberSince, locale()))}
+            </time>
+          ) : (
+            "une date non renseignée"
+          ),
         )}
       </p>
       <p>
-        Dernière activité :{" "}
-        {p.lastActiveAt ? (
-          <time
-            dateTime={p.lastActiveAt}
-            title={new Date(p.lastActiveAt).toLocaleString("fr-FR")}
-          >
-            {elapsedLabel(p.lastActiveAt, now, "activity")}
-          </time>
-        ) : (
-          "pas encore enregistrée"
+        {translateUi("Derni\u00E8re activit\u00E9 :")}{" "}
+        {translateUi(
+          p.lastActiveAt ? (
+            <time
+              dateTime={p.lastActiveAt}
+              title={translateUi(
+                new Date(p.lastActiveAt).toLocaleString(locale()),
+              )}
+            >
+              {translateUi(
+                elapsedLabel(p.lastActiveAt, now, "activity", locale()),
+              )}
+            </time>
+          ) : (
+            "pas encore enregistrée"
+          ),
         )}
       </p>
       {p.availableSince ? (
         <p>
-          {p.role === "mentor" ? "Place disponible" : "Cherche un parrain"}{" "}
+          {translateUi(
+            p.role === "mentor" ? "Place disponible" : "Cherche un parrain",
+          )}{" "}
           <time dateTime={p.availableSince}>
-            {elapsedLabel(p.availableSince, now, "since")}
+            {translateUi(
+              elapsedLabel(p.availableSince, now, "since", locale()),
+            )}
           </time>
         </p>
       ) : (
         <p>
-          {p.role === "mentor" ? "Aucune place disponible" : "Déjà accompagné"}
+          {translateUi(
+            p.role === "mentor" ? "Aucune place disponible" : "Déjà accompagné",
+          )}
         </p>
       )}
     </div>
@@ -55,12 +73,29 @@ export function AvailabilityBadge({ profile: p }: { profile: PublicProfile }) {
   const remaining = Math.max(0, p.capacity - (p.activeCount ?? 0));
   const mentor = p.role === "mentor";
   return (
-    <span className={`badge availability-badge ${mentor && remaining ? "green" : ""}`}>
-      <strong>{mentor ? `${remaining} place${remaining > 1 ? "s" : ""} libre${remaining > 1 ? "s" : ""}` : "Débutant"}</strong>
-      {p.availableSince && (!mentor || remaining > 0) && (
-        <small>{mentor ? "Place disponible" : "Cherche un parrain"}{" "}
-          <time dateTime={p.availableSince}>{elapsedLabel(p.availableSince, now, "since")}</time>
-        </small>
+    <span
+      className={`badge availability-badge ${mentor && remaining ? "green" : ""}`}
+    >
+      <strong>
+        {translateUi(
+          mentor
+            ? locale() === "en-GB"
+              ? `${remaining} place${remaining !== 1 ? "s" : ""} available`
+              : `${remaining} place${remaining > 1 ? "s" : ""} libre${remaining > 1 ? "s" : ""}`
+            : "Débutant",
+        )}
+      </strong>
+      {translateUi(
+        p.availableSince && (!mentor || remaining > 0) && (
+          <small>
+            {translateUi(mentor ? "Place disponible" : "Cherche un parrain")}{" "}
+            <time dateTime={p.availableSince}>
+              {translateUi(
+                elapsedLabel(p.availableSince, now, "since", locale()),
+              )}
+            </time>
+          </small>
+        ),
       )}
     </span>
   );

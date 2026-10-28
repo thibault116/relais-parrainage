@@ -1,3 +1,4 @@
+import { t as translateUi } from "@/app/components/language";
 import {
   UserPlus,
   Search,
@@ -90,14 +91,18 @@ export function Help() {
   return (
     <section className="wrap help-page">
       <div className="page-heading">
-        <span className="eyebrow">LE GUIDE MENTORA</span>
-        <h1>Tout comprendre, simplement.</h1>
+        <span className="eyebrow">{translateUi("LE GUIDE MENTORA")}</span>
+        <h1>{translateUi("Tout comprendre, simplement.")}</h1>
         <p>
-          De tes premiers pas en achat-revente à ton premier binôme : les
-          étapes, les boutons et les réponses à tes questions.
+          {translateUi(
+            "De tes premiers pas en achat-revente \u00E0 ton premier bin\u00F4me : les \u00E9tapes, les boutons et les r\u00E9ponses \u00E0 tes questions.",
+          )}
         </p>
       </div>
-      <div className="help-journey" aria-label="Les étapes du parrainage">
+      <div
+        className="help-journey"
+        aria-label={translateUi("Les étapes du parrainage")}
+      >
         {[
           [UserPlus, "1. Je crée mon profil"],
           [Search, "2. Je trouve mon binôme"],
@@ -108,12 +113,15 @@ export function Help() {
           return (
             <div key={String(title)}>
               <I size={30} />
-              <strong>{String(title)}</strong>
+              <strong>{translateUi(String(title))}</strong>
             </div>
           );
         })}
       </div>
-      <nav className="help-index" aria-label="Sommaire de l’aide">
+      <nav
+        className="help-index"
+        aria-label={translateUi("Sommaire de l’aide")}
+      >
         {chapters.map(([id, title], i) => (
           <a
             href={`#aide-${id}`}
@@ -122,31 +130,48 @@ export function Help() {
               e.preventDefault();
               document
                 .getElementById(`aide-${id}`)
-                ?.scrollIntoView({ behavior: "smooth" });
+                ?.scrollIntoView({
+                  behavior:
+                    document.documentElement.dataset.reduceMotion === "true"
+                      ? "instant"
+                      : "smooth",
+                });
             }}
           >
-            {i + 1}. {title}
+            {i + 1}. {translateUi(title)}
           </a>
         ))}
       </nav>
       <div className="help-chapters">
         {chapters.map(([id, title, ...paragraphs], i) => (
           <article key={id} id={`aide-${id}`}>
-            <span className="eyebrow">{String(i + 1).padStart(2, "0")}</span>
-            <h2>{title}</h2>
+            <span className="eyebrow">
+              {translateUi(String(i + 1).padStart(2, "0"))}
+            </span>
+            <h2>{translateUi(title)}</h2>
             {paragraphs.map((p) => (
-              <p key={p}>{p}</p>
+              <p key={p}>{translateUi(p)}</p>
             ))}
             {id === "verification" && (
               <div className="help-example">
                 <ShieldCheck />
                 <div>
-                  <strong>Parrain vérifié</strong>
-                  <p>Dossier examiné par l’administration.</p>
+                  <strong>{translateUi("Parrain v\u00E9rifi\u00E9")}</strong>
+                  <p>
+                    {translateUi(
+                      "Dossier examin\u00E9 par l\u2019administration.",
+                    )}
+                  </p>
                 </div>
                 <div>
-                  <strong>Parrain non vérifié</strong>
-                  <p>Expérience déclarée par le membre.</p>
+                  <strong>
+                    {translateUi("Parrain non v\u00E9rifi\u00E9")}
+                  </strong>
+                  <p>
+                    {translateUi(
+                      "Exp\u00E9rience d\u00E9clar\u00E9e par le membre.",
+                    )}
+                  </p>
                 </div>
               </div>
             )}
@@ -154,7 +179,9 @@ export function Help() {
               <div className="help-example">
                 <EyeOff />
                 <span>
-                  Profil masqué → absent de l’annuaire → réactivation possible.
+                  {translateUi(
+                    "Profil masqu\u00E9 \u2192 absent de l\u2019annuaire \u2192 r\u00E9activation possible.",
+                  )}
                 </span>
               </div>
             )}
@@ -167,7 +194,7 @@ export function Help() {
         target="_blank"
         rel="noopener noreferrer"
       >
-        Rejoindre le groupe Discord
+        {translateUi("Rejoindre le groupe Discord")}
       </a>
     </section>
   );

@@ -1,4 +1,5 @@
 "use client";
+import { t as translateUi } from "@/app/components/language";
 import { useState } from "react";
 import type { PublicProfile } from "@/lib/profile";
 export function Avatar({ profile }: { profile: PublicProfile }) {
@@ -8,7 +9,7 @@ export function Avatar({ profile }: { profile: PublicProfile }) {
       {profile.photo && failed !== profile.photo ? (
         <img
           src={profile.photo}
-          alt={`Photo de ${profile.name}`}
+          alt={translateUi(`Photo de ${profile.name}`)}
           onError={() => setFailed(profile.photo!)}
         />
       ) : (
@@ -84,19 +85,22 @@ export function ProfilePhoto({
     <section className="photo-editor">
       <Avatar profile={profile} />
       <div>
-        <h2>Ma photo de profil</h2>
+        <h2>{translateUi("Ma photo de profil")}</h2>
         <p>
-          Elle apparaît sur ta carte et ta fiche. La photo est recadrée au
-          centre en carré.
+          {translateUi(
+            "Elle appara\u00EEt sur ta carte et ta fiche. La photo est recadr\u00E9e au centre en carr\u00E9.",
+          )}
         </p>
         <label className="btn secondary">
-          {busy
-            ? "Enregistrement…"
-            : profile.photo
-              ? "Changer ma photo"
-              : "Ajouter une photo"}
+          {translateUi(
+            busy
+              ? "Enregistrement…"
+              : profile.photo
+                ? "Changer ma photo"
+                : "Ajouter une photo",
+          )}
           <input
-            aria-label="Choisir ma photo de profil"
+            aria-label={translateUi("Choisir ma photo de profil")}
             type="file"
             accept="image/jpeg,image/png,image/webp"
             disabled={busy}
@@ -107,19 +111,23 @@ export function ProfilePhoto({
             }}
           />
         </label>
-        {profile.photo && (
-          <button
-            className="text-btn"
-            disabled={busy}
-            onClick={() => void change()}
-          >
-            Retirer ma photo
-          </button>
+        {translateUi(
+          profile.photo && (
+            <button
+              className="text-btn"
+              disabled={busy}
+              onClick={() => void change()}
+            >
+              {translateUi("Retirer ma photo")}
+            </button>
+          ),
         )}
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
+        {translateUi(
+          error && (
+            <p role="alert" className="error">
+              {translateUi(error)}
+            </p>
+          ),
         )}
       </div>
     </section>

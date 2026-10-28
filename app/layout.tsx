@@ -1,3 +1,4 @@
+import { LanguageProvider } from "./components/language";
 import { AppearanceProvider } from "./components/appearance";
 import { PlatformProvider } from "./components/platform-settings";
 import type { Metadata } from "next";
@@ -16,18 +17,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var a=JSON.parse(localStorage.getItem("mentora-appearance")||"{}");document.documentElement.dataset.theme=a?.dark!==false?"dark":"light";document.documentElement.dataset.neon=a?.neon!==false?"true":"false";}catch(e){}`,
+            __html: `try{var a=JSON.parse(localStorage.getItem("mentora-appearance")||"{}");document.documentElement.dataset.reduceMotion=String(a?.reduceMotion===true);document.documentElement.dataset.theme=a?.dark!==false?"dark":"light";document.documentElement.dataset.neon=a?.neon!==false?"true":"false";}catch(e){}`,
           }}
         />
       </head>
       <body>
-        <AppearanceProvider>
-          <UpdateBanner />
-          <PlatformProvider>
-            {children}
-            <SuggestionWidget />
-          </PlatformProvider>
-        </AppearanceProvider>
+        <LanguageProvider>
+          <AppearanceProvider>
+            <UpdateBanner />
+            <PlatformProvider>
+              {children}
+              <SuggestionWidget />
+            </PlatformProvider>
+          </AppearanceProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

@@ -1,4 +1,5 @@
 "use client";
+import { t as translateUi, locale } from "@/app/components/language";
 import { useEffect, useState } from "react";
 import type { PublicProfile } from "@/lib/profile";
 import { Avatar } from "./profile-photo";
@@ -6,12 +7,14 @@ export function FollowCounts({ profile }: { profile: PublicProfile }) {
   return (
     <p className="follow-counts">
       <span>
-        <strong>{profile.followerCount ?? 0}</strong> abonné
-        {profile.followerCount === 1 ? "" : "s"}
+        <strong>{profile.followerCount ?? 0}</strong>
+        {translateUi(" abonn\u00E9")}
+        {translateUi(profile.followerCount === 1 ? "" : "s")}
       </span>
       <span>
-        <strong>{profile.followingCount ?? 0}</strong> abonnement
-        {profile.followingCount === 1 ? "" : "s"}
+        <strong>{profile.followingCount ?? 0}</strong>
+        {translateUi(" abonnement")}
+        {translateUi(profile.followingCount === 1 ? "" : "s")}
       </span>
     </p>
   );
@@ -71,18 +74,22 @@ export function FollowButton({
         disabled={busy || loading}
         onClick={() => void toggle()}
       >
-        {loading
-          ? "Chargement…"
-          : busy
-            ? "Enregistrement…"
-            : following
-              ? "Se désabonner"
-              : "S’abonner au profil"}
+        {translateUi(
+          loading
+            ? "Chargement…"
+            : busy
+              ? "Enregistrement…"
+              : following
+                ? "Se désabonner"
+                : "S’abonner au profil",
+        )}
       </button>
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
+      {translateUi(
+        error && (
+          <p role="alert" className="error">
+            {translateUi(error)}
+          </p>
+        ),
       )}
     </div>
   );
@@ -151,11 +158,14 @@ export function FollowNetwork({
   }
   return (
     <section className="follow-network">
-      <span className="eyebrow">MON RÉSEAU DE REVENDEURS</span>
-      <h2>Abonnés et abonnements</h2>
+      <span className="eyebrow">
+        {translateUi("MON R\u00C9SEAU DE REVENDEURS")}
+      </span>
+      <h2>{translateUi("Abonn\u00E9s et abonnements")}</h2>
       <p>
-        Retrouve les membres que tu suis et ceux qui te suivent. Les profils
-        actualisés le plus récemment apparaissent en premier.
+        {translateUi(
+          "Retrouve les membres que tu suis et ceux qui te suivent. Les profils actualis\u00E9s le plus r\u00E9cemment apparaissent en premier.",
+        )}
       </p>
       <div className="follow-tabs">
         {(["following", "followers"] as const).map((t) => (
@@ -168,31 +178,36 @@ export function FollowNetwork({
               setPage(0);
             }}
           >
-            {t === "following" ? "Mes abonnements" : "Mes abonnés"}
+            {translateUi(t === "following" ? "Mes abonnements" : "Mes abonnés")}
           </button>
         ))}
         <button className="text-btn" onClick={() => setReload((v) => v + 1)}>
-          Actualiser
+          {translateUi("Actualiser")}
         </button>
       </div>
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
+      {translateUi(
+        error && (
+          <p role="alert" className="error">
+            {translateUi(error)}
+          </p>
+        ),
       )}
       {loading ? (
-        <p>Chargement…</p>
+        <p>{translateUi("Chargement\u2026")}</p>
       ) : (
         <>
           <p>
-            {total} {type === "following" ? "abonnement" : "abonné"}
-            {total === 1 ? "" : "s"}
+            {total}{" "}
+            {translateUi(type === "following" ? "abonnement" : "abonné")}
+            {translateUi(total === 1 ? "" : "s")}
           </p>
           {!items.length && (
             <p>
-              {type === "following"
-                ? "Tu ne suis encore personne. Ouvre un profil et clique sur « S’abonner au profil »."
-                : "Tes futurs abonnés apparaîtront ici."}
+              {translateUi(
+                type === "following"
+                  ? "Tu ne suis encore personne. Ouvre un profil et clique sur « S’abonner au profil »."
+                  : "Tes futurs abonnés apparaîtront ici.",
+              )}
             </p>
           )}
           <div className="follow-list">
@@ -204,27 +219,35 @@ export function FollowNetwork({
                     <div>
                       <strong>{item.profile.name}</strong>
                       <p>
-                        {item.profile.role === "mentor"
-                          ? "Parrain"
-                          : "Débutant"}{" "}
-                        · {item.profile.specialty.join(" · ")}
+                        {translateUi(
+                          item.profile.role === "mentor"
+                            ? "Parrain"
+                            : "Débutant",
+                        )}{" "}
+                        · {translateUi(item.profile.specialty.join(" · "))}
                       </p>
-                      {item.updatedAt && (
-                        <small>
-                          Profil actualisé le{" "}
-                          {new Date(item.updatedAt).toLocaleDateString("fr-FR")}
-                        </small>
+                      {translateUi(
+                        item.updatedAt && (
+                          <small>
+                            {translateUi("Profil actualis\u00E9 le")}{" "}
+                            {translateUi(
+                              new Date(item.updatedAt).toLocaleDateString(
+                                locale(),
+                              ),
+                            )}
+                          </small>
+                        ),
                       )}
                     </div>
                     <button
                       className="btn secondary"
                       onClick={() => onOpen(item.profile!)}
                     >
-                      Voir le profil
+                      {translateUi("Voir le profil")}
                     </button>
                   </>
                 ) : (
-                  <p>Profil masqué ou indisponible</p>
+                  <p>{translateUi("Profil masqu\u00E9 ou indisponible")}</p>
                 )}
                 {type === "following" && (
                   <button
@@ -232,7 +255,7 @@ export function FollowNetwork({
                     disabled={!!busy}
                     onClick={() => void remove(item.id)}
                   >
-                    {busy === item.id ? "…" : "Se désabonner"}
+                    {translateUi(busy === item.id ? "…" : "Se désabonner")}
                   </button>
                 )}
               </article>
@@ -245,15 +268,18 @@ export function FollowNetwork({
                 disabled={!page}
                 onClick={() => setPage((p) => p - 1)}
               >
-                Précédent
+                {translateUi("Pr\u00E9c\u00E9dent")}
               </button>
-              <span>Page {page + 1}</span>
+              <span>
+                {translateUi("Page ")}
+                {page + 1}
+              </span>
               <button
                 className="btn secondary"
                 disabled={(page + 1) * 30 >= total}
                 onClick={() => setPage((p) => p + 1)}
               >
-                Suivant
+                {translateUi("Suivant")}
               </button>
             </div>
           )}

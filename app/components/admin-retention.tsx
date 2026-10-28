@@ -1,4 +1,5 @@
 "use client";
+import { t as translateUi, locale } from "@/app/components/language";
 import { useEffect, useState } from "react";
 type Member = {
   id: string;
@@ -17,7 +18,7 @@ type Data = {
   accounts: Member[];
   canSend: boolean;
 };
-const date = (s: string) => new Date(s).toLocaleString("fr-FR");
+const date = (s: string) => new Date(s).toLocaleString(locale());
 const statuses: Record<string, string> = {
   pending: "En attente",
   sending: "En cours",
@@ -89,10 +90,10 @@ export function AdminRetention() {
   }
   return (
     <section className="verification-panel retention-panel">
-      <h2>Comptes inactifs et relances</h2>
+      <h2>{translateUi("Comptes inactifs et relances")}</h2>
       <div className="retention-filters">
         <label>
-          Sans activité depuis au moins{" "}
+          {translateUi("Sans activit\u00E9 depuis au moins")}{" "}
           <select
             value={days}
             disabled={busy}
@@ -104,7 +105,8 @@ export function AdminRetention() {
           >
             {[7, 14, 30, 60, 90].map((n) => (
               <option value={n} key={n}>
-                {n} jours
+                {n}
+                {translateUi(" jours")}
               </option>
             ))}
           </select>
@@ -114,45 +116,58 @@ export function AdminRetention() {
           disabled={busy}
           onClick={() => setRevision((v) => v + 1)}
         >
-          Actualiser
+          {translateUi("Actualiser")}
         </button>
       </div>
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
+      {translateUi(
+        error && (
+          <p role="alert" className="error">
+            {translateUi(error)}
+          </p>
+        ),
       )}
-      {notice && <p role="status">{notice}</p>}
-      {!data && !error && <p>Chargement…</p>}
+      {translateUi(notice && <p role="status">{translateUi(notice)}</p>)}
+      {!data && !error && <p>{translateUi("Chargement\u2026")}</p>}
       {data && (
         <>
           <p>
             <strong>
-              {data.total} compte{data.total !== 1 ? "s" : ""} inactif
-              {data.total !== 1 ? "s" : ""} depuis au moins {days} jours.
+              {data.total}
+              {translateUi(" compte")}
+              {translateUi(data.total !== 1 ? "s" : "")}
+              {translateUi(" inactif")}
+              {translateUi(data.total !== 1 ? "s" : "")}
+              {translateUi(" depuis au moins ")}
+              {days}
+              {translateUi(" jours.")}
             </strong>
           </p>
           <p className="small-text">
-            {data.unknown} compte(s) sans activité enregistrée : leur durée
-            d’inactivité est inconnue et ils ne sont pas inclus. La durée se
-            base sur la dernière utilisation enregistrée de Mentora.
+            {data.unknown}
+            {translateUi(
+              " compte(s) sans activit\u00E9 enregistr\u00E9e : leur dur\u00E9e d\u2019inactivit\u00E9 est inconnue et ils ne sont pas inclus. La dur\u00E9e se base sur la derni\u00E8re utilisation enregistr\u00E9e de Mentora.",
+            )}
           </p>
           {!data.canSend && (
-            <p>Les envois d’e-mails sont désactivés ou non configurés.</p>
+            <p>
+              {translateUi(
+                "Les envois d\u2019e-mails sont d\u00E9sactiv\u00E9s ou non configur\u00E9s.",
+              )}
+            </p>
           )}
           {data.accounts.length === 0 ? (
-            <p>Aucun compte à afficher pour ce filtre.</p>
+            <p>{translateUi("Aucun compte \u00E0 afficher pour ce filtre.")}</p>
           ) : (
             <div className="admin-table-wrap">
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>Membre</th>
-                    <th>Rôle</th>
-                    <th>Dernière activité</th>
-                    <th>Inactivité</th>
-                    <th>Dernière relance</th>
-                    <th>Action</th>
+                    <th>{translateUi("Membre")}</th>
+                    <th>{translateUi("R\u00F4le")}</th>
+                    <th>{translateUi("Derni\u00E8re activit\u00E9")}</th>
+                    <th>{translateUi("Inactivit\u00E9")}</th>
+                    <th>{translateUi("Derni\u00E8re relance")}</th>
+                    <th>{translateUi("Action")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -178,31 +193,37 @@ export function AdminRetention() {
                           <small>{a.email}</small>
                         </td>
                         <td>
-                          {a.role === "mentor"
-                            ? "Parrain"
-                            : a.role === "beginner"
-                              ? "Débutant"
-                              : "Profil à compléter"}
+                          {translateUi(
+                            a.role === "mentor"
+                              ? "Parrain"
+                              : a.role === "beginner"
+                                ? "Débutant"
+                                : "Profil à compléter",
+                          )}
                         </td>
-                        <td>{date(a.last_active_at)}</td>
+                        <td>{translateUi(date(a.last_active_at))}</td>
                         <td>
                           {Math.floor(
                             (Date.now() -
                               new Date(a.last_active_at).getTime()) /
                               86400000,
                           )}{" "}
-                          jours
+                          {translateUi("jours")}
                         </td>
                         <td>
-                          {a.last_reminder ? (
-                            <>
-                              {date(a.last_reminder)}
-                              <br />
-                              {statuses[a.reminder_status || ""] ||
-                                a.reminder_status}
-                            </>
-                          ) : (
-                            "Aucune"
+                          {translateUi(
+                            a.last_reminder ? (
+                              <>
+                                {translateUi(date(a.last_reminder))}
+                                <br />
+                                {translateUi(
+                                  statuses[a.reminder_status || ""] ||
+                                    a.reminder_status,
+                                )}
+                              </>
+                            ) : (
+                              "Aucune"
+                            ),
                           )}
                         </td>
                         <td>
@@ -211,14 +232,24 @@ export function AdminRetention() {
                             disabled={disabled}
                             onClick={() => compose(a)}
                           >
-                            Préparer une relance
+                            {translateUi("Pr\u00E9parer une relance")}
                           </button>
                           {!Number(a.email_enabled) ? (
-                            <small>Notifications désactivées</small>
+                            <small>
+                              {translateUi(
+                                "Notifications d\u00E9sactiv\u00E9es",
+                              )}
+                            </small>
                           ) : Number(a.blocked) ? (
-                            <small>Compte modéré</small>
+                            <small>
+                              {translateUi("Compte mod\u00E9r\u00E9")}
+                            </small>
                           ) : recent ? (
-                            <small>Une relance maximum tous les 7 jours</small>
+                            <small>
+                              {translateUi(
+                                "Une relance maximum tous les 7 jours",
+                              )}
+                            </small>
                           ) : null}
                         </td>
                       </tr>
@@ -237,10 +268,11 @@ export function AdminRetention() {
                 setTarget(null);
               }}
             >
-              Précédent
+              {translateUi("Pr\u00E9c\u00E9dent")}
             </button>
             <span>
-              Page {page + 1} / {Math.max(1, Math.ceil(data.total / 30))}
+              {translateUi("Page ")}
+              {page + 1} / {Math.max(1, Math.ceil(data.total / 30))}
             </span>
             <button
               className="btn secondary"
@@ -250,7 +282,7 @@ export function AdminRetention() {
                 setTarget(null);
               }}
             >
-              Suivant
+              {translateUi("Suivant")}
             </button>
           </div>
         </>
@@ -263,14 +295,18 @@ export function AdminRetention() {
             void send();
           }}
         >
-          <h3>Relance personnalisée pour {target.name}</h3>
+          <h3>
+            {translateUi("Relance personnalis\u00E9e pour ")}
+            {target.name}
+          </h3>
           <p>
-            Destinataire : {target.email}
+            {translateUi("Destinataire : ")}
+            {target.email}
             <br />
-            Expéditeur : mentora.officiel@gmail.com
+            {translateUi("Exp\u00E9diteur : mentora.officiel@gmail.com")}
           </p>
           <label>
-            Objet
+            {translateUi("Objet")}
             <input
               required
               minLength={3}
@@ -281,7 +317,7 @@ export function AdminRetention() {
             />
           </label>
           <label>
-            Message
+            {translateUi("Message")}
             <textarea
               required
               minLength={10}
@@ -293,14 +329,13 @@ export function AdminRetention() {
             />
           </label>
           <p className="small-text">
-            Le texte ci-dessus sera envoyé avec le logo Mentora, un bouton «
-            Ouvrir Mentora » et un lien pour gérer ses notifications. Les
-            préférences du membre sont respectées. Aucun envoi automatique de
-            relance.
+            {translateUi(
+              "Le texte ci-dessus sera envoy\u00E9 avec le logo Mentora, un bouton \u00AB Ouvrir Mentora \u00BB et un lien pour g\u00E9rer ses notifications. Les pr\u00E9f\u00E9rences du membre sont respect\u00E9es. Aucun envoi automatique de relance.",
+            )}
           </p>
           <div className="email-actions">
             <button className="btn" disabled={busy} type="submit">
-              {busy ? "Programmation…" : "Envoyer cette relance"}
+              {translateUi(busy ? "Programmation…" : "Envoyer cette relance")}
             </button>
             <button
               className="btn secondary"
@@ -308,7 +343,7 @@ export function AdminRetention() {
               type="button"
               onClick={() => setTarget(null)}
             >
-              Annuler
+              {translateUi("Annuler")}
             </button>
           </div>
         </form>

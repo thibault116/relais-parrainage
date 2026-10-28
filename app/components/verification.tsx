@@ -1,4 +1,5 @@
 "use client";
+import { t as translateUi, locale } from "@/app/components/language";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { PublicProfile } from "@/lib/profile";
 import {
@@ -33,7 +34,12 @@ async function call(path: string, method = "GET", body?: unknown) {
     throw error;
   }
 }
-type FileInfo = { id: string; name: string; size: number; mime: string };
+type FileInfo = {
+  id: string;
+  name: string;
+  size: number;
+  mime: string;
+};
 type Legacy = {
   version?: 1;
   sales: number;
@@ -72,21 +78,32 @@ export function VerificationBadge({ profile }: { profile: PublicProfile }) {
   if (!profile.verification)
     return (
       <p className="verification-unchecked">
-        Parrain non vérifié · expérience déclarée
+        {translateUi(
+          "Parrain non v\u00E9rifi\u00E9 \u00B7 exp\u00E9rience d\u00E9clar\u00E9e",
+        )}
       </p>
     );
   const v = profile.verification;
   return (
     <div className="verification-badge">
       <span>
-        <ShieldCheck size={17} /> Parrain vérifié
+        <ShieldCheck size={17} />
+        {translateUi(" Parrain v\u00E9rifi\u00E9")}
       </span>
       <small>
-        {v.sales !== null && <>{v.sales} ventes documentées · </>}
-        {v.specialties.join(", ")}
+        {v.sales !== null && (
+          <>
+            {v.sales}
+            {translateUi(" ventes document\u00E9es \u00B7 ")}
+          </>
+        )}
+        {translateUi(v.specialties.join(", "))}
         <br />
-        Examiné le {new Date(v.reviewedAt).toLocaleDateString("fr-FR")}. Ce
-        badge ne garantit ni les résultats ni l’authenticité d’un article.
+        {translateUi("Examin\u00E9 le ")}
+        {translateUi(new Date(v.reviewedAt).toLocaleDateString(locale()))}
+        {translateUi(
+          ". Ce badge ne garantit ni les r\u00E9sultats ni l\u2019authenticit\u00E9 d\u2019un article.",
+        )}
       </small>
     </div>
   );
@@ -229,40 +246,45 @@ export function VerificationForm({
   }
   return (
     <section className="verification-panel">
-      <span className="eyebrow">FAISONS CONNAISSANCE</span>
-      <h2>Vérifier mon profil parrain</h2>
+      <span className="eyebrow">{translateUi("FAISONS CONNAISSANCE")}</span>
+      <h2>{translateUi("V\u00E9rifier mon profil parrain")}</h2>
       <p>
-        Présente ton parcours et les domaines dans lesquels tu peux aider. Tes
-        réponses et tes justificatifs sont réservés à toi et à l’administration.
-        Le badge est attribué après un examen humain.
+        {translateUi(
+          "Pr\u00E9sente ton parcours et les domaines dans lesquels tu peux aider. Tes r\u00E9ponses et tes justificatifs sont r\u00E9serv\u00E9s \u00E0 toi et \u00E0 l\u2019administration. Le badge est attribu\u00E9 apr\u00E8s un examen humain.",
+        )}
       </p>
       {loading ? (
-        <p>Chargement…</p>
+        <p>{translateUi("Chargement\u2026")}</p>
       ) : !open ? (
         <p>
-          L’examen des dossiers sera disponible dès que l’administration sera
-          configurée.
+          {translateUi(
+            "L\u2019examen des dossiers sera disponible d\u00E8s que l\u2019administration sera configur\u00E9e.",
+          )}
         </p>
       ) : (
         <>
           {record && (
             <p className="badge">
-              {record.status === "approved"
-                ? "Dossier vérifié"
-                : record.status === "changes"
-                  ? "Compléments demandés"
-                  : "En attente d’examen"}
+              {translateUi(
+                record.status === "approved"
+                  ? "Dossier vérifié"
+                  : record.status === "changes"
+                    ? "Compléments demandés"
+                    : "En attente d’examen",
+              )}
             </p>
           )}
           {record?.feedback && (
             <p className="info-box">
-              Retour de l’administration : {record.feedback}
+              {translateUi("Retour de l\u2019administration : ")}
+              {record.feedback}
             </p>
           )}
           {record && !isNew(record.dossier) && (
             <p>
-              L’ancien dossier reste conservé pour l’administration. Remplis ce
-              nouveau questionnaire pour le remplacer.
+              {translateUi(
+                "L\u2019ancien dossier reste conserv\u00E9 pour l\u2019administration. Remplis ce nouveau questionnaire pour le remplacer.",
+              )}
             </p>
           )}
           <form className="verification-form" onSubmit={submit}>
@@ -272,9 +294,13 @@ export function VerificationForm({
             >
               <fieldset>
                 <legend>
-                  1. Depuis combien de temps fais-tu de la revente ?
+                  {translateUi(
+                    "1. Depuis combien de temps fais-tu de la revente ?",
+                  )}
                 </legend>
-                <p className="small-text">Une seule réponse.</p>
+                <p className="small-text">
+                  {translateUi("Une seule r\u00E9ponse.")}
+                </p>
                 {experienceOptions.map((v) => (
                   <label className="verification-check" key={v}>
                     <input
@@ -286,13 +312,17 @@ export function VerificationForm({
                         setDraft((d) => ({ ...d, experience: v }))
                       }
                     />
-                    {v}
+                    {translateUi(v)}
                   </label>
                 ))}
               </fieldset>
               <fieldset>
-                <legend>2. Sur quelles plateformes vends-tu ?</legend>
-                <p className="small-text">Plusieurs réponses possibles.</p>
+                <legend>
+                  {translateUi("2. Sur quelles plateformes vends-tu ?")}
+                </legend>
+                <p className="small-text">
+                  {translateUi("Plusieurs r\u00E9ponses possibles.")}
+                </p>
                 {platformOptions.map((v) => (
                   <label className="verification-check" key={v}>
                     <input
@@ -300,13 +330,19 @@ export function VerificationForm({
                       checked={draft.platforms.includes(v)}
                       onChange={() => toggle("platforms", v)}
                     />
-                    {v}
+                    {translateUi(v)}
                   </label>
                 ))}
               </fieldset>
               <fieldset>
-                <legend>3. Combien de ventes as-tu réalisées environ ?</legend>
-                <p className="small-text">Une seule réponse.</p>
+                <legend>
+                  {translateUi(
+                    "3. Combien de ventes as-tu r\u00E9alis\u00E9es environ ?",
+                  )}
+                </legend>
+                <p className="small-text">
+                  {translateUi("Une seule r\u00E9ponse.")}
+                </p>
                 {salesOptions.map((v) => (
                   <label className="verification-check" key={v}>
                     <input
@@ -318,15 +354,19 @@ export function VerificationForm({
                         setDraft((d) => ({ ...d, salesRange: v }))
                       }
                     />
-                    {v}
+                    {translateUi(v)}
                   </label>
                 ))}
               </fieldset>
               <fieldset>
                 <legend>
-                  4. Dans quels domaines peux-tu aider un débutant ?
+                  {translateUi(
+                    "4. Dans quels domaines peux-tu aider un d\u00E9butant ?",
+                  )}
                 </legend>
-                <p className="small-text">Plusieurs réponses possibles.</p>
+                <p className="small-text">
+                  {translateUi("Plusieurs r\u00E9ponses possibles.")}
+                </p>
                 {helpOptions.map((v) => (
                   <label className="verification-check" key={v}>
                     <input
@@ -334,12 +374,12 @@ export function VerificationForm({
                       checked={draft.helpAreas.includes(v)}
                       onChange={() => toggle("helpAreas", v)}
                     />
-                    {v}
+                    {translateUi(v)}
                   </label>
                 ))}
                 {draft.helpAreas.includes("Autre") && (
                   <label>
-                    Précise ton autre domaine
+                    {translateUi("Pr\u00E9cise ton autre domaine")}
                     <input
                       required
                       value={draft.otherHelp}
@@ -351,22 +391,26 @@ export function VerificationForm({
                 )}
               </fieldset>
               <label>
-                5. Pourquoi souhaites-tu devenir parrain ?
+                {translateUi("5. Pourquoi souhaites-tu devenir parrain ?")}
                 <textarea
                   required
                   value={draft.motivation}
                   onChange={(e) =>
                     setDraft((d) => ({ ...d, motivation: e.target.value }))
                   }
-                  placeholder="Par exemple : j’aurais aimé être accompagné à mes débuts et j’ai envie de partager ce que j’ai appris."
+                  placeholder={translateUi(
+                    "Par exemple : j’aurais aimé être accompagné à mes débuts et j’ai envie de partager ce que j’ai appris.",
+                  )}
                 />
               </label>
               <fieldset>
-                <legend>6. Quelles preuves peux-tu fournir ?</legend>
+                <legend>
+                  {translateUi("6. Quelles preuves peux-tu fournir ?")}
+                </legend>
                 <p>
-                  Sélectionne au moins deux justificatifs différents si
-                  possible. Une seule catégorie reste acceptée si tu n’en as pas
-                  d’autre.
+                  {translateUi(
+                    "S\u00E9lectionne au moins deux justificatifs diff\u00E9rents si possible. Une seule cat\u00E9gorie reste accept\u00E9e si tu n\u2019en as pas d\u2019autre.",
+                  )}
                 </p>
                 {proofOptions.map((type) => {
                   const proof = draft.proofs.find((p) => p.type === type);
@@ -385,12 +429,14 @@ export function VerificationForm({
                             }))
                           }
                         />
-                        {type}
+                        {translateUi(type)}
                       </label>
                       {proof && (
                         <div className="proof-inputs">
                           <label>
-                            Lien(s) vers ce justificatif — un par ligne
+                            {translateUi(
+                              "Lien(s) vers ce justificatif \u2014 un par ligne",
+                            )}
                             <textarea
                               value={proof.links.join("\n")}
                               onChange={(e) =>
@@ -398,12 +444,14 @@ export function VerificationForm({
                                   links: e.target.value.split("\n"),
                                 })
                               }
-                              placeholder="https://…"
+                              placeholder={translateUi("https://…")}
                             />
                           </label>
                           <label className="proof-upload">
-                            <Upload size={18} /> Importer des photos ou des
-                            fichiers
+                            <Upload size={18} />
+                            {translateUi(
+                              " Importer des photos ou des fichiers",
+                            )}
                             <input
                               type="file"
                               multiple
@@ -415,14 +463,16 @@ export function VerificationForm({
                             />
                           </label>
                           <p className="small-text">
-                            Photothèque ou fichiers de ton appareil. JPEG, PNG,
-                            WebP, GIF, HEIC ou PDF · 4 Mo par fichier · 12
-                            fichiers maximum.
+                            {translateUi(
+                              "Phototh\u00E8que ou fichiers de ton appareil. JPEG, PNG, WebP, GIF, HEIC ou PDF \u00B7 4 Mo par fichier \u00B7 12 fichiers maximum.",
+                            )}
                           </p>
                           {files.length > 0 && (
                             <fieldset>
                               <legend>
-                                Fichiers importés à joindre à cette preuve
+                                {translateUi(
+                                  "Fichiers import\u00E9s \u00E0 joindre \u00E0 cette preuve",
+                                )}
                               </legend>
                               {files.map((f) => (
                                 <label
@@ -443,13 +493,14 @@ export function VerificationForm({
                                     }
                                   />
                                   <span>
-                                    {f.name} · {Math.ceil(f.size / 1024)} Ko{" "}
+                                    {f.name} · {Math.ceil(f.size / 1024)}
+                                    {translateUi(" Ko")}{" "}
                                     <a
                                       href={`/api/verification-files?id=${f.id}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                     >
-                                      Télécharger
+                                      {translateUi("T\u00E9l\u00E9charger")}
                                     </a>
                                   </span>
                                 </label>
@@ -463,9 +514,9 @@ export function VerificationForm({
                 })}
               </fieldset>
               <p className="small-text">
-                Masque les coordonnées de tes acheteurs avant l’envoi. Tes
-                fichiers ne sont jamais affichés dans l’annuaire. Pour un lien
-                externe, tu gardes le contrôle de son partage.
+                {translateUi(
+                  "Masque les coordonn\u00E9es de tes acheteurs avant l\u2019envoi. Tes fichiers ne sont jamais affich\u00E9s dans l\u2019annuaire. Pour un lien externe, tu gardes le contr\u00F4le de son partage.",
+                )}
               </p>
               <label className="verification-check">
                 <input
@@ -474,23 +525,27 @@ export function VerificationForm({
                   checked={consent}
                   onChange={(e) => setConsent(e.target.checked)}
                 />
-                J’autorise l’administration à examiner ces éléments
-                confidentiellement et à publier les domaines validés avec mon
-                badge.
+                {translateUi(
+                  "J\u2019autorise l\u2019administration \u00E0 examiner ces \u00E9l\u00E9ments confidentiellement et \u00E0 publier les domaines valid\u00E9s avec mon badge.",
+                )}
               </label>
               {record?.status === "approved" && (
                 <p>
-                  Renvoyer le dossier retire le badge jusqu’au prochain examen.
+                  {translateUi(
+                    "Renvoyer le dossier retire le badge jusqu\u2019au prochain examen.",
+                  )}
                 </p>
               )}
               <button className="btn" type="submit">
-                {busy
-                  ? "Envoi…"
-                  : uploading
-                    ? "Import en cours…"
-                    : record
-                      ? "Renvoyer mon dossier"
-                      : "Envoyer mon dossier"}
+                {translateUi(
+                  busy
+                    ? "Envoi…"
+                    : uploading
+                      ? "Import en cours…"
+                      : record
+                        ? "Renvoyer mon dossier"
+                        : "Envoyer mon dossier",
+                )}
               </button>
             </fieldset>
           </form>
@@ -501,12 +556,14 @@ export function VerificationForm({
               disabled={busy || uploading}
               onClick={() => void withdraw()}
             >
-              Retirer mon dossier et tous mes fichiers
+              {translateUi("Retirer mon dossier et tous mes fichiers")}
             </button>
           )}
           {files.length > 0 && (
             <details className="proof-cleanup">
-              <summary>Gérer mes fichiers importés</summary>
+              <summary>
+                {translateUi("G\u00E9rer mes fichiers import\u00E9s")}
+              </summary>
               {files.map((f) => (
                 <div key={f.id}>
                   {f.name}{" "}
@@ -533,7 +590,7 @@ export function VerificationForm({
                       }
                     }}
                   >
-                    Supprimer
+                    {translateUi("Supprimer")}
                   </button>
                 </div>
               ))}
@@ -541,12 +598,14 @@ export function VerificationForm({
           )}
         </>
       )}
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
+      {translateUi(
+        error && (
+          <p className="error" role="alert">
+            {translateUi(error)}
+          </p>
+        ),
       )}
-      {message && <p role="status">{message}</p>}
+      {translateUi(message && <p role="status">{translateUi(message)}</p>)}
     </section>
   );
 }
@@ -570,23 +629,24 @@ export function Moderation() {
   }, [load]);
   return (
     <section className="wrap section">
-      <h1>Vérification des parrains</h1>
+      <h1>{translateUi("V\u00E9rification des parrains")}</h1>
       <p>
-        Examine le parcours, les plateformes, les domaines d’aide et la
-        motivation en regard des justificatifs. Deux types de preuves sont
-        conseillés, sans être obligatoires. Les liens externes viennent des
-        membres : n’y saisis aucun identifiant.
+        {translateUi(
+          "Examine le parcours, les plateformes, les domaines d\u2019aide et la motivation en regard des justificatifs. Deux types de preuves sont conseill\u00E9s, sans \u00EAtre obligatoires. Les liens externes viennent des membres : n\u2019y saisis aucun identifiant.",
+        )}
       </p>
       <button className="text-btn" onClick={() => void load()}>
-        Actualiser les dossiers
+        {translateUi("Actualiser les dossiers")}
       </button>
-      {message && (
-        <p className="info-box" role="status">
-          {message}
-        </p>
+      {translateUi(
+        message && (
+          <p className="info-box" role="status">
+            {translateUi(message)}
+          </p>
+        ),
       )}
       {loading ? (
-        <p>Chargement…</p>
+        <p>{translateUi("Chargement\u2026")}</p>
       ) : items.length ? (
         items.map((item) => (
           <ReviewCard
@@ -609,12 +669,14 @@ export function Moderation() {
           />
         ))
       ) : (
-        <p>Aucun dossier à examiner.</p>
+        <p>{translateUi("Aucun dossier \u00E0 examiner.")}</p>
       )}
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
+      {translateUi(
+        error && (
+          <p className="error" role="alert">
+            {translateUi(error)}
+          </p>
+        ),
       )}
     </section>
   );
@@ -674,34 +736,37 @@ function ReviewCard({
     <article className="verification-panel">
       <h2>{item.name}</h2>
       <p>
-        {item.status === "approved"
-          ? "Vérifié"
-          : item.status === "changes"
-            ? "Compléments demandés"
-            : "À examiner"}
+        {translateUi(
+          item.status === "approved"
+            ? "Vérifié"
+            : item.status === "changes"
+              ? "Compléments demandés"
+              : "À examiner",
+        )}
       </p>
       {newD ? (
         <>
           <dl className="review-answers">
-            <dt>Ancienneté</dt>
-            <dd>{newD.experience}</dd>
-            <dt>Plateformes</dt>
-            <dd>{newD.platforms.join(" · ")}</dd>
-            <dt>Ventes estimées</dt>
-            <dd>{newD.salesRange}</dd>
-            <dt>Domaines d’aide</dt>
-            <dd>{areas.join(" · ")}</dd>
-            <dt>Motivation</dt>
+            <dt>{translateUi("Anciennet\u00E9")}</dt>
+            <dd>{translateUi(newD.experience)}</dd>
+            <dt>{translateUi("Plateformes")}</dt>
+            <dd>{translateUi(newD.platforms.join(" · "))}</dd>
+            <dt>{translateUi("Ventes estim\u00E9es")}</dt>
+            <dd>{translateUi(newD.salesRange)}</dd>
+            <dt>{translateUi("Domaines d\u2019aide")}</dt>
+            <dd>{translateUi(areas.join(" · "))}</dd>
+            <dt>{translateUi("Motivation")}</dt>
             <dd className="free-answer">{newD.motivation}</dd>
           </dl>
           {newD.proofs.map((p) => (
             <section className="proof-category" key={p.type}>
-              <h3>{p.type}</h3>
+              <h3>{translateUi(p.type)}</h3>
               <ul>
                 {p.links.map((url, i) => (
                   <li key={url}>
                     <a href={url} target="_blank" rel="noopener noreferrer">
-                      Lien {i + 1} · {new URL(url).hostname}
+                      {translateUi("Lien ")}
+                      {i + 1} · {translateUi(new URL(url).hostname)}
                     </a>
                   </li>
                 ))}
@@ -712,7 +777,8 @@ function ReviewCard({
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      Télécharger le justificatif {i + 1}
+                      {translateUi("T\u00E9l\u00E9charger le justificatif ")}
+                      {i + 1}
                     </a>
                   </li>
                 ))}
@@ -724,15 +790,18 @@ function ReviewCard({
         old && (
           <>
             <p>
-              Ancienne version du questionnaire · {old.sales} ventes déclarées
+              {translateUi("Ancienne version du questionnaire \u00B7 ")}
+              {old.sales}
+              {translateUi(" ventes d\u00E9clar\u00E9es")}
             </p>
-            <p>{old.experience}</p>
-            <p>{old.example}</p>
+            <p>{translateUi(old.experience)}</p>
+            <p>{translateUi(old.example)}</p>
             <ul>
               {old.evidence.map((url, i) => (
                 <li key={url}>
                   <a href={url} target="_blank" rel="noopener noreferrer">
-                    Justificatif {i + 1}
+                    {translateUi("Justificatif ")}
+                    {i + 1}
                   </a>
                 </li>
               ))}
@@ -740,11 +809,16 @@ function ReviewCard({
           </>
         )
       )}
-      {item.feedback && <p>Dernier retour : {item.feedback}</p>}
+      {item.feedback && (
+        <p>
+          {translateUi("Dernier retour : ")}
+          {item.feedback}
+        </p>
+      )}
       <div className="verification-form">
         {old && (
           <label>
-            Ventes effectivement documentées
+            {translateUi("Ventes effectivement document\u00E9es")}
             <input
               type="number"
               min="0"
@@ -755,7 +829,9 @@ function ReviewCard({
           </label>
         )}
         <fieldset>
-          <legend>Domaines examinés à publier avec le badge</legend>
+          <legend>
+            {translateUi("Domaines examin\u00E9s \u00E0 publier avec le badge")}
+          </legend>
           {areas.map((s) => (
             <label className="verification-check" key={s}>
               <input
@@ -769,12 +845,14 @@ function ReviewCard({
                   )
                 }
               />
-              {s}
+              {translateUi(s)}
             </label>
           ))}
         </fieldset>
         <label>
-          Retour privé au parrain (facultatif pour une validation)
+          {translateUi(
+            "Retour priv\u00E9 au parrain (facultatif pour une validation)",
+          )}
           <textarea
             maxLength={1500}
             value={feedback}
@@ -787,13 +865,15 @@ function ReviewCard({
             checked={checked}
             onChange={(e) => setChecked(e.target.checked)}
           />
-          J’ai examiné les réponses et les justificatifs. Mon avis ne repose pas
-          uniquement sur l’ancienneté déclarée.
+          {translateUi(
+            "J\u2019ai examin\u00E9 les r\u00E9ponses et les justificatifs. Mon avis ne repose pas uniquement sur l\u2019anciennet\u00E9 d\u00E9clar\u00E9e.",
+          )}
         </label>
         {item.status === "approved" && (
           <p className="info-box" role="status">
-            Dossier validé : le badge « Parrain vérifié » est actif sur le
-            profil.
+            {translateUi(
+              "Dossier valid\u00E9 : le badge \u00AB Parrain v\u00E9rifi\u00E9 \u00BB est actif sur le profil.",
+            )}
           </p>
         )}
         <div className="hero-buttons">
@@ -802,21 +882,23 @@ function ReviewCard({
             disabled={busy || !checked}
             onClick={() => void decide("approve")}
           >
-            {busy ? "Enregistrement…" : "Valider le dossier"}
+            {translateUi(busy ? "Enregistrement…" : "Valider le dossier")}
           </button>
           <button
             className="btn secondary"
             disabled={busy || !checked}
             onClick={() => void decide("changes")}
           >
-            Demander des compléments / retirer le badge
+            {translateUi("Demander des compl\u00E9ments / retirer le badge")}
           </button>
         </div>
       </div>
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
+      {translateUi(
+        error && (
+          <p className="error" role="alert">
+            {translateUi(error)}
+          </p>
+        ),
       )}
     </article>
   );
