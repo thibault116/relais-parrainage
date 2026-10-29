@@ -1,3 +1,4 @@
+import { migrateCrm } from "../lib/crm";
 import { migrateTasks } from "../lib/tasks";
 import { migratePlatformSettings } from "../lib/platform-settings";
 import { migrateProfileTiming } from "../lib/profile-timing";
@@ -25,5 +26,6 @@ await migrateVerificationFiles();
 await migrateEmail();
 await migrateProfileTiming();
 await migratePlatformSettings();
+await migrateCrm();
 console.log("Base Relais initialisée.");
 process.exit(0);

@@ -300,6 +300,10 @@ export default function App() {
           adminTab={adminTab}
           mentor={profile?.role === "mentor"}
           moderator={showAdmin}
+          crmOwner={
+            showAdmin &&
+            session.user.email.toLowerCase() === "thibault.cordiez@hotmail.com"
+          }
           name={session.user.name}
           discordUrl={DISCORD_GROUP}
           onNavigate={(next, tab) => {
@@ -412,6 +416,11 @@ export default function App() {
           <WorkspaceMenuPage
             mentor={profile?.role === "mentor"}
             moderator={showAdmin}
+            crmOwner={
+              showAdmin &&
+              session.user.email.toLowerCase() ===
+                "thibault.cordiez@hotmail.com"
+            }
             discordUrl={DISCORD_GROUP}
             onNavigate={(next, tab) => {
               go(next);
@@ -502,6 +511,10 @@ export default function App() {
 
         {!isPending && session && showAdmin && view === "moderation" && (
           <AdminDashboard
+            crmOwner={
+              session.user.email.toLowerCase() ===
+              "thibault.cordiez@hotmail.com"
+            }
             tab={adminTab}
             setTab={setAdminTab}
             onPreview={(role) => {

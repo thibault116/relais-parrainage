@@ -82,6 +82,20 @@ const memberItems: Item[] = [
 ];
 const adminItems: Item[] = [
   {
+    id: "crm",
+    label: "Mon CRM Vinted",
+    icon: ChartNoAxesCombined,
+    view: "moderation",
+    tab: "crm",
+  },
+  {
+    id: "extension",
+    label: "Extension Vinted",
+    icon: Settings,
+    view: "moderation",
+    tab: "extension",
+  },
+  {
     id: "overview",
     label: "Vue d’ensemble",
     icon: ChartNoAxesCombined,
@@ -144,6 +158,7 @@ export function WorkspaceNav({
   adminTab,
   mentor,
   moderator,
+  crmOwner = false,
   name,
   discordUrl,
   onNavigate,
@@ -154,6 +169,7 @@ export function WorkspaceNav({
   adminTab: string;
   mentor: boolean;
   moderator: boolean;
+  crmOwner?: boolean;
   name: string;
   discordUrl: string;
   onNavigate: (view: Destination, tab?: string) => void;
@@ -227,7 +243,9 @@ export function WorkspaceNav({
               <p className="workspace-group-title">
                 {translateUi("Administration")}
               </p>
-              {adminItems.map(itemButton)}
+              {adminItems
+                .filter((i) => crmOwner || !["crm", "extension"].includes(i.id))
+                .map(itemButton)}
             </>
           )}
           <p className="workspace-group-title">
@@ -319,12 +337,14 @@ export function WorkspaceNav({
 export function WorkspaceMenuPage({
   mentor,
   moderator,
+  crmOwner = false,
   discordUrl,
   onNavigate,
   onSignOut,
 }: {
   mentor: boolean;
   moderator: boolean;
+  crmOwner?: boolean;
   discordUrl: string;
   onNavigate: (view: Destination, tab?: string) => void;
   onSignOut: () => void;
@@ -352,7 +372,11 @@ export function WorkspaceMenuPage({
       {moderator && (
         <>
           <h2>{translateUi("Administration")}</h2>
-          <div className="menu-page-grid">{adminItems.map(render)}</div>
+          <div className="menu-page-grid">
+            {adminItems
+              .filter((i) => crmOwner || !["crm", "extension"].includes(i.id))
+              .map(render)}
+          </div>
         </>
       )}
       <h2>{translateUi("Communaut\u00E9")}</h2>

@@ -6,6 +6,9 @@ const config: NextConfig = {
       process.env.VERCEL_GIT_COMMIT_SHA ||
       "local",
   },
+  outputFileTracingIncludes: {
+    "/api/admin/crm/extension": ["./extension/mentora-vinted/**/*"],
+  },
   serverExternalPackages: ["pg"],
   async redirects() {
     return [

@@ -1,5 +1,6 @@
 "use client";
 import { t as translateUi, locale } from "@/app/components/language";
+import { AdminCrm } from "./admin-crm";
 import { AdminRetention } from "./admin-retention";
 import { AdminSettings } from "./admin-settings";
 import { useCallback, useEffect, useState } from "react";
@@ -56,8 +57,10 @@ export function AdminDashboard({
   tab,
   setTab,
   onPreview,
+  crmOwner = false,
 }: {
   tab: string;
+  crmOwner?: boolean;
   setTab: (tab: string) => void;
   onPreview: (role: "mentor" | "beginner") => void;
 }) {
@@ -113,6 +116,12 @@ export function AdminDashboard({
       >
         {[
           ["overview", "Vue d’ensemble"],
+          ...(crmOwner
+            ? [
+                ["crm", "Mon CRM Vinted"],
+                ["extension", "Extension Vinted"],
+              ]
+            : []),
           ["suggestions", "Suggestions"],
           ["emails", "E-mails"],
           ["settings", "Paramètres"],
@@ -140,7 +149,9 @@ export function AdminDashboard({
           </p>
         ),
       )}
-      {tab === "settings" ? (
+      {(tab === "crm" || tab === "extension") && crmOwner ? (
+        <AdminCrm extension={tab === "extension"} />
+      ) : tab === "settings" ? (
         <AdminSettings />
       ) : tab === "emails" ? (
         <AdminEmails />

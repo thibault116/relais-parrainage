@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Configurer Mentora</title>
+    <link rel="stylesheet" href="ui.css" />
+  </head>
+  <body>
+    <h1>Connecter mon CRM Vinted</h1>
+    <p class="note">
+      Version bêta : lecteur non validé sur ton historique réel. Il s’arrête
+      lorsque la page n’est pas reconnue. Ne considère pas les totaux comme
+      exhaustifs avant comparaison avec tes commandes.
+    </p>
+    <form id="config">
+      <label
+        >Clé de connexion Mentora<input
+          id="token"
+          type="password"
+          autocomplete="off"
+          required
+          pattern="[a-f0-9]{64}" /></label
+      ><label
+        >Adresse de Commandes → Ventes<input
+          id="ordersUrl"
+          type="url"
+          required
+          placeholder="Copie l’adresse de ta page de ventes Vinted" /></label
+      ><label
+        >Identifiant numérique de ton profil Vinted<input
+          id="accountKey"
+          required
+          inputmode="numeric"
+          pattern="[0-9]+" /></label
+      ><small
+        >Dans l’adresse de ton propre profil : /member/123456-pseudo → saisis
+        123456. L’extension doit retrouver ce même compte dans l’en-tête de la
+        page.</small
+      ><label
+        ><input type="checkbox" required style="display: inline; width: auto" />
+        Je confirme que l’adresse affiche mes ventes, et non mes achats.</label
+      ><button>Enregistrer</button>
+    </form>
+    <p id="status" role="status"></p>
+    <button id="forget">Effacer la configuration locale</button>
+    <p>
+      L’extension ouvre un seul onglet en arrière-plan et ne réalise aucun
+      achat, message ou modification d’annonce. L’historique paginé avance d’une
+      page toutes les 5 minutes. Les contrôles de sécurité et connexions
+      expirées interrompent la lecture.
+    </p>
+    <p>
+      Aucun mot de passe ni cookie Vinted n’est envoyé à Mentora. La clé reste
+      sur cet ordinateur et peut être révoquée depuis Mentora.
+    </p>
+    <p>
+      Extension non officielle. Vinted restreint les outils automatisés : aucun
+      fonctionnement sans risque de restriction de compte ne peut être garanti.
+      <a
+        href="https://www.vinted.fr/terms-and-conditions"
+        target="_blank"
+        rel="noopener"
+        >Conditions Vinted</a
+      >.
+    </p>
+    <script src="options.js"></script>
+  </body>
+</html>
