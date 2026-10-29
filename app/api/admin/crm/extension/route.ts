@@ -10,7 +10,7 @@ export async function GET(r: Request) {
       headers: {
         "Content-Type": "application/zip",
         "Content-Disposition":
-          'attachment; filename="mentora-vinted-0.1.0.zip"',
+          'attachment; filename="mentora-vinted-0.1.1.zip"',
         "Cache-Control": "private, no-store",
       },
     });

@@ -102,8 +102,9 @@ async function tick() {
 }
 async function start() {
   const s = await state();
+  if (!/^[a-f0-9]{64}$/.test(s.token || ""))
+    throw Error("Aucune clé enregistrée. Ouvre Configurer et enregistre ta clé Mentora.");
   if (
-    !/^[a-f0-9]{64}$/.test(s.token || "") ||
     !validUrl(s.ordersUrl) ||
     !/^\d+$/.test(s.accountKey || "")
   )
@@ -121,12 +122,14 @@ async function start() {
   await tick();
 }
 chrome.runtime.onMessage.addListener((msg, sender, respond) => {
-  const internal = sender.id === chrome.runtime.id && !sender.tab;
+  const internal = sender.id === chrome.runtime.id &&
+    [chrome.runtime.getURL("options.html"), chrome.runtime.getURL("popup.html")].includes(sender.url || "");
   locked(async () => {
     if (internal) {
       if (msg.type === "status") {
         const s = await state();
         return {
+          hasToken: /^[a-f0-9]{64}$/.test(s.token || ""),
           enabled: !!s.enabled,
           message: s.message || "Non configurée",
           lastSync: s.lastSync || null,
@@ -135,8 +138,10 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
         };
       }
       if (msg.type === "configure") {
+        const existing = await state();
+        const token = (msg.token || "").trim() || existing.token || "";
         if (
-          !/^[a-f0-9]{64}$/.test(msg.token || "") ||
+          !/^[a-f0-9]{64}$/.test(token) ||
           !validUrl(msg.ordersUrl) ||
           !/^\d+$/.test(msg.accountKey || "")
         )
@@ -148,12 +153,14 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
             "Cette installation est associée à un autre compte. Révoque la connexion et efface les paramètres avant de changer de compte.",
           );
         await save({
-          token: msg.token,
+          token,
           ordersUrl: new URL(msg.ordersUrl).href.split("#")[0],
           accountKey: msg.accountKey,
           message: "Configuration enregistrée.",
         });
-        return { ok: true };
+        const stored = await state();
+        if (stored.token !== token) throw Error("La clé n’a pas pu être enregistrée. Réessaie.");
+        return { ok: true, hasToken: true };
       }
       if (msg.type === "start") {
         await start();

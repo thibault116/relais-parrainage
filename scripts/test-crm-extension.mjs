@@ -4,9 +4,9 @@ import {readFileSync} from 'node:fs';
 const file=name=>readFileSync(new URL('../extension/mentora-vinted/'+name,import.meta.url),'utf8');
 const manifest=JSON.parse(file('manifest.json'));assert.equal(manifest.manifest_version,3);assert(!manifest.permissions.includes('cookies'));assert(!manifest.host_permissions.includes('<all_urls>'));
 const storage={},tabs=[],listeners={};let created=0,alarm=false,posts=0,mode='';
-const chrome={runtime:{id:'a'.repeat(32),onMessage:{addListener:fn=>listeners.message=fn},onInstalled:{addListener:fn=>listeners.installed=fn},onStartup:{addListener:fn=>listeners.startup=fn}},storage:{local:{get:async()=>({...storage}),set:async v=>Object.assign(storage,v),clear:async()=>{for(const k of Object.keys(storage))delete storage[k];},setAccessLevel:async v=>mode=v.accessLevel}},alarms:{create:async()=>{alarm=true;},clear:async()=>{alarm=false;},onAlarm:{addListener:fn=>listeners.alarm=fn}},tabs:{query:async()=>tabs,create:async v=>{created++;assert.equal(v.active,false);const t={...v,id:created,status:'complete'};tabs.push(t);return t;},update:async(id,v)=>{Object.assign(tabs.find(t=>t.id===id),v);},sendMessage:async()=>({ok:true}),onUpdated:{addListener:fn=>listeners.updated=fn}}};
+const chrome={runtime:{id:'a'.repeat(32),getURL:path=>'chrome-extension://'+'a'.repeat(32)+'/'+path,onMessage:{addListener:fn=>listeners.message=fn},onInstalled:{addListener:fn=>listeners.installed=fn},onStartup:{addListener:fn=>listeners.startup=fn}},storage:{local:{get:async()=>({...storage}),set:async v=>Object.assign(storage,v),clear:async()=>{for(const k of Object.keys(storage))delete storage[k];},setAccessLevel:async v=>mode=v.accessLevel}},alarms:{create:async()=>{alarm=true;},clear:async()=>{alarm=false;},onAlarm:{addListener:fn=>listeners.alarm=fn}},tabs:{query:async()=>tabs,create:async v=>{created++;assert.equal(v.active,false);const t={...v,id:created,status:'complete'};tabs.push(t);return t;},update:async(id,v)=>{Object.assign(tabs.find(t=>t.id===id),v);},sendMessage:async()=>({ok:true}),onUpdated:{addListener:fn=>listeners.updated=fn}}};
 const context=vm.createContext({chrome,URL,AbortSignal,fetch:async()=>{posts++;return {ok:true};},console});vm.runInContext(file('background.js'),context);
-const send=(message,sender={id:chrome.runtime.id})=>new Promise(resolve=>listeners.message(message,sender,resolve));
+const send=(message,sender={id:chrome.runtime.id,url:chrome.runtime.getURL('popup.html')})=>new Promise(resolve=>listeners.message(message,sender,resolve));
 await listeners.installed();await send({type:'status'});assert.equal(mode,'TRUSTED_CONTEXTS');
 const token='a'.repeat(64);assert((await send({type:'configure',token,ordersUrl:'https://evil.example',accountKey:'123'})).error);
 assert.equal((await send({type:'configure',token,ordersUrl:'https://www.vinted.fr/orders?type=sold',accountKey:'123'})).ok,true);
@@ -21,3 +21,14 @@ assert.equal(reader.parseAmount('1 234,56 €'),123456);assert.equal(reader.pars
 assert.equal(reader.read({body:{innerText:'Verify you are human'}},'123','https://www.vinted.fr/orders').payload.status,'login_required');
 const result=reader.read({body:{innerText:'Mes ventes'},querySelectorAll:()=>[]},'123','https://www.vinted.fr/orders');assert.equal(result.payload.status,'unsupported');assert.equal(result.payload.sales.length,0);
 console.log('Extension: one inactive tab, restart reuse, pause, private storage, sender isolation, unsupported-layout stop, date/price parsing passed. Live Vinted compatibility NOT tested.');
+
+const optionsSender={id:chrome.runtime.id,url:chrome.runtime.getURL('options.html'),tab:{id:42}};
+await send({type:'forget'});
+assert.equal((await send({type:'configure',token,ordersUrl:'https://www.vinted.fr/orders?type=sold',accountKey:'123'},optionsSender)).hasToken,true);
+assert.equal((await send({type:'status'},optionsSender)).hasToken,true);
+assert.equal((await send({type:'configure',token:'',ordersUrl:'https://www.vinted.fr/orders?type=sold',accountKey:'123'},optionsSender)).ok,true);
+assert.equal(storage.token,token);
+assert.equal((await send({type:'start'})).ok,true);
+assert.equal((await send({type:'configure',token:'b'.repeat(64),ordersUrl:'https://www.vinted.fr/orders',accountKey:'123'},{id:chrome.runtime.id,tab:{id:1},url:'https://www.vinted.fr/orders'})).ignored,true);
+assert.equal(storage.token,token);
+console.log('Regression: options page with sender.tab saves key, reopening retains it, empty field preserves it, popup starts, Vinted content cannot configure.');
