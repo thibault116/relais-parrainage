@@ -1,10 +1,12 @@
 import { after } from "next/server";
-import { runEmailWorker, emailConfigured } from "./email";
+import { emailConfigured } from "./email";
+import { pushConfigured } from "./push";
+import { runNotificationWorker } from "./notification-worker";
 export function sendEmailsAfterResponse() {
-  if (emailConfigured())
+  if (emailConfigured() || pushConfigured())
     after(async () => {
       try {
-        await runEmailWorker();
+        await runNotificationWorker();
       } catch {
         console.error("EMAIL_WORKER_FAILED");
       }

@@ -3,6 +3,8 @@ import { useState, useEffect, type FormEvent } from "react";
 import { authClient } from "@/lib/auth-client";
 import { AppearanceSettings } from "./appearance";
 import { VerificationForm } from "./verification";
+import { PushSettings } from "./push-settings";
+import { InstallMentora } from "./pwa";
 import { EmailPreferences } from "./emails";
 import { useLanguage, t } from "./language";
 export function MemberSettings({
@@ -66,10 +68,16 @@ export function MemberSettings({
             </p>
           </section>
           <AppearanceSettings />
+          <InstallMentora />
         </>
       )}
       {section === "security" && <PasswordSettings />}
-      {section === "notifications" && <EmailPreferences />}
+      {section === "notifications" && (
+        <>
+          <PushSettings />
+          <EmailPreferences />
+        </>
+      )}
       {section === "verification" &&
         (mentor ? (
           <VerificationForm onChange={onVerificationChange} />

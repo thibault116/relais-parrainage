@@ -58,6 +58,8 @@ import {
   FollowCounts,
   FollowNetwork,
 } from "./components/follows";
+import { InstallMentora } from "./components/pwa";
+import { detachPush } from "@/lib/push-client";
 import { MemberSettings } from "./components/member-settings";
 import {
   AvailabilityBadge,
@@ -312,7 +314,9 @@ export default function App() {
             if (tab && next === "moderation") setAdminTab(tab);
           }}
           onSignOut={() => {
-            void authClient.signOut().then(() => go("home"));
+            void detachPush()
+              .then(() => authClient.signOut())
+              .then(() => go("home"));
           }}
         />
       ) : (
@@ -428,7 +432,9 @@ export default function App() {
               if (tab && next === "moderation") setAdminTab(tab);
             }}
             onSignOut={() => {
-              void authClient.signOut().then(() => go("home"));
+              void detachPush()
+                .then(() => authClient.signOut())
+                .then(() => go("home"));
             }}
           />
         )}
@@ -1027,6 +1033,7 @@ export default function App() {
                   <button
                     className="text-btn muted"
                     onClick={async () => {
+                      await detachPush();
                       await authClient.signOut();
                       go("home");
                     }}
@@ -1187,6 +1194,7 @@ export default function App() {
             </a>
           </section>
           <footer className="footer wrap">
+            <InstallMentora />
             <a className="brand" href="#home" onClick={() => go("home")}>
               <span className="brand-mark">
                 <BrandLogo />

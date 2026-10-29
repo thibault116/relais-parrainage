@@ -1,3 +1,4 @@
+import { runNotificationWorker } from "@/lib/notification-worker";
 import { timingSafeEqual } from "node:crypto";
 import { json } from "@/lib/http";
 import { runEmailWorker, queueTestEmails } from "@/lib/email";
@@ -17,7 +18,7 @@ function authorized(request: Request) {
 export async function GET(request: Request) {
   if (!authorized(request)) return json({ error: "Non autorisé." }, 401);
   try {
-    return json(await runEmailWorker());
+    return json(await runNotificationWorker());
   } catch {
     return json({ error: "Traitement des e-mails indisponible." }, 503);
   }

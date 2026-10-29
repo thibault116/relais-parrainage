@@ -67,7 +67,7 @@ try {
     bio: "Profil de validation locale uniquement.",
     goals: "Accompagner les premières ventes",
     references: "Nike, Carhartt",
-    specialty: "Vintage",
+    specialty: ["Vintage"],
   };
   assert.equal(
     (await call("/api/me", "PUT", { ...p, experience: 2 }, mentor.cookie))

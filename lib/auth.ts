@@ -32,6 +32,13 @@ function createAuth() {
       deleteUser: {
         enabled: true,
         beforeDelete: async (user) => {
+          await query("DELETE FROM push_outbox WHERE user_id=$1", [user.id]);
+          await query("DELETE FROM push_subscriptions WHERE user_id=$1", [
+            user.id,
+          ]);
+          await query("DELETE FROM push_preferences WHERE user_id=$1", [
+            user.id,
+          ]);
           await query("DELETE FROM crm_sales WHERE owner_id=$1", [user.id]);
           await query("DELETE FROM crm_connections WHERE owner_id=$1", [
             user.id,

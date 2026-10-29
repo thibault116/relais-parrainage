@@ -1,3 +1,4 @@
+import { enqueuePush } from "./push";
 import { readPlatformSettings } from "./platform-settings";
 import nodemailer from "nodemailer";
 import { query } from "./db";
@@ -18,6 +19,7 @@ export async function enqueueMail(
   payload: MailData,
   test = false,
 ) {
+  if (!test && userId) await enqueuePush(eventId, userId, kind, payload);
   await query(
     "INSERT INTO email_outbox(id,event_id,user_id,kind,payload,test,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(id) DO NOTHING",
     [
@@ -57,21 +59,11 @@ export async function queueTestEmails(batch: string) {
 }
 export async function processEvents() {
   const started = Date.now();
-  const { settings } = await readPlatformSettings();
   const events = await query(
     "SELECT * FROM email_events WHERE processed=0 ORDER BY created_at,id LIMIT 100",
   );
   for (const e of events) {
     if (Date.now() - started > 10000) break;
-    if (
-      !settings.emailsEnabled ||
-      (e.kind === "vacancy" && !settings.vacancyEmailsEnabled)
-    ) {
-      await query("UPDATE email_events SET processed=1 WHERE id=$1", [
-        String(e.id),
-      ]);
-      continue;
-    }
     const id = String(e.id),
       entity = String(e.entity_id),
       kind = String(e.kind);
