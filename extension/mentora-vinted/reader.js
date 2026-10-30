@@ -37,31 +37,30 @@
         "Vinted demande une intervention. Lecture arrêtée : ouvre Vinted toi-même.";
       return { payload: result };
     }
-    const ownLinks = [
-      ...doc.querySelectorAll(
-        'header a[href*="/member/"],nav[aria-label] a[href*="/member/"]',
-      ),
-    ]
-      .map((a) => new URL(a.href, page).pathname.match(/^\/member\/(\d+)/)?.[1])
-      .filter(Boolean);
-    if (!ownLinks.includes(accountKey) || new Set(ownLinks).size !== 1) {
-      result.message =
-        "Le compte connecté ne peut pas être confirmé dans l’en-tête Vinted. Lecture arrêtée pour éviter de mélanger des comptes.";
-      return { payload: result };
+    // Profile links can live in a portalled account menu, outside <header>.
+    const ownLinks = [...doc.querySelectorAll('a[href*="/member/"]')]
+      .filter((a) => a.closest('header,[role="banner"],nav,[role="menu"],[data-testid*="user-menu"],[data-testid*="account-menu"],[data-testid*="header"]') ||
+        /^(mon profil|voir mon profil|my profile|view my profile)$/i.test(text(a) || a.getAttribute("aria-label") || ""))
+      .map((a) => {
+        try {
+          const url = new URL(a.href, page);
+          return url.origin === "https://www.vinted.fr" ? url.pathname.match(/^\/member\/(\d+)(?:[-/]|$)/)?.[1] : null;
+        } catch { return null; }
+      }).filter(Boolean);
+    if (!ownLinks.length) {
+      result.message = "Ouvre le menu de ton avatar Vinted dans l’onglet Mentora pour afficher le lien Mon profil, puis clique sur Réessayer dans cet onglet. Aucun compte ni vente n’a encore été importé.";
+      return { payload: result, retryable: true, reason: "account_missing" };
     }
-    const active = text(
-      doc.querySelector(
-        '[role="tab"][aria-selected="true"],a[aria-current="page"],button[aria-pressed="true"]',
-      ),
-    );
-    const heading = text(doc.querySelector("main h1"));
-    if (
-      !/^(mes ventes|ventes|vendus|selling|sold)$/i.test(active) &&
-      !/^(mes ventes|commandes vendues|ventes)$/i.test(heading)
-    ) {
-      result.message =
-        "Impossible de confirmer que la page affiche les ventes et non les achats. Ouvre le filtre Ventes.";
-      return { payload: result };
+    if (new Set(ownLinks).size !== 1 || ownLinks[0] !== accountKey) {
+      result.message = "Le profil affiché ne correspond pas au numéro configuré, ou plusieurs profils sont présents dans le menu. Vérifie le numéro dans l’adresse de ton propre profil (/member/123456-pseudo). Aucune vente importée.";
+      return { payload: result, reason: "account_mismatch" };
+    }
+    const activeLabels = [...doc.querySelectorAll('[role="tab"][aria-selected="true"],a[aria-current="page"],button[aria-pressed="true"],select option:checked')].map(text);
+    const headings = [...doc.querySelectorAll("main h1,main h2")].map(text);
+    if (!activeLabels.some(label => /^(mes ventes|ventes|vendus|selling|sold)(?:\s*\(\d+\))?$/i.test(label)) &&
+        !headings.some(label => /^(mes ventes|commandes vendues|ventes)$/i.test(label))) {
+      result.message = "Sélectionne Ventes dans Commandes, puis clique sur Réessayer. La lecture des achats est exclue.";
+      return { payload: result, retryable: true, reason: "sales_filter_missing" };
     }
     const links = [
       ...doc.querySelectorAll(

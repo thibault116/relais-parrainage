@@ -1,11 +1,13 @@
 (() => {
   let managed = false,
     enabled = false,
-    busy = false;
+    busy = false,
+    currentAccount = "",
+    lastProblem = "";
   const send = (message) => chrome.runtime.sendMessage(message);
   function banner() {
     document.getElementById("mentora-reading-notice")?.remove();
-    if (!managed || !enabled || document.visibilityState !== "visible") return;
+    if (!managed || (!enabled && !lastProblem) || document.visibilityState !== "visible") return;
     const host = document.createElement("div");
     host.id = "mentora-reading-notice";
     Object.assign(host.style, {
@@ -33,7 +35,20 @@
       enabled = false;
       banner();
     };
-    panel.append(title, p, button);
+    panel.append(title, p);
+    if (lastProblem) {
+      const problem = document.createElement("p");
+      problem.textContent = lastProblem;
+      const retry = document.createElement("button");
+      retry.textContent = "Réessayer la lecture";
+      retry.style.cssText = button.style.cssText;
+      retry.onclick = async () => {
+        const response = await send({ type: "retry" });
+        if (response?.ok) { enabled = true; lastProblem = ""; banner(); void scan(currentAccount); }
+      };
+      panel.append(problem, retry);
+    }
+    panel.append(button);
     root.append(panel);
     document.documentElement.append(host);
   }
@@ -41,18 +56,27 @@
     if (busy || !enabled) return;
     busy = true;
     try {
-      // Wait for client rendering; a missing structure stops the scan rather than guessing.
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      const result = globalThis.MentoraReader.read(
-        document,
-        accountKey,
-        location.href.split("#")[0],
-      );
+      currentAccount = accountKey;
+      let result;
+      // Retry only while the document is still missing its identity/filter.
+      // No repeated network requests, menu clicks or hidden account-state reads.
+      for (let attempt = 0; attempt < 12; attempt++) {
+        if (!enabled) return;
+        result = globalThis.MentoraReader.read(document, accountKey, location.href.split("#")[0]);
+        if (!result.retryable) break;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      if (!enabled || !result) return;
+      lastProblem = result.payload.status === "unsupported" ? result.payload.message : "";
+      banner();
       const response = await send({ type: "result", ...result });
       if (response?.error)
         console.warn(
           "Mentora : synchronisation non terminée. Consulte le statut dans l’extension.",
         );
+    } catch {
+      lastProblem = "La lecture a été interrompue. Recharge l’extension puis clique sur Démarrer / reprendre.";
+      banner();
     } finally {
       busy = false;
     }

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Mentora — CRM Vinted privé",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Lecture des commandes visibles dans un unique onglet dédié. Version bêta à vérifier sur votre compte.",
   "minimum_chrome_version": "120",
   "permissions": ["storage", "alarms"],

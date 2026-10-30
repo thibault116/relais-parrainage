@@ -175,10 +175,11 @@ export function AdminCrm({ extension = false }: { extension?: boolean }) {
         <>
           <section className="verification-panel">
             <h3>Installer l’extension sur ordinateur</h3>
+            <p>Déjà installée ? Remplace les fichiers du dossier de l’extension par ceux du nouveau ZIP, puis clique sur Recharger dans la page des extensions. Ta clé reste enregistrée. Clique ensuite sur Démarrer / reprendre. Si le compte n’est pas détecté, ouvre le menu de ton avatar dans l’onglet Vinted réservé et clique sur Réessayer la lecture dans l’encart Mentora.</p>
             <ol className="crm-install">
               <li>
                 <a className="btn" href="/api/admin/crm/extension" download>
-                  Télécharger l’extension Mentora (.zip)
+                  Télécharger l’extension Mentora 0.1.2 (.zip)
                 </a>
                 <p>
                   Décompresse le fichier et conserve le dossier. Compatible

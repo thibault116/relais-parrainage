@@ -119,7 +119,9 @@ async function start() {
     message: "Démarrage de la lecture…",
   });
   await chrome.alarms.create(ALARM, { periodInMinutes: 5 });
-  await tick();
+  // Reload the dedicated tab so updated content scripts and the configured URL apply.
+  const tab = await ensureTab(await state());
+  if (tab) await chrome.tabs.update(tab.id, { url: marked(s.ordersUrl) });
 }
 chrome.runtime.onMessage.addListener((msg, sender, respond) => {
   const internal = sender.id === chrome.runtime.id &&
@@ -186,6 +188,12 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
       return { ignored: true };
     if (msg.type === "hello")
       return { managed: true, enabled: !!s.enabled, accountKey: s.accountKey };
+    if (msg.type === "retry") {
+      if (!s.token || !s.accountKey) throw Error("Configuration manquante.");
+      await save({ enabled: true, message: "Nouvelle lecture de la page…" });
+      await chrome.alarms.create(ALARM, { periodInMinutes: 5 });
+      return { ok: true };
+    }
     if (msg.type === "pause") {
       await pause();
       return { ok: true };

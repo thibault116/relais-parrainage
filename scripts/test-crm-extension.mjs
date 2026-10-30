@@ -32,3 +32,19 @@ assert.equal((await send({type:'start'})).ok,true);
 assert.equal((await send({type:'configure',token:'b'.repeat(64),ordersUrl:'https://www.vinted.fr/orders',accountKey:'123'},{id:chrome.runtime.id,tab:{id:1},url:'https://www.vinted.fr/orders'})).ignored,true);
 assert.equal(storage.token,token);
 console.log('Regression: options page with sender.tab saves key, reopening retains it, empty field preserves it, popup starts, Vinted content cannot configure.');
+
+// Account menus may be rendered outside header, and unrelated selected navigation may precede Ventes.
+function fixture({id='123',menu=true,label='',origin='https://www.vinted.fr'}={}) {
+ const profile={href:`${origin}/member/${id}-seller`,innerText:label,closest:()=>menu?{}:null,getAttribute:()=>null};
+ const price={innerText:'25,00 €'}, title={innerText:'Pull laine'},date={getAttribute:()=> '2026-10-30'};
+ const row={innerText:'Vente terminée',querySelector:s=>s.includes('item-title')?title:s.includes('item-price')?price:s.includes('sold-date')?date:null};
+ const order={href:'https://www.vinted.fr/orders/456',closest:()=>row};
+ return {body:{innerText:'Mes commandes'},querySelector:()=>null,querySelectorAll:s=>s==='a[href*="/member/"]'?[profile]:s.includes('aria-selected')?[{innerText:'Accueil'},{innerText:'Ventes'}]:s.includes('main h1')?[]:s.includes('/orders/')?[order]:[]};
+}
+assert.equal(reader.read(fixture(),'123','https://www.vinted.fr/orders').payload.sales.length,1);
+assert.equal(reader.read(fixture({menu:false,label:'Mon profil'}),'123','https://www.vinted.fr/orders').payload.sales.length,1);
+assert.equal(reader.read(fixture({id:'999'}),'123','https://www.vinted.fr/orders').reason,'account_mismatch');
+assert.equal(reader.read(fixture({menu:false,label:'Acheteur'}),'123','https://www.vinted.fr/orders').reason,'account_missing');
+assert.equal(reader.read(fixture({origin:'https://evil.example'}),'123','https://www.vinted.fr/orders').reason,'account_missing');
+assert.equal((await send({type:'retry'},{id:chrome.runtime.id,tab:{id:999},url:tabs[0].url})).ignored,true);
+console.log('Reader regression: portalled menu, own-profile label, multiple navigation selections, account mismatch and unrelated links verified.');

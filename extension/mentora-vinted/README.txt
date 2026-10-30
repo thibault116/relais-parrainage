@@ -1,4 +1,4 @@
-MENTORA — EXTENSION CRM VINTED 0.1.1 (BÊTA)
+MENTORA — EXTENSION CRM VINTED 0.1.2 (BÊTA)
 
 1. Décompresser ce fichier ZIP.
 2. Chrome : chrome://extensions — activer Mode développeur.
@@ -25,3 +25,8 @@ Remplacer les fichiers de ce dossier puis cliquer Recharger dans chrome://extens
 
 CORRECTIF 0.1.1
 Enregistrement depuis la page Configurer corrigé. Une clé déjà enregistrée est conservée lorsque son champ reste vide. Le message Clé enregistrée confirme la sauvegarde sans afficher la clé.
+
+CORRECTIF 0.1.2
+Détection du profil dans les menus de compte, attente du chargement, filtre Ventes parmi plusieurs onglets. Si le menu est fermé, ouvre ton avatar dans l’onglet dédié et clique sur Réessayer la lecture dans l’encart Mentora.
+Mise à jour : extraire ce ZIP, remplacer les fichiers du dossier installé, puis Recharger dans chrome://extensions. Démarrer / reprendre recharge l’unique onglet dédié. La clé existante est conservée.
+Le lecteur reste à valider sur la présentation réelle de tes commandes.
