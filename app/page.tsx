@@ -927,7 +927,7 @@ export default function App() {
           </section>
         )}
         {!isPending && session && view === "profile" && (
-          <section className="wrap profile-page" inert={!!preview}>
+          <section className="wrap profile-page" data-profile-tab={selectedProfileTab} inert={!!preview}>
             <div className="page-heading">
               <span className="eyebrow">{translateUi("TON ESPACE")}</span>
               <h1>
@@ -1022,7 +1022,7 @@ export default function App() {
               />
             ) : (
               <>
-                <div className="profile-toolbar">
+                {selectedProfileTab === "edit" && <div className="profile-toolbar">
                   <span className={`badge ${profile.visible ? "green" : ""}`}>
                     {profile.visible ? <Eye size={14} /> : <EyeOff size={14} />}{" "}
                     {translateUi(
@@ -1042,7 +1042,7 @@ export default function App() {
                     <LogOut size={16} />
                     {translateUi(" Se d\u00E9connecter")}
                   </button>
-                </div>
+                </div>}
                 <nav
                   className="profile-tabs"
                   aria-label={translateUi("Rubriques de mon profil")}

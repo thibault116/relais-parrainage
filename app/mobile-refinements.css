@@ -215,3 +215,38 @@
   justify-content: flex-end;
   margin-bottom: 12px;
 }
+
+/* Remove profile-only spacing from the standalone work tabs. */
+.workspace-shell .profile-page:is([data-profile-tab="requests"], [data-profile-tab="accompaniments"], [data-profile-tab="tasks"], [data-profile-tab="following"]) {
+  padding-top: 16px;
+}
+.workspace-shell .profile-page:not([data-profile-tab="edit"]) .profile-tab-content {
+  margin-top: 0;
+}
+.workspace-shell .accompaniments {
+  border-top: 0;
+  padding-top: 0;
+}
+.workspace-shell .accompaniments > .section-top {
+  margin: 0 0 8px;
+  gap: 0;
+}
+.workspace-shell .accompaniments > p {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+.workspace-shell .todo-panel {
+  margin-top: 0;
+  padding: 16px;
+}
+.workspace-shell .todo-panel > p:first-of-type,
+.workspace-shell .follow-network > p:first-of-type {
+  margin-top: 0;
+}
+.workspace-shell .follow-network {
+  margin-top: 0;
+  padding-top: 16px;
+}
+.workspace-shell .pair-group {
+  margin-top: 16px;
+}
