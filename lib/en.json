@@ -913,5 +913,11 @@
   "Les notifications push ne sont pas disponibles dans ce navigateur. Le site et les e-mails restent accessibles.": "Push notifications are not available in this browser. The website and emails remain available.",
   "Les notifications push ne sont pas encore configurées sur le serveur. L’installation de Mentora reste disponible.": "Push notifications are not configured on the server yet. You can still install Mentora.",
   "Les notifications sont bloquées. Autorise Mentora dans les réglages de notifications de ton navigateur ou de ton appareil.": "Notifications are blocked. Allow Mentora in your browser or device notification settings.",
-  "Test accepté par le service push. Vérifie les notifications de ton appareil et le mode Concentration.": "Test accepted by the push service. Check your device notifications and Focus settings."
+  "Test accepté par le service push. Vérifie les notifications de ton appareil et le mode Concentration.": "Test accepted by the push service. Check your device notifications and Focus settings.",
+  "Rechercher un menu ou un paramètre": "Search menus or settings",
+  "Aucun résultat. Essaie un autre mot.": "No results. Try another word.",
+  "Mentora en bêta · 100 % gratuit": "Mentora beta · 100% free",
+  "Actualité Mentora": "Mentora news",
+  "En savoir plus": "Learn more",
+  "Cliquer pour suggérer · Glisser pour déplacer": "Click to suggest · Drag to move"
 }

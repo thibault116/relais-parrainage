@@ -187,6 +187,7 @@ export default function App() {
     window.scrollTo({
       top: 0,
       behavior:
+        window.matchMedia("(max-width: 900px)").matches ||
         document.documentElement.dataset.reduceMotion === "true"
           ? "instant"
           : "smooth",

@@ -1,6 +1,7 @@
 "use client";
 import { t as translateUi, locale } from "@/app/components/language";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useDraggableLauncher } from "./use-draggable-launcher";
 import { Lightbulb, X, Paperclip } from "lucide-react";
 import { usePlatformSettings } from "./platform-settings";
 import { authClient } from "@/lib/auth-client";
@@ -16,6 +17,7 @@ export function SuggestionWidget() {
   const launcher = useRef<HTMLButtonElement>(null),
     panel = useRef<HTMLElement>(null),
     requestId = useRef<string | null>(null);
+  const { consumeDrag, ...dragHandlers } = useDraggableLauncher(launcher);
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
@@ -75,14 +77,16 @@ export function SuggestionWidget() {
     <>
       <button
         ref={launcher}
+        {...dragHandlers}
         className="suggestion-launcher"
         aria-label={translateUi(
           open ? "Fermer les suggestions" : "Proposer une idée",
         )}
         aria-expanded={open}
         aria-controls="suggestion-dialog"
-        title={translateUi("Proposer une idée")}
+        title={translateUi("Cliquer pour suggérer · Glisser pour déplacer")}
         onClick={() => {
+          if (consumeDrag()) return;
           setOpen((v) => !v);
           setSent(false);
         }}

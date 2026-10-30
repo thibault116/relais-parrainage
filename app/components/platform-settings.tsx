@@ -57,7 +57,19 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
           className="platform-announcement"
           aria-label={translateUi("Annonce Mentora")}
         >
-          {settings.announcement}
+          <details className="announcement-details">
+            <summary>
+              <span>
+                {/b[êeé]ta/i.test(settings.announcement)
+                  ? translateUi("Mentora en bêta · 100 % gratuit")
+                  : translateUi("Actualité Mentora")}
+              </span>
+              <span className="announcement-more">
+                {translateUi("En savoir plus")}
+              </span>
+            </summary>
+            <p>{settings.announcement}</p>
+          </details>
         </aside>
       )}
       {translateUi(children)}

@@ -1,7 +1,9 @@
 "use client";
+import { useState } from "react";
 import { t as translateUi } from "@/app/components/language";
 import { BrandLogo } from "./brand-logo";
 import {
+  Search,
   Compass,
   ListChecks,
   Inbox,
@@ -297,7 +299,7 @@ export function WorkspaceNav({
               view === "moderation" ? "ADMINISTRATION" : "MON ESPACE MENTORA",
             )}
           </small>
-          <strong>{translateUi(title)}</strong>
+          <h1>{translateUi(title)}</h1>
         </div>
         <button
           className="workspace-top-help"
@@ -320,7 +322,7 @@ export function WorkspaceNav({
           } as Item,
           { ...memberItems[0], label: "Demandes" },
           { ...memberItems[1], label: "Suivi" },
-          { ...memberItems[3], label: "Profil" },
+          { ...memberItems[5], label: "To-do list" },
         ].map(itemButton)}
         <button
           className={view === "menu" ? "is-current" : ""}
@@ -349,6 +351,41 @@ export function WorkspaceMenuPage({
   onNavigate: (view: Destination, tab?: string) => void;
   onSignOut: () => void;
 }) {
+  const [query, setQuery] = useState("");
+  const normalize = (value: string) =>
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  const matches = (label: string, keywords = "") =>
+    normalize(`${translateUi(label)} ${keywords}`).includes(
+      normalize(query.trim()),
+    );
+  const keywords: Record<string, string> = {
+    appearance:
+      "parametres settings langue language anglais francais mot de passe password securite security notifications email push verification compte sombre clair neon theme installer application",
+    edit: "profil profile photo biographie description discord",
+    following: "suivi suivre abonnes abonnements followers following",
+    tasks: "taches todo to do progression objectifs tasks",
+  };
+  const visibleMembers = memberItems.filter(
+    (i) =>
+      (i.id !== "verification" || mentor) && matches(i.label, keywords[i.id]),
+  );
+  const visibleAdmins = moderator
+    ? adminItems.filter(
+        (i) =>
+          (crmOwner || !["crm", "extension"].includes(i.id)) &&
+          matches(i.label),
+      )
+    : [];
+  const communityItems = [
+    "Aide",
+    "Rejoindre la communauté Discord",
+    "Accueil de Mentora",
+    "Se déconnecter",
+  ];
+  const hasCommunity = communityItems.some((label) => matches(label));
   const render = (item: Item) => (
     <button key={item.id} onClick={() => onNavigate(item.view, item.tab)}>
       <item.icon size={22} />
@@ -363,35 +400,55 @@ export function WorkspaceMenuPage({
         <h1>{translateUi("Menu")}</h1>
         <p>{translateUi("Tous tes raccourcis, au m\u00EAme endroit.")}</p>
       </div>
-      <h2>{translateUi("Mon espace")}</h2>
-      <div className="menu-page-grid">
-        {memberItems
-          .filter((i) => i.id !== "verification" || mentor)
-          .map(render)}
-      </div>
-      {moderator && (
+      <label className="menu-search">
+        <Search size={20} aria-hidden="true" />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label={translateUi("Rechercher un menu ou un paramètre")}
+          placeholder={translateUi("Rechercher un menu ou un paramètre")}
+        />
+      </label>
+      {!visibleMembers.length && !visibleAdmins.length && !hasCommunity && (
+        <p role="status">
+          {translateUi("Aucun résultat. Essaie un autre mot.")}
+        </p>
+      )}
+      {visibleMembers.length > 0 && (
         <>
-          <h2>{translateUi("Administration")}</h2>
-          <div className="menu-page-grid">
-            {adminItems
-              .filter((i) => crmOwner || !["crm", "extension"].includes(i.id))
-              .map(render)}
-          </div>
+          <h2>{translateUi("Mon espace")}</h2>
+          <div className="menu-page-grid">{visibleMembers.map(render)}</div>
         </>
       )}
-      <h2>{translateUi("Communaut\u00E9")}</h2>
+      {visibleAdmins.length > 0 && (
+        <>
+          <h2>{translateUi("Administration")}</h2>
+          <div className="menu-page-grid">{visibleAdmins.map(render)}</div>
+        </>
+      )}
+      {hasCommunity && <h2>{translateUi("Communaut\u00E9")}</h2>}
       <div className="menu-page-grid">
-        {render({ id: "help", label: "Aide", icon: CircleHelp, view: "help" })}
-        <a href={discordUrl} target="_blank" rel="noopener noreferrer">
+        {matches("Aide") &&
+          render({ id: "help", label: "Aide", icon: CircleHelp, view: "help" })}
+        <a
+          hidden={!matches("Rejoindre la communauté Discord")}
+          href={discordUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           <MessageCircle size={22} />
           <span>{translateUi("Rejoindre la communaut\u00E9 Discord")}</span>
           <ArrowUpRight size={17} />
         </a>
-        <button onClick={() => onNavigate("home")}>
+        <button
+          hidden={!matches("Accueil de Mentora")}
+          onClick={() => onNavigate("home")}
+        >
           <Compass size={22} />
           <span>{translateUi("Accueil de Mentora")}</span>
         </button>
-        <button onClick={onSignOut}>
+        <button hidden={!matches("Se déconnecter")} onClick={onSignOut}>
           <LogOut size={22} />
           <span>{translateUi("Se d\u00E9connecter")}</span>
         </button>
