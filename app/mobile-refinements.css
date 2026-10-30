@@ -1,0 +1,86 @@
+/* Keep the name and availability from competing for the same narrow row. */
+.member-grid .mentor-card-head {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+.member-grid .mentor-card-head > .badge {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-left: 0;
+  max-width: 100%;
+}
+.member-grid .mentor-card-title h3 {
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
+  line-height: 1.3;
+}
+.member-grid .mentor-card-title p {
+  display: block;
+}
+.member-grid .mentor-card-title p svg {
+  display: inline-block;
+  vertical-align: -3px;
+  margin-right: 4px;
+}
+.member-grid .card-stats > div {
+  min-width: 0;
+}
+.member-grid .card-stats strong {
+  overflow-wrap: break-word;
+}
+@media (max-width: 700px) {
+  .member-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .member-grid .redesigned-card {
+    aspect-ratio: auto;
+    min-height: 0;
+    padding: 18px;
+    gap: 14px;
+  }
+  .member-grid .mentor-card-title h3 {
+    font-size: 20px;
+  }
+  .member-grid .mini-tags {
+    max-height: none;
+    overflow: visible;
+    gap: 6px;
+  }
+  .member-grid .mini-tags span {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .member-grid .card-stats strong {
+    font-size: 20px;
+  }
+  .member-grid .card-stats span {
+    line-height: 1.45;
+  }
+  .member-grid .card-btn {
+    min-height: 48px;
+    white-space: normal;
+    gap: 8px;
+  }
+  .member-grid .card-btn svg {
+    flex-shrink: 0;
+  }
+  .member-modal h2 {
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+  .workspace-topbar > div {
+    min-width: 0;
+  }
+  .workspace-topbar strong {
+    overflow-wrap: break-word;
+    line-height: 1.4;
+  }
+  .profile-pager {
+    gap: 6px;
+    margin-right: 48px;
+  }
+}

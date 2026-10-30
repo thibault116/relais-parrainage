@@ -4,6 +4,7 @@ import { PlatformProvider } from "./components/platform-settings";
 import { PwaProvider } from "./components/pwa";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./mobile-refinements.css";
 import { SuggestionWidget } from "./components/suggestions";
 import { UpdateBanner } from "./components/update-banner";
 export const metadata: Metadata = {
