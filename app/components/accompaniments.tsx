@@ -2,7 +2,7 @@
 import { t as translateUi, locale } from "@/app/components/language";
 import { usePlatformSettings } from "./platform-settings";
 import { useCallback, useEffect, useState } from "react";
-import { Star, CheckCircle2 } from "lucide-react";
+import { Star, CheckCircle2, RefreshCw } from "lucide-react";
 type Accompaniment = {
   id: string;
   status: "pending" | "active" | "completed" | "declined" | "cancelled";
@@ -234,8 +234,8 @@ export function Accompaniments({
             )}
           </h2>
         </div>
-        <button className="text-btn" onClick={() => void load()}>
-          {translateUi("Actualiser")}
+        <button className="refresh-icon" aria-label={translateUi("Actualiser")} title={translateUi("Actualiser")} disabled={loading} onClick={() => void load()}>
+          <RefreshCw size={18} className={loading ? "spin" : undefined} />
         </button>
       </div>
       <p>

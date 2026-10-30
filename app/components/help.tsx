@@ -1,3 +1,5 @@
+"use client";
+import { useEffect } from "react";
 import { t as translateUi } from "@/app/components/language";
 import {
   UserPlus,
@@ -9,10 +11,18 @@ import {
 } from "lucide-react";
 const chapters = [
   [
+    "installation",
+    "Installer Mentora et activer les notifications",
+    "Sur iPhone : ouvre Mentora dans Safari. Appuie sur Partager → Sur l’écran d’accueil → Ajouter. Si l’option Ouvrir comme app apparaît, laisse-la activée. Ouvre ensuite Mentora depuis sa nouvelle icône et connecte-toi avec ton compte habituel.",
+    "Sur Android : ouvre Mentora dans Chrome, puis appuie sur Installer Mentora sur le site. Tu peux aussi utiliser le menu ⋮ de Chrome → Ajouter à l’écran d’accueil → Installer. Ouvre ensuite l’icône Mentora et connecte-toi.",
+    "Pour les notifications : dans Mentora, ouvre Menu → Paramètres → Notifications → Activer les notifications push, puis autorise-les. Appuie sur Envoyer une notification de test. Sur iPhone, utilise l’application ajoutée à l’écran d’accueil, avec iOS 16.4 ou supérieur.",
+    "Les alertes peuvent arriver même quand Mentora est fermé, si ton appareil les autorise. Si le test n’apparaît pas, vérifie les autorisations de notification du téléphone et le mode Concentration / Ne pas déranger. Tu peux désactiver les alertes dans les paramètres de Mentora. Une connexion Internet est nécessaire pour consulter tes informations.",
+  ],
+  [
     "reseau",
     "Suivre des revendeurs",
     "Ouvre la fiche d’un membre et clique sur S’abonner au profil. Tu peux suivre un parrain ou un débutant, sans créer de demande de parrainage. Cet abonnement est gratuit.",
-    "Dans Mon profil, les onglets Mes abonnements et Mes abonnés réunissent ton réseau. Les profils sont classés par date de mise à jour : ouvre leur fiche pour consulter les informations récentes. Les compteurs apparaissent sur les cartes. Se désabonner retire le suivi ; un profil masqué reste confidentiel. Ce suivi n’envoie pas de notifications et ne donne pas accès aux ventes ni aux échanges Discord.",
+    "Dans Mon profil, les onglets Mes abonnements et Mes abonnés réunissent ton réseau. Les profils sont classés par date de mise à jour : ouvre leur fiche pour consulter les informations récentes. Les compteurs apparaissent sur les cartes. Se désabonner retire le suivi ; un profil masqué reste confidentiel. Tu peux activer une alerte lorsqu’une place se libère chez un parrain suivi. Le suivi ne donne pas accès aux ventes ni aux échanges Discord.",
   ],
   [
     "compte",
@@ -88,6 +98,15 @@ const chapters = [
   ],
 ];
 export function Help() {
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("help") !== "installation") return;
+    const frame = requestAnimationFrame(() => {
+      const chapter = document.getElementById("aide-installation");
+      chapter?.scrollIntoView({ behavior: "instant", block: "start" });
+      chapter?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
   return (
     <section className="wrap help-page">
       <div className="page-heading">
@@ -144,7 +163,7 @@ export function Help() {
       </nav>
       <div className="help-chapters">
         {chapters.map(([id, title, ...paragraphs], i) => (
-          <article key={id} id={`aide-${id}`}>
+          <article key={id} id={`aide-${id}`} tabIndex={-1}>
             <span className="eyebrow">
               {translateUi(String(i + 1).padStart(2, "0"))}
             </span>

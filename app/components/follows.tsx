@@ -1,5 +1,6 @@
 "use client";
 import { t as translateUi, locale } from "@/app/components/language";
+import { RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { PublicProfile } from "@/lib/profile";
 import { Avatar } from "./profile-photo";
@@ -181,8 +182,8 @@ export function FollowNetwork({
             {translateUi(t === "following" ? "Mes abonnements" : "Mes abonnés")}
           </button>
         ))}
-        <button className="text-btn" onClick={() => setReload((v) => v + 1)}>
-          {translateUi("Actualiser")}
+        <button className="refresh-icon" aria-label={translateUi("Actualiser")} title={translateUi("Actualiser")} disabled={loading} onClick={() => setReload((v) => v + 1)}>
+          <RefreshCw size={18} className={loading ? "spin" : undefined} />
         </button>
       </div>
       {translateUi(

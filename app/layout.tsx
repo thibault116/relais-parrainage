@@ -6,6 +6,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./mobile-refinements.css";
 import { SuggestionWidget } from "./components/suggestions";
+import { ReleaseNotes } from "./components/release-notes";
 import { UpdateBanner } from "./components/update-banner";
 export const metadata: Metadata = {
   icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
@@ -40,6 +41,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <AppearanceProvider>
             <PwaProvider />
             <UpdateBanner />
+            <ReleaseNotes />
             <PlatformProvider>
               {children}
               <SuggestionWidget />
