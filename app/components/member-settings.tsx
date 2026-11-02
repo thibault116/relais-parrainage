@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, type FormEvent } from "react";
+import { BetaSettings } from "./beta";
 import { authClient } from "@/lib/auth-client";
 import { AppearanceSettings } from "./appearance";
 import { VerificationForm } from "./verification";
@@ -67,6 +68,7 @@ export function MemberSettings({
               )}
             </p>
           </section>
+          <BetaSettings />
           <AppearanceSettings />
           <InstallMentora />
         </>

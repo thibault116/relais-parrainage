@@ -2,10 +2,13 @@
 import { t as translateUi, locale } from "@/app/components/language";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useDraggableLauncher } from "./use-draggable-launcher";
-import { Lightbulb, X, Paperclip } from "lucide-react";
+import { Plus, X, Paperclip } from "lucide-react";
 import { usePlatformSettings } from "./platform-settings";
+import { useBeta } from "./beta";
 import { authClient } from "@/lib/auth-client";
 export function SuggestionWidget() {
+  const { enabled: betaEnabled } = useBeta();
+  const [kind, setKind] = useState<"idea" | "bug">("bug");
   const { suggestionsEnabled } = usePlatformSettings();
   const { data: session, isPending } = authClient.useSession();
   const [open, setOpen] = useState(false),
@@ -19,7 +22,7 @@ export function SuggestionWidget() {
     requestId = useRef<string | null>(null);
   const { consumeDrag, ...dragHandlers } = useDraggableLauncher(launcher);
   useEffect(() => {
-    if (!open) return;
+    if (!open || !betaEnabled) return;
     const previous = document.activeElement as HTMLElement | null;
     panel.current?.querySelector<HTMLElement>("textarea,button")?.focus();
     const esc = (e: KeyboardEvent) => {
@@ -30,10 +33,13 @@ export function SuggestionWidget() {
       window.removeEventListener("keydown", esc);
       previous?.focus();
     };
-  }, [open]);
+  }, [open, betaEnabled]);
+  useEffect(() => {
+    if (!betaEnabled) setOpen(false);
+  }, [betaEnabled]);
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!session) return;
+    if (!session || !betaEnabled || busy) return;
     setBusy(true);
     setError("");
     try {
@@ -43,10 +49,13 @@ export function SuggestionWidget() {
       const form = new FormData();
       form.append("id", requestId.current);
       form.append("message", message);
+      form.append("kind", kind);
       const page = location.hash.slice(1);
       form.append(
         "page",
         [
+          "community",
+          "menu",
           "home",
           "directory",
           "guide",
@@ -72,7 +81,7 @@ export function SuggestionWidget() {
       setBusy(false);
     }
   }
-  if (!suggestionsEnabled) return null;
+  if (!suggestionsEnabled || !session || !betaEnabled) return null;
   return (
     <>
       <button
@@ -80,18 +89,22 @@ export function SuggestionWidget() {
         {...dragHandlers}
         className="suggestion-launcher"
         aria-label={translateUi(
-          open ? "Fermer les suggestions" : "Proposer une idée",
+          open
+            ? "Fermer les retours bêta"
+            : "Signaler un problème ou proposer une idée",
         )}
         aria-expanded={open}
         aria-controls="suggestion-dialog"
-        title={translateUi("Cliquer pour suggérer · Glisser pour déplacer")}
+        title={translateUi(
+          "Cliquer pour envoyer un retour · Glisser pour déplacer",
+        )}
         onClick={() => {
           if (consumeDrag()) return;
           setOpen((v) => !v);
           setSent(false);
         }}
       >
-        {open ? <X size={20} /> : <Lightbulb size={21} />}
+        {open ? <X size={20} /> : <Plus size={21} />}
       </button>
       {open && (
         <div
@@ -133,24 +146,52 @@ export function SuggestionWidget() {
               <X size={20} />
             </button>
             <h2 id="suggestion-title">
-              <Lightbulb size={22} />
-              {translateUi(" Une id\u00E9e pour Mentora ?")}
+              <Plus size={22} />
+              {translateUi(" Retours bêta")}
             </h2>
             {sent ? (
               <p role="status">
                 {translateUi(
-                  "Merci ! Ta suggestion a \u00E9t\u00E9 envoy\u00E9e \u00E0 l\u2019administration.",
+                  "Merci ! Ton retour a été envoyé à l’administration.",
                 )}
               </p>
             ) : (
               <form onSubmit={submit}>
+                <div
+                  className="settings-sections"
+                  aria-label={translateUi("Type de retour")}
+                >
+                  {(
+                    [
+                      ["bug", "Signaler un problème"],
+                      ["idea", "Proposer une idée"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <button
+                      type="button"
+                      key={value}
+                      disabled={busy}
+                      aria-pressed={kind === value}
+                      className={kind === value ? "selected" : ""}
+                      onClick={() => {
+                        setKind(value);
+                        requestId.current = null;
+                        setError("");
+                      }}
+                    >
+                      {translateUi(label)}
+                    </button>
+                  ))}
+                </div>
                 <p>
                   {translateUi(
                     "Une am\u00E9lioration, une id\u00E9e ou un souci ? \u00C9cris-nous.",
                   )}
                 </p>
                 <label>
-                  {translateUi("Ta suggestion")}
+                  {translateUi(
+                    kind === "bug" ? "Décris le problème" : "Décris ton idée",
+                  )}
                   <textarea
                     required
                     minLength={5}
@@ -158,7 +199,11 @@ export function SuggestionWidget() {
                     value={message}
                     disabled={busy}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder={translateUi("Ce qui m’aiderait, ce serait…")}
+                    placeholder={translateUi(
+                      kind === "bug"
+                        ? "Que s’est-il passé ? Qu’attendais-tu ? Sur quel appareil ?"
+                        : "Ce qui m’aiderait, ce serait…",
+                    )}
                   />
                 </label>
                 <label className="suggestion-file">
@@ -207,7 +252,13 @@ export function SuggestionWidget() {
                 )}
                 {session ? (
                   <button className="btn" disabled={busy}>
-                    {busy ? "Envoi…" : "Envoyer ma suggestion"}
+                    {translateUi(
+                      busy
+                        ? "Envoi…"
+                        : kind === "bug"
+                          ? "Envoyer le problème"
+                          : "Envoyer mon idée",
+                    )}
                   </button>
                 ) : (
                   <>
@@ -237,6 +288,7 @@ export function SuggestionWidget() {
 }
 type Suggestion = {
   id: string;
+  kind: "idea" | "bug";
   message: string;
   page: string;
   status: "new" | "reviewed";
@@ -302,10 +354,10 @@ export function AdminSuggestions() {
   }
   return (
     <section>
-      <h2>{translateUi("Suggestions des membres")}</h2>
+      <h2>{translateUi("Retours des bêta-testeurs")}</h2>
       <p>
         {total}
-        {translateUi(" suggestion")}
+        {translateUi(" retour")}
         {translateUi(total === 1 ? "" : "s")}
         {translateUi(" \u00B7 Les nouvelles sont affich\u00E9es en premier.")}
       </p>
@@ -329,6 +381,9 @@ export function AdminSuggestions() {
             <span className="badge">
               {translateUi(s.status === "new" ? "Nouvelle" : "Examinée")}
             </span>
+            <span className="badge">
+              {translateUi(s.kind === "bug" ? "Problème" : "Idée")}
+            </span>
             <h3>{s.name || "Ancien membre"}</h3>
             <p>
               {s.email} ·{" "}
@@ -337,6 +392,8 @@ export function AdminSuggestions() {
               {translateUi(
                 (
                   {
+                    community: "Communauté",
+                    menu: "Menu",
                     home: "Accueil",
                     directory: "Trouver mon binôme",
                     guide: "Comment ça marche",

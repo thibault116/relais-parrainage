@@ -1,3 +1,4 @@
+import { canUseFeature } from "@/lib/beta";
 import { readPlatformSettings } from "@/lib/platform-settings";
 import { query } from "@/lib/db";
 import { guard, json, user, sameOrigin } from "@/lib/http";
@@ -11,6 +12,7 @@ import {
 import { z } from "zod";
 export const runtime = "nodejs";
 const schema = z.object({
+  kind: z.enum(["idea", "bug"]).default("idea"),
   id: z.string().uuid(),
   message: z
     .string()
@@ -19,6 +21,8 @@ const schema = z.object({
     .max(5000),
   page: z
     .enum([
+      "community",
+      "menu",
       "home",
       "directory",
       "guide",
@@ -37,6 +41,14 @@ export async function POST(request: Request) {
     const u = await user(request);
     if (!u)
       return json({ error: "Connecte-toi pour envoyer ta suggestion." }, 401);
+    if (!(await canUseFeature(u.id, "betaFeedback")))
+      return json(
+        {
+          error:
+            "Active le programme bêta dans tes paramètres pour envoyer un retour.",
+        },
+        403,
+      );
     if (Number(request.headers.get("content-length")) > 4_300_000)
       return json(
         { error: "Pièce jointe trop volumineuse (4 Mo maximum)." },
@@ -49,6 +61,7 @@ export async function POST(request: Request) {
       );
     const form = await request.formData(),
       parsed = schema.safeParse({
+        kind: form.get("kind") || "idea",
         id: form.get("id"),
         message: form.get("message"),
         page: form.get("page") || "",
@@ -102,7 +115,7 @@ export async function POST(request: Request) {
       };
     }
     const saved = await query(
-      "INSERT INTO suggestions (id,user_id,message,page,attachment,created_at) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT(id) DO NOTHING RETURNING id",
+      "INSERT INTO suggestions (id,user_id,message,page,attachment,created_at,kind) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(id) DO NOTHING RETURNING id",
       [
         d.id,
         u.id,
@@ -110,6 +123,7 @@ export async function POST(request: Request) {
         d.page,
         attachment ? JSON.stringify(attachment) : null,
         new Date().toISOString(),
+        d.kind,
       ],
     );
     if (!saved.length && path) await deleteProof(path);

@@ -11,6 +11,13 @@ import {
 } from "lucide-react";
 const chapters = [
   [
+    "beta",
+    "Devenir bêta-testeur",
+    "Dans Paramètres → Général, coche Je souhaite être bêta-testeur. Un message explique le programme : tu découvres les prochaines fonctionnalités avant leur ouverture à tous. Ton choix est conservé sur ton compte.",
+    "Le bouton violet +, déplaçable sur l’écran, est réservé aux bêta-testeurs. Choisis Signaler un problème ou Proposer une idée, écris ton retour et ajoute une capture si besoin. Tes retours et fichiers sont visibles uniquement par l’administration.",
+    "Décoche l’option pour quitter le programme : le + disparaît et tu gardes les fonctionnalités publiques. Les fonctionnalités en test peuvent encore évoluer.",
+  ],
+  [
     "communaute",
     "Discuter avec ma communauté",
     "Ouvre Communauté dans le menu. Les parrains discutent entre parrains et les débutants entre débutants. Ton rôle détermine ton espace : tu ne peux pas accéder aux conversations de l’autre communauté.",

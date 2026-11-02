@@ -1,3 +1,4 @@
+import { migrateBeta } from "../lib/beta";
 import { migrateCommunity } from "../lib/community";
 import { migratePush } from "../lib/push";
 import { migrateCrm } from "../lib/crm";
@@ -28,6 +29,7 @@ await migrateVerificationFiles();
 await migrateEmail();
 await migratePush();
 await migrateCommunity();
+await migrateBeta();
 await migrateProfileTiming();
 await migratePlatformSettings();
 await migrateCrm();

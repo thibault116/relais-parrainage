@@ -1,12 +1,12 @@
 // Only member-visible changes belong here.
 export const memberRelease = {
-  id: "2026-11-02-community",
-  title: "Ta communauté arrive sur Mentora",
+  id: "2026-11-02-beta-program",
+  title: "Deviens bêta-testeur",
   notes: [
-    "Un espace de discussion entre parrains et un autre entre débutants.",
-    "Mentionne un membre pour l’avertir et retrouve tes mentions non lues.",
-    "Sur téléphone, retrouve Communauté dans le Menu.",
+    "Active le programme dans Paramètres → Général pour découvrir les prochaines fonctionnalités en avant-première.",
+    "Le bouton + permet aux bêta-testeurs de signaler un bug ou de proposer une idée, avec une capture facultative.",
+    "Tu peux quitter le programme à tout moment sans perdre les fonctionnalités publiques.",
   ],
-  guideUrl: "/#community",
-  guideLabel: "Découvrir ma communauté →",
+  guideUrl: "/?profileTab=appearance#profile",
+  guideLabel: "Ouvrir les paramètres →",
 };

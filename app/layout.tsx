@@ -1,3 +1,4 @@
+import { BetaProvider } from "./components/beta";
 import "./community.css";
 import { LanguageProvider } from "./components/language";
 import { AppearanceProvider } from "./components/appearance";
@@ -44,8 +45,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <UpdateBanner />
             <ReleaseNotes />
             <PlatformProvider>
+              <BetaProvider>
               {children}
               <SuggestionWidget />
+            </BetaProvider>
             </PlatformProvider>
           </AppearanceProvider>
         </LanguageProvider>
