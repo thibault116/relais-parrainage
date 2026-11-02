@@ -1,3 +1,4 @@
+import type { Onboarding, PublicOnboarding } from "./onboarding-schema";
 import { normalizeDate } from "./profile-dates";
 import { z } from "zod";
 export const specialties = [
@@ -10,6 +11,7 @@ export const specialties = [
   "Sneakers",
   "Généraliste",
   "Expert en photo",
+  "Autre",
 ] as const;
 export const times = [
   "En journée",
@@ -110,6 +112,8 @@ export const profileSchema = z
   });
 export type ProfileInput = z.infer<typeof profileSchema>;
 export type Profile = Omit<ProfileInput, "consent"> & {
+  resell?: PublicOnboarding;
+  questionnaire?: Onboarding | null;
   id: string;
   memberSince?: string | null;
   lastActiveAt?: string | null;
@@ -127,7 +131,7 @@ export type Profile = Omit<ProfileInput, "consent"> & {
   ratingAverage?: number;
   ratingCount?: number;
 };
-export type PublicProfile = Omit<Profile, "discord" | "discordId">;
+export type PublicProfile = Omit<Profile, "discord" | "discordId" | "questionnaire">;
 export const initialProfile: ProfileInput = {
   role: "beginner",
   name: "",
@@ -176,7 +180,8 @@ export function decode(row: Record<string, unknown>): Profile {
   };
 }
 export function publicProfile(p: Profile): PublicProfile {
-  const { discord, discordId, ...safe } = p;
+  const { discord, discordId, questionnaire, ...safe } = p;
+  void questionnaire;
   void discord;
   void discordId;
   return safe;

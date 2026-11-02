@@ -53,6 +53,7 @@ function createAuth() {
           await query("DELETE FROM member_activity WHERE user_id=$1", [
             user.id,
           ]);
+          await query("DELETE FROM onboarding_answers WHERE user_id=$1", [user.id]);
           await deleteUserProofs(user.id);
           await deleteSuggestions(user.id);
           await deleteProfilePhoto(user.id);

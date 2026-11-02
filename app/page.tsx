@@ -1,4 +1,7 @@
 "use client";
+import { useFeature, BetaSettings } from "./components/beta";
+import { OnboardingSummary } from "./components/onboarding-summary";
+import { ProfileForm as NewProfileForm } from "./components/onboarding";
 import { Community } from "./components/community";
 import { t as translateUi } from "@/app/components/language";
 import { BrandLogo } from "./components/brand-logo";
@@ -1490,7 +1493,13 @@ function Field({
     </label>
   );
 }
-function ProfileForm({
+function ProfileForm(props: React.ComponentProps<typeof NewProfileForm>) {
+  const enabled = useFeature("onboardingV2");
+  const { questionnaire, ...legacyInitial } = props.initial;
+  void questionnaire;
+  return <>{!props.onCancel && <BetaSettings />}{enabled ? <NewProfileForm {...props} /> : <LegacyProfileForm {...props} initial={legacyInitial} />}</>;
+}
+function LegacyProfileForm({
   initial,
   onSave,
   onCancel,
@@ -2740,6 +2749,7 @@ function Directory({
                 "Informations d\u00E9clar\u00E9es par le membre, non v\u00E9rifi\u00E9es. Aucun r\u00E9sultat financier garanti.",
               )}
             </p>
+            <OnboardingSummary data={selected.resell} profileId={selected.id} />
             {contact ? (
               <div className="contact-panel">
                 <strong>@{contact.discord}</strong>

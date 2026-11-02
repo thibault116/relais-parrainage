@@ -1,4 +1,5 @@
 "use client";
+import { AdminOnboarding } from "./onboarding-summary";
 import { t as translateUi, locale } from "@/app/components/language";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { PublicProfile } from "@/lib/profile";
@@ -652,6 +653,7 @@ export function Moderation() {
   return (
     <section className="wrap section">
       <h1>{translateUi("V\u00E9rification des parrains")}</h1>
+      <AdminOnboarding />
       <p>
         {translateUi(
           "Examine le parcours, les plateformes, les domaines d\u2019aide et la motivation en regard des justificatifs. Deux types de preuves sont conseill\u00E9s, sans \u00EAtre obligatoires. Les liens externes viennent des membres : n\u2019y saisis aucun identifiant.",

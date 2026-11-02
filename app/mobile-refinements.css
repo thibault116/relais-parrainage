@@ -266,3 +266,7 @@
 .release-notes a { display: block; color: var(--purple); margin: 18px 0; font-size: 14px; }
 .release-notes .btn { width: 100%; min-height: 44px; justify-content: center; }
 #aide-installation { scroll-margin-top: calc(100px + var(--announcement-height, 0px) + var(--update-banner-height, 0px)); }
+
+.intake-month-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.intake-month-grid .verification-panel{margin:0;padding:14px}.intake-screens{margin:12px 0}.form-panel .field{display:grid;gap:8px;margin:16px 0}.intake-screens input{max-width:100%}@media(max-width:600px){.intake-month-grid{grid-template-columns:1fr}}
+
+.form-panel .form-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}.form-panel .field small{font-size:12px;line-height:1.5;color:var(--muted)}

@@ -131,6 +131,7 @@ export async function migrateAdministration() {
     "Sneakers",
     "Généraliste",
     "Expert en photo",
+    "Autre",
     "Bot",
     "Brocante",
     "Fournisseur",
@@ -241,4 +242,10 @@ export async function acceptAccompaniment(id: string, recipientId: string) {
     db.exec("ROLLBACK");
     throw e;
   }
+}
+
+export async function inTransaction<T>(work:(q:typeof query)=>Promise<T>):Promise<T>{
+ const db=database();
+ if(db instanceof Pool){const client=await db.connect();try{await client.query('BEGIN');const value=await work(async(sql,params)=>(await client.query(sql,params)).rows);await client.query('COMMIT');return value;}catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}}
+ db.exec('BEGIN IMMEDIATE');try{const value=await work(query);db.exec('COMMIT');return value;}catch(e){db.exec('ROLLBACK');throw e;}
 }

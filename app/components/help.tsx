@@ -11,6 +11,13 @@ import {
 } from "lucide-react";
 const chapters = [
   [
+    "questionnaires",
+    "Les nouveaux questionnaires en bêta",
+    "Active le programme bêta dans Paramètres → Général, ou au début de la création de ton profil. Le parcours parrain comporte quatre étapes ; celui des débutants en comporte trois. Les comptes existants restent conservés.",
+    "Parrain : six mois complets d’expérience minimum. Prépare une ou plusieurs captures distinctes pour chacun des six derniers mois complets, montrant le mois, le chiffre d’affaires, le bénéfice, le panier moyen et le ROI. Les captures sont privées et accessibles à l’administration. L’import ne donne pas automatiquement le badge vérifié.",
+    "Les chiffres renseignés, y compris la trésorerie du débutant, sont visibles dans le détail du profil. L’image de ta plus belle réussite est publique : utilise une image différente de tes justificatifs confidentiels. Pour les débutants, les réponses sur le niveau, les objectifs et le blocage demandent au moins 30 caractères.",
+  ],
+  [
     "beta",
     "Devenir bêta-testeur",
     "Dans Paramètres → Général, coche Je souhaite être bêta-testeur. Un message explique le programme : tu découvres les prochaines fonctionnalités avant leur ouverture à tous. Ton choix est conservé sur ton compte.",

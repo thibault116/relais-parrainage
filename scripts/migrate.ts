@@ -1,3 +1,4 @@
+import { migrateOnboarding } from "../lib/onboarding";
 import { migrateBeta } from "../lib/beta";
 import { migrateCommunity } from "../lib/community";
 import { migratePush } from "../lib/push";
@@ -30,6 +31,7 @@ await migrateEmail();
 await migratePush();
 await migrateCommunity();
 await migrateBeta();
+await migrateOnboarding();
 await migrateProfileTiming();
 await migratePlatformSettings();
 await migrateCrm();

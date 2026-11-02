@@ -1,3 +1,6 @@
+import { canUseFeature } from "@/lib/beta";
+import { readOnboarding } from "@/lib/onboarding";
+import { proofIds } from "@/lib/onboarding-schema";
 import { query } from "@/lib/db";
 import { json, user, sameOrigin } from "@/lib/http";
 import { isModerator } from "@/lib/verification";
@@ -15,6 +18,15 @@ export async function POST(request: Request) {
     const u = await user(request);
     if (!u) return json({ error: "Connexion requise." }, 401);
     if (
+      (
+        await query("SELECT user_id FROM profile_blocks WHERE user_id=$1", [
+          u.id,
+        ])
+      ).length
+    )
+      return json({ error: "Compte suspendu." }, 403);
+    if (
+      !(await canUseFeature(u.id, "onboardingV2")) &&
       !(
         await query(
           "SELECT id FROM profiles WHERE user_id=$1 AND role='mentor'",
@@ -22,18 +34,24 @@ export async function POST(request: Request) {
         )
       ).length
     )
-      return json({ error: "Un profil parrain est nécessaire." }, 403);
+      return json(
+        {
+          error:
+            "Un profil parrain ou l’accès au questionnaire bêta est nécessaire.",
+        },
+        403,
+      );
     if (Number(request.headers.get("content-length")) > 4_300_000)
       return json({ error: "Le fichier doit faire au maximum 4 Mo." }, 413);
     const counts = await query(
       "SELECT COUNT(*) AS n FROM verification_files WHERE user_id=$1",
       [u.id],
     );
-    if (Number(counts[0].n) >= 12)
+    if (Number(counts[0].n) >= 24)
       return json(
         {
           error:
-            "Tu peux conserver au maximum 12 fichiers. Retire un ancien fichier pour en ajouter un autre.",
+            "Tu peux conserver au maximum 24 fichiers. Retire un ancien fichier pour en ajouter un autre.",
         },
         400,
       );
@@ -97,11 +115,13 @@ export async function GET(request: Request) {
           String(f.user_id),
         ])
       )[0];
+      const intake = await readOnboarding(String(f.user_id));
       if (
-        !dossier ||
-        !JSON.parse(String(dossier.dossier)).proofs?.some(
-          (p: { files: string[] }) => p.files.includes(id),
-        )
+        !(intake && proofIds(intake).includes(id)) &&
+        (!dossier ||
+          !JSON.parse(String(dossier.dossier)).proofs?.some(
+            (p: { files: string[] }) => p.files.includes(id),
+          ))
       )
         return json({ error: "Fichier non joint à un dossier." }, 403);
     }
@@ -131,6 +151,12 @@ export async function DELETE(request: Request) {
       [id, u.id],
     );
     if (!rows.length) return json({ error: "Fichier introuvable." }, 404);
+    const intake = await readOnboarding(u.id);
+    if (intake && proofIds(intake).includes(id))
+      return json(
+        { error: "Retire d’abord cette capture du questionnaire enregistré." },
+        409,
+      );
     const current = (
       await query("SELECT dossier FROM verifications WHERE user_id=$1", [u.id])
     )[0];

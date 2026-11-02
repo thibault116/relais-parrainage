@@ -94,7 +94,7 @@ export async function DELETE(request: Request) {
     if (blocked) return blocked;
     const u = await user(request);
     if (!u) return json({ error: "Connexion requise." }, 401);
-    await deleteUserProofs(u.id);
+
     await query("DELETE FROM verifications WHERE user_id=$1", [u.id]);
     return json({ ok: true });
   } catch {
