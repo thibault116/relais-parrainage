@@ -1,13 +1,12 @@
-// Change the id and concise member-facing notes for every member-visible release.
-// Never include administration-only features here.
+// Only member-visible changes belong here.
 export const memberRelease = {
-  id: "2026-10-30-mobile-app",
-  title: "Mentora dans ta poche",
+  id: "2026-11-02-community",
+  title: "Ta communauté arrive sur Mentora",
   notes: [
-    "Installe Mentora sur ton téléphone, comme une application.",
-    "Active les notifications pour tes demandes et ton accompagnement.",
-    "Navigation mobile simplifiée, cartes plus lisibles et moins d’espaces vides.",
-    "Menu avec recherche, ampoule déplaçable et actualisation en un clic.",
+    "Un espace de discussion entre parrains et un autre entre débutants.",
+    "Mentionne un membre pour l’avertir et retrouve tes mentions non lues.",
+    "Sur téléphone, retrouve Communauté dans le Menu.",
   ],
-  guideUrl: "/?help=installation#help",
+  guideUrl: "/#community",
+  guideLabel: "Découvrir ma communauté →",
 };

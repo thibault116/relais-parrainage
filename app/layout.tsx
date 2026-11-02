@@ -1,3 +1,4 @@
+import "./community.css";
 import { LanguageProvider } from "./components/language";
 import { AppearanceProvider } from "./components/appearance";
 import { PlatformProvider } from "./components/platform-settings";

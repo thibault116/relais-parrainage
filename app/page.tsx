@@ -1,4 +1,5 @@
 "use client";
+import { Community } from "./components/community";
 import { t as translateUi } from "@/app/components/language";
 import { BrandLogo } from "./components/brand-logo";
 import {
@@ -75,8 +76,10 @@ type View =
   | "profile"
   | "moderation"
   | "help"
-  | "menu";
+  | "menu"
+  | "community";
 const views: Record<View, string> = {
+  community: "Communauté",
   menu: "Menu",
   help: "Aide",
   home: "Accueil",
@@ -137,7 +140,7 @@ export default function App() {
       : "home";
   const inWorkspace =
     !!session &&
-    ["directory", "profile", "moderation", "help", "menu"].includes(view);
+    ["directory", "profile", "moderation", "help", "menu", "community"].includes(view);
   const navigation: View[] =
     inWorkspace && session
       ? showAdmin
@@ -175,7 +178,7 @@ export default function App() {
   const go = (next: View) => {
     if (
       !session &&
-      (next === "directory" || next === "profile" || next === "menu")
+      (next === "directory" || next === "profile" || next === "menu" || next === "community")
     ) {
       setAuthMode("signup");
       return;
@@ -220,7 +223,7 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (isPending) return;
-    if (!session && (params.has("profileTab") || params.has("member"))) {
+    if (!session && (params.has("profileTab") || params.has("member") || window.location.hash === "#community")) {
       setAuthMode("login");
       return;
     }
@@ -482,6 +485,7 @@ export default function App() {
           profile?.role === "mentor" &&
           !profile.verification &&
           !verificationDismissed &&
+          view !== "community" &&
           !authMode &&
           !(view === "profile" && selectedProfileTab === "appearance") && (
             <aside
@@ -915,6 +919,7 @@ export default function App() {
           />
         )}
         {!isPending && view === "help" && <Help />}
+        {!isPending && session && view === "community" && <Community key={session.user.id} />}
         {!isPending && view === "guide" && (
           <Guide onJoin={() => join("beginner")} />
         )}

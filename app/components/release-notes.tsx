@@ -24,7 +24,7 @@ export function ReleaseNotes() {
     <Sparkles size={28} aria-hidden="true" />
     <h2 id="release-title">{t(memberRelease.title)}</h2>
     <ul>{memberRelease.notes.map(note => <li key={note}>{t(note)}</li>)}</ul>
-    <a href={memberRelease.guideUrl} onClick={acknowledge}>{t("Installer Mentora et activer les notifications →")}</a>
+    <a href={memberRelease.guideUrl} onClick={acknowledge}>{t(memberRelease.guideLabel)}</a>
     <button type="button" className="btn" onClick={acknowledge} autoFocus>{t("C’est noté")}</button>
   </dialog>;
 }

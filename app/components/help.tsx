@@ -11,6 +11,13 @@ import {
 } from "lucide-react";
 const chapters = [
   [
+    "communaute",
+    "Discuter avec ma communauté",
+    "Ouvre Communauté dans le menu. Les parrains discutent entre parrains et les débutants entre débutants. Ton rôle détermine ton espace : tu ne peux pas accéder aux conversations de l’autre communauté.",
+    "Écris ton message puis appuie sur Envoyer. Pour avertir quelqu’un, utilise Mentionner et sélectionne un membre de ton espace. Mes mentions regroupe les messages où tu es mentionné. Les notifications push arrivent sur tes appareils si tu les as activées dans Paramètres.",
+    "Les nouveaux messages apparaissent automatiquement lorsque la page est ouverte. Messages précédents permet de remonter la conversation. Tu peux supprimer tes propres messages. Reste bienveillant et évite de partager des informations privées.",
+  ],
+  [
     "installation",
     "Installer Mentora et activer les notifications",
     "Sur iPhone : ouvre Mentora dans Safari. Appuie sur Partager → Sur l’écran d’accueil → Ajouter. Si l’option Ouvrir comme app apparaît, laisse-la activée. Ouvre ensuite Mentora depuis sa nouvelle icône et connecte-toi avec ton compte habituel.",

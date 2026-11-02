@@ -1,0 +1,225 @@
+.community-page {
+  max-width: 1000px;
+  padding-top: 24px;
+  padding-bottom: 32px;
+  min-width: 0;
+}
+.community-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 16px;
+  margin-bottom: 18px;
+}
+.community-intro > svg {
+  flex-shrink: 0;
+  color: var(--purple);
+}
+.community-intro > div {
+  flex: 1;
+  min-width: 0;
+}
+.community-intro p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.community-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.community-icon:hover {
+  background: var(--lavender);
+  color: var(--ink);
+}
+.community-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.community-message {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 14px 18px;
+  overflow-wrap: anywhere;
+}
+.community-message.is-mine {
+  border-color: var(--purple);
+}
+.community-message header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.community-message header strong {
+  color: var(--ink);
+}
+.community-message time {
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: auto;
+}
+.community-message p {
+  white-space: pre-wrap;
+  line-height: 1.6;
+  margin: 8px 0 0;
+}
+.community-mentions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+.community-mentions span,
+.community-mentions button {
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: var(--lavender);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  font-size: 13px;
+}
+.community-composer {
+  margin-top: 20px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  display: grid;
+  gap: 10px;
+}
+.community-composer textarea,
+.community-picker input {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  font: inherit;
+  min-width: 0;
+}
+.community-compose-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.community-compose-actions small {
+  margin-left: auto;
+  color: var(--muted);
+}
+.community-composer > small {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.community-picker {
+  display: flex;
+  gap: 8px;
+  flex-direction: column;
+  max-height: 280px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+}
+.community-picker button {
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  padding: 10px;
+  text-align: left;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.community-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px;
+  background: var(--lavender);
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+.community-notice button {
+  background: transparent;
+  color: var(--ink);
+  border: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.community-error {
+  color: var(--ink);
+  padding: 12px;
+  border: 1px solid var(--purple);
+  border-radius: 10px;
+}
+.community-count {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  background: var(--purple);
+  color: white;
+  border-radius: 20px;
+  padding: 2px 7px;
+  font-size: 12px;
+  margin-left: auto;
+}
+.community-message:target {
+  outline: 2px solid var(--purple);
+}
+@media (max-width: 600px) {
+  .community-page {
+    padding-top: 12px !important;
+  }
+  .community-intro {
+    padding: 12px;
+  }
+  .community-message {
+    padding: 12px;
+  }
+  .community-composer {
+    padding: 12px;
+  }
+  .community-compose-actions .btn {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  .community-message header {
+    gap: 6px;
+  }
+  .community-message time {
+    font-size: 11px;
+  }
+  .community-compose-actions small {
+    font-size: 11px;
+  }
+}
+
+.community-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.community-filters .btn {
+  font-size: 13px;
+  padding: 9px 12px;
+}

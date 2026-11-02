@@ -1,3 +1,4 @@
+import { migrateCommunity } from "../lib/community";
 import { migratePush } from "../lib/push";
 import { migrateCrm } from "../lib/crm";
 import { migrateTasks } from "../lib/tasks";
@@ -26,6 +27,7 @@ await migrateAdministration();
 await migrateVerificationFiles();
 await migrateEmail();
 await migratePush();
+await migrateCommunity();
 await migrateProfileTiming();
 await migratePlatformSettings();
 await migrateCrm();

@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { CommunityBadge } from "./community";
 import { t as translateUi } from "@/app/components/language";
 import { BrandLogo } from "./brand-logo";
 import {
@@ -30,7 +31,8 @@ type Destination =
   | "profile"
   | "moderation"
   | "help"
-  | "menu";
+  | "menu"
+  | "community";
 type Item = {
   id: string;
   label: string;
@@ -82,6 +84,7 @@ const memberItems: Item[] = [
     tab: "tasks",
   },
 ];
+memberItems.push({ id: "community", label: "Communauté", icon: MessageCircle, view: "community" });
 const adminItems: Item[] = [
   {
     id: "crm",
@@ -181,7 +184,7 @@ export function WorkspaceNav({
     view === item.view &&
     (!item.tab || (view === "profile" ? profileTab : adminTab) === item.tab);
   const title =
-    view === "menu"
+    view === "community" ? "Communauté" : view === "menu"
       ? "Menu"
       : view === "profile"
         ? memberItems.find((i) => i.tab === profileTab)?.label || "Mon profil"
@@ -203,6 +206,7 @@ export function WorkspaceNav({
     >
       <item.icon size={19} />
       <span>{translateUi(item.label)}</span>
+      {item.id === "community" && <CommunityBadge />}
     </button>
   );
   return (
@@ -390,6 +394,7 @@ export function WorkspaceMenuPage({
     <button key={item.id} onClick={() => onNavigate(item.view, item.tab)}>
       <item.icon size={22} />
       <span>{translateUi(item.label)}</span>
+      {item.id === "community" && <CommunityBadge />}
       <ArrowUpRight size={17} />
     </button>
   );

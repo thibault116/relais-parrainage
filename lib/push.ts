@@ -1,3 +1,4 @@
+import { communityMentionRelevant } from "./community";
 import webpush from "web-push";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
@@ -93,6 +94,7 @@ export async function removeSubscription(userId: string, id?: string) {
     );
 }
 export const pushMessages: Record<string, { title: string; body: string }> = {
+  community_mention: { title: "Nouvelle mention", body: "Un membre te mentionne dans ta communauté Mentora." },
   request_received: {
     title: "Nouvelle demande de parrainage",
     body: "Une nouvelle demande t’attend dans Mentora.",
@@ -180,6 +182,7 @@ export async function enqueuePush(
   }
 }
 async function stillRelevant(job: Record<string, unknown>) {
+  if (job.kind === "community_mention") return communityMentionRelevant(String(job.event_id), String(job.user_id));
   const [event] = await query(
     "SELECT kind,entity_id FROM email_events WHERE id=$1",
     [String(job.event_id)],
