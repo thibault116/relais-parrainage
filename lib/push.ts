@@ -94,7 +94,10 @@ export async function removeSubscription(userId: string, id?: string) {
     );
 }
 export const pushMessages: Record<string, { title: string; body: string }> = {
-  community_mention: { title: "Nouvelle mention", body: "Un membre te mentionne dans ta communauté Mentora." },
+  community_mention: {
+    title: "Nouvelle mention",
+    body: "Un membre te mentionne dans ta communauté Mentora.",
+  },
   request_received: {
     title: "Nouvelle demande de parrainage",
     body: "Une nouvelle demande t’attend dans Mentora.",
@@ -182,7 +185,8 @@ export async function enqueuePush(
   }
 }
 async function stillRelevant(job: Record<string, unknown>) {
-  if (job.kind === "community_mention") return communityMentionRelevant(String(job.event_id), String(job.user_id));
+  if (job.kind === "community_mention")
+    return communityMentionRelevant(String(job.event_id), String(job.user_id));
   const [event] = await query(
     "SELECT kind,entity_id FROM email_events WHERE id=$1",
     [String(job.event_id)],
@@ -254,7 +258,7 @@ export async function sendPush(
     },
   );
 }
-export async function runPushWorker() {
+export async function runPushWorker(eventId?: string) {
   if (!pushConfigured()) return { configured: false, sent: 0 };
   let sent = 0;
   const start = Date.now();
@@ -262,8 +266,8 @@ export async function runPushWorker() {
     new Date(Date.now() - 30 * 86400000).toISOString(),
   ]);
   const jobs = await query(
-    "SELECT * FROM push_outbox WHERE (status='pending' AND next_attempt<=$1) OR (status='sending' AND lease_until<$1) ORDER BY created_at,id LIMIT 30",
-    [now()],
+    "SELECT * FROM push_outbox WHERE ((status='pending' AND next_attempt<=$1) OR (status='sending' AND lease_until<$1)) AND ($2='' OR event_id=$2) ORDER BY created_at,id LIMIT 30",
+    [now(), eventId || ""],
   );
   for (const job of jobs) {
     if (Date.now() - start > 16000) break;

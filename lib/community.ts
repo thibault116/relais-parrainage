@@ -1,6 +1,6 @@
 import { randomUUID, createHash } from "node:crypto";
 import { Pool } from "pg";
-import { database, query } from "./db";
+import { database, query, inTransaction } from "./db";
 
 export async function migrateCommunity() {
   await query(
@@ -15,6 +15,23 @@ export async function migrateCommunity() {
   await query(
     `CREATE INDEX IF NOT EXISTS community_mentions_owner ON community_mentions(user_id,seen)`,
   );
+  for (const [name, definition] of [
+    ["reply_to", "TEXT"],
+    ["edited_at", "TEXT"],
+  ]) {
+    if (database() instanceof Pool)
+      await query(
+        `ALTER TABLE community_messages ADD COLUMN IF NOT EXISTS ${name} ${definition}`,
+      );
+    else if (
+      !(await query("PRAGMA table_info(community_messages)")).some(
+        (c) => c.name === name,
+      )
+    )
+      await query(
+        `ALTER TABLE community_messages ADD COLUMN ${name} ${definition}`,
+      );
+  }
 }
 const allowed = `p.user_id=$1 AND p.role IN ('mentor','beginner') AND NOT EXISTS(SELECT 1 FROM profile_blocks b WHERE b.user_id=p.user_id)`;
 export async function communityAccess(userId: string) {
@@ -35,7 +52,7 @@ export async function communityMessages(
   mentionsOnly = false,
 ) {
   const rows = await query(
-    `SELECT m.id,m.body,m.created_at,a.name,m.author_id FROM community_messages m JOIN profiles p ON p.role=m.room JOIN profiles a ON a.user_id=m.author_id AND a.role=m.room WHERE ${allowed} AND NOT EXISTS(SELECT 1 FROM profile_blocks b WHERE b.user_id=a.user_id) AND ($3=0 OR EXISTS(SELECT 1 FROM community_mentions n WHERE n.message_id=m.id AND n.user_id=p.user_id AND n.seen=0)) AND ($2='' OR EXISTS(SELECT 1 FROM community_messages c WHERE c.id=$2 AND c.room=p.role AND (m.created_at<c.created_at OR (m.created_at=c.created_at AND m.id<c.id)))) ORDER BY m.created_at DESC,m.id DESC LIMIT 51`,
+    `SELECT m.id,m.body,m.created_at,m.edited_at,m.reply_to,a.name,m.author_id FROM community_messages m JOIN profiles p ON p.role=m.room JOIN profiles a ON a.user_id=m.author_id AND a.role=m.room WHERE ${allowed} AND NOT EXISTS(SELECT 1 FROM profile_blocks b WHERE b.user_id=a.user_id) AND ($3=0 OR EXISTS(SELECT 1 FROM community_mentions n WHERE n.message_id=m.id AND n.user_id=p.user_id AND n.seen=0)) AND ($2='' OR EXISTS(SELECT 1 FROM community_messages c WHERE c.id=$2 AND c.room=p.role AND (m.created_at<c.created_at OR (m.created_at=c.created_at AND m.id<c.id)))) ORDER BY m.created_at DESC,m.id DESC LIMIT 51`,
     [userId, before, mentionsOnly ? 1 : 0],
   );
   const messages = rows.slice(0, 50);
@@ -45,10 +62,24 @@ export async function communityMessages(
         [userId, ...messages.map((m) => String(m.id))],
       )
     : [];
+  const replies = messages.length
+    ? await query(
+        `SELECT r.id,r.body,a.name FROM community_messages r JOIN profiles p ON p.role=r.room JOIN profiles a ON a.user_id=r.author_id AND a.role=r.room WHERE ${allowed} AND NOT EXISTS(SELECT 1 FROM profile_blocks b WHERE b.user_id=a.user_id) AND r.id IN (${messages.map((_, i) => "$" + (i + 2)).join(",")})`,
+        [userId, ...messages.map((m) => String(m.reply_to || ""))],
+      )
+    : [];
   const result = messages.map((m) => ({
     id: m.id,
     body: m.body,
     createdAt: m.created_at,
+    editedAt: m.edited_at,
+    reply: m.reply_to
+      ? replies.find((r) => r.id === m.reply_to) || {
+          id: m.reply_to,
+          body: "Message indisponible",
+          name: "",
+        }
+      : null,
     name: m.name,
     mine: m.author_id === userId,
     mentions: mentions
@@ -78,6 +109,7 @@ export async function postCommunity(
   userId: string,
   body: string,
   mentions: string[],
+  replyTo: string | null = null,
 ) {
   const db = database();
   const execute = async (q: typeof query) => {
@@ -91,6 +123,17 @@ export async function postCommunity(
       [userId, new Date(Date.now() - 3000).toISOString()],
     );
     if (recent.length) throw new Error("RATE");
+    if (
+      replyTo &&
+      !(
+        await q(
+          `SELECT m.id FROM community_messages m JOIN profiles p ON p.role=m.room JOIN profiles a ON a.user_id=m.author_id AND a.role=m.room WHERE ${allowed} AND m.id=$2 AND NOT EXISTS(SELECT 1 FROM profile_blocks b WHERE b.user_id=a.user_id)`,
+          [userId, replyTo],
+        )
+      ).length
+    )
+      throw Error("REPLY");
+    mentions = await resolveMentions(q, userId, body, mentions);
     for (const id of mentions) {
       const valid = await q(
         `SELECT t.user_id FROM profiles t JOIN profiles p ON p.role=t.role WHERE ${allowed} AND t.user_id=$2 AND t.user_id<>p.user_id AND NOT EXISTS(SELECT 1 FROM profile_blocks b WHERE b.user_id=t.user_id)`,
@@ -101,8 +144,8 @@ export async function postCommunity(
     const id = randomUUID(),
       now = new Date().toISOString();
     await q(
-      `INSERT INTO community_messages(id,author_id,room,body,created_at) VALUES($1,$2,$3,$4,$5)`,
-      [id, userId, String(p.role), body, now],
+      `INSERT INTO community_messages(id,author_id,room,body,created_at,reply_to) VALUES($1,$2,$3,$4,$5,$6)`,
+      [id, userId, String(p.role), body, now, replyTo],
     );
     for (const recipient of mentions) {
       await q(
@@ -171,4 +214,46 @@ export async function deleteCommunity(userId: string, id: string) {
   if (rows.length)
     await query("DELETE FROM community_mentions WHERE message_id=$1", [id]);
   return rows;
+}
+
+async function resolveMentions(
+  q: typeof query,
+  userId: string,
+  body: string,
+  explicit: string[],
+) {
+  const candidates = await q(
+    `SELECT t.user_id,t.name FROM profiles t JOIN profiles p ON p.role=t.role WHERE ${allowed} AND t.user_id<>p.user_id AND NOT EXISTS(SELECT 1 FROM profile_blocks b WHERE b.user_id=t.user_id)`,
+    [userId],
+  );
+  const result = new Set(explicit);
+  for (const person of candidates) {
+    const name = String(person.name);
+    if (
+      candidates.filter(
+        (p) => String(p.name).toLowerCase() === name.toLowerCase(),
+      ).length !== 1
+    )
+      continue;
+    const lower=body.toLowerCase(),needle='@'+name.toLowerCase();
+    let offset=lower.indexOf(needle);
+    while(offset>=0){
+      const before=lower[offset-1],after=lower[offset+needle.length];
+      if((!before||before.trim()==='')&&(!after||after.trim()===''||'.,!?;:'.includes(after))){result.add(String(person.user_id));break;}
+      offset=lower.indexOf(needle,offset+needle.length);
+    }
+  }
+  if (result.size > 10) throw Error("MENTION");
+  return [...result];
+}
+export async function editCommunity(userId: string, id: string, body: string) {
+  return inTransaction(async (q) => {
+    const rows = await q(
+      `UPDATE community_messages SET body=$3,edited_at=$4 WHERE id=$2 AND author_id=$1 AND EXISTS(SELECT 1 FROM profiles p WHERE ${allowed} AND p.role=community_messages.room) RETURNING id`,
+      [userId, id, body, new Date().toISOString()],
+    );
+    if (!rows.length) throw Error("ACCESS");
+    // Existing mentions remain attached; editing text never re-sends notifications.
+    return id;
+  });
 }

@@ -2,6 +2,8 @@
 // Existing functionality remains available; never use this to bypass role/admin checks.
 export const featureReleases: Record<string, "beta" | "stable"> = {
   community: "stable",
+  communityReplies: "beta",
+  communityEditing: "beta",
   onboardingV2: "beta",
   betaFeedback: "beta",
 };

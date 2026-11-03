@@ -1152,7 +1152,7 @@ export default function App() {
             )}
           </section>
         )}
-        {!isPending && inWorkspace && view !== "menu" && (
+        {!isPending && inWorkspace && view !== "menu" && view !== "community" && (
           <aside className="member-discord">
             <MessageCircle size={25} />
             <div>

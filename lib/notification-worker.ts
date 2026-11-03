@@ -1,7 +1,7 @@
 import { processEvents, runEmailWorker } from "./email";
 import { runPushWorker } from "./push";
 export async function runNotificationWorker() {
-  await processEvents();
+  try { await processEvents(); } catch { console.error("NOTIFICATION_EVENTS_FAILED"); }
   const [email, push] = await Promise.allSettled([
     runEmailWorker(),
     runPushWorker(),

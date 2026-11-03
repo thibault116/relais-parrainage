@@ -1,5 +1,9 @@
+import { after } from "next/server";
+import { runPushWorker } from "@/lib/push";
+import { canUseFeature } from "@/lib/beta";
 import { guard, json, user } from "@/lib/http";
 import {
+  editCommunity,
   communityAccess,
   communityMessages,
   communityMembers,
@@ -8,7 +12,7 @@ import {
   readCommunity,
   deleteCommunity,
 } from "@/lib/community";
-import { sendEmailsAfterResponse } from "@/lib/email-after";
+
 import { z } from "zod";
 export const runtime = "nodejs";
 export async function GET(request: Request) {
@@ -60,13 +64,21 @@ async function mutate(request: Request, method: string) {
       method === "POST"
         ? z
             .object({
+              replyTo: z.string().uuid().nullable().optional(),
               body: z.string().trim().min(1).max(3000),
               mentions: z.array(z.string().min(1).max(200)).max(10).default([]),
             })
             .strict()
-        : method === "PATCH"
-          ? z.object({ ids: z.array(z.string().uuid()).max(50) }).strict()
-          : z.object({ id: z.string().uuid() }).strict();
+        : method === "PUT"
+          ? z
+              .object({
+                id: z.string().uuid(),
+                body: z.string().trim().min(1).max(3000),
+              })
+              .strict()
+          : method === "PATCH"
+            ? z.object({ ids: z.array(z.string().uuid()).max(50) }).strict()
+            : z.object({ id: z.string().uuid() }).strict();
     const parsed = schema.safeParse(await request.json());
     if (!parsed.success)
       return json(
@@ -78,12 +90,39 @@ async function mutate(request: Request, method: string) {
     if (!(await communityAccess(u.id)))
       return json({ error: "Accès indisponible." }, 403);
     if (method === "POST") {
-      const data = parsed.data as { body: string; mentions: string[] };
-      const id = await postCommunity(u.id, data.body, [
-        ...new Set(data.mentions),
-      ]);
-      sendEmailsAfterResponse();
+      const data = parsed.data as {
+        body: string;
+        mentions: string[];
+        replyTo?: string | null;
+      };
+      if (data.replyTo && !(await canUseFeature(u.id, "communityReplies")))
+        return json({ error: "Les réponses sont disponibles en bêta." }, 403);
+      const id = await postCommunity(
+        u.id,
+        data.body,
+        [...new Set(data.mentions)],
+        data.replyTo || null,
+      );
+      after(async () => {
+        try {
+          const result = await runPushWorker(id);
+          if (!result.configured)
+            console.error("COMMUNITY_PUSH_NOT_CONFIGURED");
+        } catch {
+          console.error("COMMUNITY_PUSH_FAILED");
+        }
+      });
       return json({ id }, 201);
+    }
+    if (method === "PUT") {
+      if (!(await canUseFeature(u.id, "communityEditing")))
+        return json(
+          { error: "La modification des messages est disponible en bêta." },
+          403,
+        );
+      const data = parsed.data as { id: string; body: string };
+      await editCommunity(u.id, data.id, data.body);
+      return json({ ok: true });
     }
     if (method === "PATCH") {
       await readCommunity(u.id, (parsed.data as { ids: string[] }).ids);
@@ -103,7 +142,7 @@ async function mutate(request: Request, method: string) {
         { error: "Patiente quelques secondes avant ton prochain message." },
         429,
       );
-    if (code === "ACCESS" || code === "MENTION")
+    if (code === "ACCESS" || code === "MENTION" || code === "REPLY")
       return json(
         {
           error:
@@ -117,3 +156,6 @@ async function mutate(request: Request, method: string) {
 export const POST = (r: Request) => mutate(r, "POST");
 export const PATCH = (r: Request) => mutate(r, "PATCH");
 export const DELETE = (r: Request) => mutate(r, "DELETE");
+
+export const PUT = (r: Request) => mutate(r, "PUT");
+export const maxDuration = 60;

@@ -124,6 +124,15 @@ try {
   );
   assert.equal(posted.status, 201, JSON.stringify(posted.data));
   const id = posted.data.id;
+  assert.equal((await call('/api/community','PUT',{id,body:'Correction'},mentor.cookie)).status,403);
+  await call('/api/beta','PUT',{enabled:true},mentor.cookie);
+  await call('/api/beta','PUT',{enabled:true},otherMentor.cookie);
+  await call('/api/beta','PUT',{enabled:true},beginner.cookie);
+  assert.equal((await call('/api/community','PUT',{id,body:'Correction interdite'},otherMentor.cookie)).status,403);
+  assert.equal((await call('/api/community','PUT',{id,body:'Conseil corrigé'},mentor.cookie)).status,200);
+  assert.equal((await call('/api/community','POST',{body:'Réponse dans mon salon',replyTo:id},otherMentor.cookie)).status,201);
+  assert.equal((await call('/api/community','POST',{body:'Réponse hors salon',replyTo:id},beginner.cookie)).status,403);
+
   const list = await call(
     "/api/community",
     "GET",

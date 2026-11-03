@@ -1,11 +1,30 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { AtSign, Send, Trash2, RefreshCw, ShieldCheck } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useLayoutEffect,
+} from "react";
+import {
+  AtSign,
+  Send,
+  Trash2,
+  RefreshCw,
+  ShieldCheck,
+  Reply,
+  Pencil,
+  X,
+  Bell,
+} from "lucide-react";
+import { useFeature } from "./beta";
 import { t } from "./language";
 type Member = { user_id: string; name: string };
 type Message = {
   id: string;
   body: string;
+  editedAt?: string;
+  reply?: { id: string; name: string; body: string } | null;
   createdAt: string;
   name: string;
   mine: boolean;
@@ -29,6 +48,62 @@ async function request(path = "", data?: object, method = "POST") {
   return result;
 }
 export function Community() {
+  const repliesEnabled = useFeature("communityReplies"),
+    editingEnabled = useFeature("communityEditing");
+  const [reply, setReply] = useState<Message | null>(null),
+    [editing, setEditing] = useState<Message | null>(null);
+  const priorDraft = useRef({
+    draft: "",
+    selected: [] as Member[],
+    reply: null as Message | null,
+  });
+  const container = useRef<HTMLElement>(null),
+    thread = useRef<HTMLDivElement>(null),
+    input = useRef<HTMLTextAreaElement>(null);
+  const scrollPlan = useRef<{
+    bottom?: boolean;
+    height?: number;
+    top?: number;
+  }>({ bottom: true });
+  const swipe = useRef<{ id: string; x: number; y: number } | null>(null);
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+    const resize = () => {
+      const el = container.current;
+      if (!el) return;
+      const viewport = window.visualViewport;
+      const keyboard =
+        !!viewport && viewport.height < window.innerHeight * 0.75;
+      document.body.classList.toggle("community-keyboard", keyboard);
+      const nav = document.querySelector<HTMLElement>(".workspace-bottom-nav");
+      const navHeight = keyboard ? 0 : nav?.getBoundingClientRect().height || 0;
+      el.style.height =
+        Math.max(
+          120,
+          (viewport?.height || window.innerHeight) +
+            (viewport?.offsetTop || 0) -
+            el.getBoundingClientRect().top -
+            navHeight,
+        ) + "px";
+    };
+    resize();
+    const observer = new ResizeObserver(resize);
+    for (const el of document.querySelectorAll(
+      ".workspace-topbar,.platform-announcement,.update-banner",
+    ))
+      observer.observe(el);
+    window.addEventListener("resize", resize);
+    window.visualViewport?.addEventListener("resize", resize);
+    window.visualViewport?.addEventListener("scroll", resize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", resize);
+      window.visualViewport?.removeEventListener("resize", resize);
+      window.visualViewport?.removeEventListener("scroll", resize);
+      document.body.classList.remove("community-keyboard");
+    };
+  }, []);
+
   const [messages, setMessages] = useState<Message[]>([]),
     [role, setRole] = useState(""),
     [error, setError] = useState("");
@@ -61,6 +136,14 @@ export function Community() {
           `?mentions=${mentionsOnly ? "1" : "0"}${before ? "&before=" + encodeURIComponent(before) : ""}`,
         );
         if (!alive.current || ticket !== sequence.current) return;
+        const feed = thread.current;
+        scrollPlan.current = append
+          ? { height: feed?.scrollHeight || 0, top: feed?.scrollTop || 0 }
+          : {
+              bottom:
+                !feed ||
+                feed.scrollHeight - feed.scrollTop - feed.clientHeight < 100,
+            };
         setRole(data.role);
         setMessages((previous) =>
           append
@@ -84,6 +167,25 @@ export function Community() {
     },
     [mentionsOnly],
   );
+  useLayoutEffect(() => {
+    const feed = thread.current;
+    if (!feed) return;
+    const plan = scrollPlan.current;
+    if (plan.height !== undefined)
+      feed.scrollTop = (plan.top || 0) + feed.scrollHeight - plan.height;
+    else if (plan.bottom) feed.scrollTop = feed.scrollHeight;
+  }, [messages]);
+  function chooseReply(message: Message) {
+    if (!repliesEnabled) return;
+    setReply(message);
+    input.current?.focus();
+  }
+  function cancelEdit() {
+    setEditing(null);
+    setDraft(priorDraft.current.draft);
+    setSelected(priorDraft.current.selected);
+    setReply(priorDraft.current.reply);
+  }
   useEffect(() => {
     alive.current = true;
     void load();
@@ -130,10 +232,20 @@ export function Community() {
     setBusy(true);
     setError("");
     try {
+      if (editing) {
+        await request("", { id: editing.id, body: draft }, "PUT");
+        cancelEdit();
+        await load();
+        return;
+      }
       await request("", {
         body: draft,
         mentions: selected.map((m) => m.user_id),
+        ...(reply ? { replyTo: reply.id } : {}),
       });
+      setReply(null);
+      if (thread.current)
+        thread.current.scrollTop = thread.current.scrollHeight;
       setDraft("");
       setSelected([]);
       setPicker(false);
@@ -165,7 +277,7 @@ export function Community() {
     }
   }
   return (
-    <section className="wrap community-page">
+    <section ref={container} className="wrap community-page">
       <div className="community-intro">
         <ShieldCheck size={21} />
         <div>
@@ -184,6 +296,14 @@ export function Community() {
             )}
           </p>
         </div>
+        <a
+          className="community-icon"
+          href="/?profileTab=emails#profile"
+          aria-label={t("Vérifier mes notifications")}
+          title={t("Vérifier mes notifications")}
+        >
+          <Bell size={18} />
+        </a>
         <button
           type="button"
           className="community-icon"
@@ -233,6 +353,7 @@ export function Community() {
         </div>
       )}
       <div
+        ref={thread}
         className="community-thread"
         aria-label={t("Messages de la communauté")}
         aria-busy={loading}
@@ -261,6 +382,28 @@ export function Community() {
         ) : null}
         {messages.map((message) => (
           <article
+            onTouchStart={(e) => {
+              if (repliesEnabled && !editing && e.touches.length === 1)
+                swipe.current = {
+                  id: message.id,
+                  x: e.touches[0].clientX,
+                  y: e.touches[0].clientY,
+                };
+            }}
+            onTouchEnd={(e) => {
+              const start = swipe.current;
+              swipe.current = null;
+              if (!start || start.id !== message.id) return;
+              const end = e.changedTouches[0];
+              if (
+                start.x - end.clientX > 65 &&
+                Math.abs(start.y - end.clientY) < 45
+              )
+                chooseReply(message);
+            }}
+            onTouchCancel={() => {
+              swipe.current = null;
+            }}
             id={`message-${message.id}`}
             key={message.id}
             className={`community-message${message.mine ? " is-mine" : ""}`}
@@ -275,6 +418,34 @@ export function Community() {
                   minute: "2-digit",
                 })}
               </time>
+              {message.editedAt && <small>{t("modifié")}</small>}
+              {repliesEnabled && (
+                <button
+                  className="community-icon"
+                  aria-label={t("Répondre au message")}
+                  onClick={() => chooseReply(message)}
+                >
+                  <Reply size={16} />
+                </button>
+              )}
+              {message.mine && editingEnabled && (
+                <button
+                  className="community-icon"
+                  aria-label={t("Modifier mon message")}
+                  onClick={() => {
+                    if (!editing)
+                      priorDraft.current = { draft, selected, reply };
+                    setEditing(message);
+                    setReply(null);
+                    setDraft(message.body);
+                    setSelected(message.mentions);
+                    setPicker(false);
+                    input.current?.focus();
+                  }}
+                >
+                  <Pencil size={16} />
+                </button>
+              )}
               {message.mine && (
                 <button
                   className="community-icon"
@@ -292,6 +463,12 @@ export function Community() {
                   <span key={member.user_id}>@{member.name}</span>
                 ))}
               </div>
+            )}
+            {message.reply && (
+              <blockquote className="community-quote">
+                <strong>{message.reply.name}</strong>
+                <p>{message.reply.body.slice(0, 200)}</p>
+              </blockquote>
             )}
             <p>{message.body}</p>
             {deleteId === message.id && (
@@ -319,13 +496,59 @@ export function Community() {
       )}
       {role && (
         <form className="community-composer" onSubmit={send}>
+          {editing && (
+            <div className="community-reply-draft">
+              <span>{t("Modification de ton message")}</span>
+              <button
+                type="button"
+                className="community-icon"
+                aria-label={t("Annuler la modification")}
+                onClick={cancelEdit}
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
+          {reply && (
+            <div className="community-reply-draft">
+              <span>
+                <strong>
+                  {t("Réponse à")} {reply.name}
+                </strong>
+                <br />
+                {reply.body.slice(0, 100)}
+              </span>
+              <button
+                type="button"
+                className="community-icon"
+                aria-label={t("Annuler la réponse")}
+                onClick={() => setReply(null)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
           <label htmlFor="community-draft">{t("Ton message")}</label>
           <textarea
+            ref={input}
             id="community-draft"
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              setDraft(value);
+              if (!editing) {
+                const match = value.match(/(?:^|\s)@([^@\n]{0,40})$/);
+                if (match && !selected.some(member=>match[1].startsWith(member.name+" "))) {
+                  setSearch(match[1]);
+                  setPicker(true);
+                } else {
+                  setPicker(false);
+                  setSearch("");
+                }
+              }
+            }}
             maxLength={3000}
-            rows={3}
+            rows={2}
             placeholder={t(
               "Une question, une astuce ou un retour d’expérience…",
             )}
@@ -373,8 +596,13 @@ export function Community() {
                     disabled={selected.length >= 10}
                     onClick={() => {
                       setSelected((previous) => [...previous, member]);
+                      if (/(?:^|\s)@[^@\n]{0,40}$/.test(draft))
+                        setDraft((d) =>
+                          d.replace(/@[^@\n]{0,40}$/, `@${member.name} `),
+                        );
                       setPicker(false);
                       setSearch("");
+                      input.current?.focus();
                     }}
                   >
                     @{member.name}
@@ -387,6 +615,7 @@ export function Community() {
             <button
               type="button"
               className="btn secondary"
+              disabled={!!editing}
               aria-expanded={picker}
               onClick={() => setPicker(!picker)}
             >
@@ -400,12 +629,14 @@ export function Community() {
               disabled={busy || !draft.trim()}
             >
               <Send size={18} />
-              {t(busy ? "Envoi…" : "Envoyer")}
+              {t(busy ? "Envoi…" : editing ? "Enregistrer" : "Envoyer")}
             </button>
           </div>
           <small>
             {t(
-              "Reste bienveillant. Les mentions avertissent les membres concernés ; les notifications push doivent être activées dans Paramètres.",
+              editing
+                ? "La modification ne renvoie pas de notification."
+                : "Tape @ puis choisis un membre pour le notifier.",
             )}
           </small>
         </form>
