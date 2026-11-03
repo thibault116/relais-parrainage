@@ -37,6 +37,7 @@ import {
   LoaderCircle,
   CircleHelp,
   Menu,
+  Settings,
   CheckCircle2,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
@@ -143,7 +144,14 @@ export default function App() {
       : "home";
   const inWorkspace =
     !!session &&
-    ["directory", "profile", "moderation", "help", "menu", "community"].includes(view);
+    [
+      "directory",
+      "profile",
+      "moderation",
+      "help",
+      "menu",
+      "community",
+    ].includes(view);
   const navigation: View[] =
     inWorkspace && session
       ? showAdmin
@@ -181,7 +189,10 @@ export default function App() {
   const go = (next: View) => {
     if (
       !session &&
-      (next === "directory" || next === "profile" || next === "menu" || next === "community")
+      (next === "directory" ||
+        next === "profile" ||
+        next === "menu" ||
+        next === "community")
     ) {
       setAuthMode("signup");
       return;
@@ -226,7 +237,12 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (isPending) return;
-    if (!session && (params.has("profileTab") || params.has("member") || window.location.hash === "#community")) {
+    if (
+      !session &&
+      (params.has("profileTab") ||
+        params.has("member") ||
+        window.location.hash === "#community")
+    ) {
       setAuthMode("login");
       return;
     }
@@ -922,7 +938,9 @@ export default function App() {
           />
         )}
         {!isPending && view === "help" && <Help />}
-        {!isPending && session && view === "community" && <Community key={session.user.id} />}
+        {!isPending && session && view === "community" && (
+          <Community key={session.user.id} />
+        )}
         {!isPending && view === "guide" && (
           <Guide onJoin={() => join("beginner")} />
         )}
@@ -935,7 +953,11 @@ export default function App() {
           </section>
         )}
         {!isPending && session && view === "profile" && (
-          <section className="wrap profile-page" data-profile-tab={selectedProfileTab} inert={!!preview}>
+          <section
+            className="wrap profile-page"
+            data-profile-tab={selectedProfileTab}
+            inert={!!preview}
+          >
             <div className="page-heading">
               <span className="eyebrow">{translateUi("TON ESPACE")}</span>
               <h1>
@@ -991,10 +1013,51 @@ export default function App() {
                   {translateUi("J\u2019ai d\u00E9j\u00E0 un compte")}
                 </button>
               </div>
-            ) : selectedProfileTab === "tasks" ? (
-              <TodoLists />
             ) : selectedProfileTab === "appearance" ? (
               <MemberSettings
+                renderMenus={(query) => (
+                  <WorkspaceMenuPage
+                    externalQuery={query}
+                    mentor={profile?.role === "mentor"}
+                    moderator={showAdmin}
+                    crmOwner={
+                      showAdmin &&
+                      session.user.email.toLowerCase() ===
+                        "thibault.cordiez@hotmail.com"
+                    }
+                    discordUrl={DISCORD_GROUP}
+                    onNavigate={(next, tab) => {
+                      go(next);
+                      if (tab && next === "profile") setProfileTab(tab);
+                      if (tab && next === "moderation") setAdminTab(tab);
+                    }}
+                    onSignOut={() => {
+                      void detachPush()
+                        .then(() => authClient.signOut())
+                        .then(() => go("home"));
+                    }}
+                  />
+                )}
+                administration={
+                  showAdmin ? (
+                    <WorkspaceMenuPage
+                      adminOnly
+                      externalQuery=""
+                      mentor={profile?.role === "mentor"}
+                      moderator={showAdmin}
+                      crmOwner={
+                        session.user.email.toLowerCase() ===
+                        "thibault.cordiez@hotmail.com"
+                      }
+                      discordUrl={DISCORD_GROUP}
+                      onNavigate={(next, tab) => {
+                        go(next);
+                        if (tab) setAdminTab(tab);
+                      }}
+                      onSignOut={() => {}}
+                    />
+                  ) : undefined
+                }
                 mentor={profile?.role === "mentor"}
                 onVerificationChange={refreshProfile}
                 initialSection={
@@ -1030,27 +1093,71 @@ export default function App() {
               />
             ) : (
               <>
-                {selectedProfileTab === "edit" && <div className="profile-toolbar">
-                  <span className={`badge ${profile.visible ? "green" : ""}`}>
-                    {profile.visible ? <Eye size={14} /> : <EyeOff size={14} />}{" "}
-                    {translateUi(
-                      profile.visible
-                        ? "Visible dans l’annuaire"
-                        : "Profil masqué",
-                    )}
-                  </span>
-                  <button
-                    className="text-btn muted"
-                    onClick={async () => {
-                      await detachPush();
-                      await authClient.signOut();
-                      go("home");
-                    }}
+                {selectedProfileTab === "edit" && (
+                  <div className="profile-title-row">
+                    <h1 className="compact-page-title">
+                      {translateUi("Mon profil")}
+                    </h1>
+                    <button
+                      className="btn secondary"
+                      aria-label={translateUi("Paramètres")}
+                      onClick={() => setProfileTab("appearance")}
+                    >
+                      <Settings size={22} />
+                    </button>
+                  </div>
+                )}
+                {["accompaniments", "tasks", "following"].includes(
+                  selectedProfileTab,
+                ) && (
+                  <nav
+                    className="follow-section-tabs"
+                    aria-label={translateUi("Suivi")}
                   >
-                    <LogOut size={16} />
-                    {translateUi(" Se d\u00E9connecter")}
-                  </button>
-                </div>}
+                    {[
+                      ["accompaniments", "Mes accompagnements"],
+                      ["tasks", "Gérer les tâches"],
+                      ["following", "Abonnés et abonnements"],
+                    ].map(([id, label]) => (
+                      <button
+                        key={id}
+                        className={
+                          selectedProfileTab === id ? "btn" : "btn secondary"
+                        }
+                        onClick={() => setProfileTab(id)}
+                      >
+                        {translateUi(label)}
+                      </button>
+                    ))}
+                  </nav>
+                )}
+                {selectedProfileTab === "edit" && (
+                  <div className="profile-toolbar">
+                    <span className={`badge ${profile.visible ? "green" : ""}`}>
+                      {profile.visible ? (
+                        <Eye size={14} />
+                      ) : (
+                        <EyeOff size={14} />
+                      )}{" "}
+                      {translateUi(
+                        profile.visible
+                          ? "Visible dans l’annuaire"
+                          : "Profil masqué",
+                      )}
+                    </span>
+                    <button
+                      className="text-btn muted"
+                      onClick={async () => {
+                        await detachPush();
+                        await authClient.signOut();
+                        go("home");
+                      }}
+                    >
+                      <LogOut size={16} />
+                      {translateUi(" Se d\u00E9connecter")}
+                    </button>
+                  </div>
+                )}
                 <nav
                   className="profile-tabs"
                   aria-label={translateUi("Rubriques de mon profil")}
@@ -1077,6 +1184,7 @@ export default function App() {
                   ))}
                 </nav>
                 <div className="profile-tab-content">
+                  {selectedProfileTab === "tasks" && <TodoLists />}
                   {selectedProfileTab === "edit" && (
                     <>
                       <ProfilePhoto
@@ -1152,30 +1260,33 @@ export default function App() {
             )}
           </section>
         )}
-        {!isPending && inWorkspace && view !== "menu" && view !== "community" && (
-          <aside className="member-discord">
-            <MessageCircle size={25} />
-            <div>
-              <strong>
-                {translateUi("Retrouve la communaut\u00E9 sur Discord")}
-              </strong>
-              <p>
-                {translateUi(
-                  "\u00C9change avec d\u2019autres revendeurs et continue la discussion avec ton bin\u00F4me.",
-                )}
-              </p>
-            </div>
-            <a
-              className="btn secondary"
-              href={DISCORD_GROUP}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {translateUi("Rejoindre Discord ")}
-              <ArrowUpRight size={18} />
-            </a>
-          </aside>
-        )}
+        {!isPending &&
+          inWorkspace &&
+          view !== "menu" &&
+          view !== "community" && (
+            <aside className="member-discord">
+              <MessageCircle size={25} />
+              <div>
+                <strong>
+                  {translateUi("Retrouve la communaut\u00E9 sur Discord")}
+                </strong>
+                <p>
+                  {translateUi(
+                    "\u00C9change avec d\u2019autres revendeurs et continue la discussion avec ton bin\u00F4me.",
+                  )}
+                </p>
+              </div>
+              <a
+                className="btn secondary"
+                href={DISCORD_GROUP}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {translateUi("Rejoindre Discord ")}
+                <ArrowUpRight size={18} />
+              </a>
+            </aside>
+          )}
       </main>
       {!inWorkspace && !isPending && (
         <>
@@ -1497,7 +1608,16 @@ function ProfileForm(props: React.ComponentProps<typeof NewProfileForm>) {
   const enabled = useFeature("onboardingV2");
   const { questionnaire, ...legacyInitial } = props.initial;
   void questionnaire;
-  return <>{!props.onCancel && <BetaSettings />}{enabled ? <NewProfileForm {...props} /> : <LegacyProfileForm {...props} initial={legacyInitial} />}</>;
+  return (
+    <>
+      {!props.onCancel && <BetaSettings />}
+      {enabled ? (
+        <NewProfileForm {...props} />
+      ) : (
+        <LegacyProfileForm {...props} initial={legacyInitial} />
+      )}
+    </>
+  );
 }
 function LegacyProfileForm({
   initial,

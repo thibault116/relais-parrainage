@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect, type ReactNode, type FormEvent } from "react";
 import { BetaSettings } from "./beta";
 import { authClient } from "@/lib/auth-client";
 import { AppearanceSettings } from "./appearance";
@@ -12,16 +12,36 @@ export function MemberSettings({
   initialSection = "general",
   mentor = false,
   onVerificationChange,
+  renderMenus,
+  administration,
 }: {
+  renderMenus?: (query: string) => ReactNode;
+  administration?: ReactNode;
   initialSection?: string;
   mentor?: boolean;
   onVerificationChange: () => Promise<void>;
 }) {
   const { language, changeLanguage } = useLanguage();
+  const [search, setSearch] = useState("");
+  const normalized = search
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
   const [section, setSection] = useState(initialSection);
   useEffect(() => setSection(initialSection), [initialSection]);
   return (
     <div className="member-settings">
+      <h1 className="compact-page-title">{t("Paramètres")}</h1>
+      <label className="menu-search">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t("Rechercher un menu ou un paramètre")}
+          aria-label={t("Rechercher un menu ou un paramètre")}
+        />
+      </label>
       <nav
         className="settings-sections"
         aria-label={t("Sections des paramètres")}
@@ -30,19 +50,47 @@ export function MemberSettings({
           ["general", "Général"],
           ["security", "Sécurité"],
           ["notifications", "Notifications"],
+          ["menus", "Menus et aide"],
+          ...(administration ? [["administration", "Administration"]] : []),
           ...(mentor ? [["verification", "Vérification du compte"]] : []),
-        ].map(([id, label]) => (
-          <button
-            key={id}
-            className={section === id ? "selected" : ""}
-            aria-pressed={section === id}
-            onClick={() => setSection(id)}
-          >
-            {t(label)}
-          </button>
-        ))}
+        ]
+          .filter(
+            ([id, label]) =>
+              !normalized ||
+              (
+                label +
+                " " +
+                ({
+                  general:
+                    "langue anglais français apparence sombre clair néon bêta installer application",
+                  security: "mot de passe password sécurité",
+                  notifications: "email push notification",
+                  verification: "badge parrain compte",
+                }[id] || "")
+              )
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toLowerCase()
+                .includes(normalized),
+          )
+          .map(([id, label]) => (
+            <button
+              key={id}
+              className={section === id ? "selected" : ""}
+              aria-pressed={section === id}
+              onClick={() => {
+                setSection(id);
+                setSearch("");
+              }}
+            >
+              {t(label)}
+            </button>
+          ))}
       </nav>
-      {section === "general" && (
+      {normalized && renderMenus?.(search)}
+      {!normalized && section === "administration" && administration}
+      {!normalized && section === "menus" && renderMenus?.("")}
+      {!normalized && section === "general" && (
         <>
           <section className="verification-panel">
             <h2>{t("Langue du site")}</h2>
@@ -73,14 +121,15 @@ export function MemberSettings({
           <InstallMentora />
         </>
       )}
-      {section === "security" && <PasswordSettings />}
-      {section === "notifications" && (
+      {!normalized && section === "security" && <PasswordSettings />}
+      {!normalized && section === "notifications" && (
         <>
           <PushSettings />
           <EmailPreferences />
         </>
       )}
-      {section === "verification" &&
+      {!normalized &&
+        section === "verification" &&
         (mentor ? (
           <VerificationForm onChange={onVerificationChange} />
         ) : (

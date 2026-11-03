@@ -977,5 +977,13 @@
   "Problème": "Problem",
   "Idée": "Idea",
   "Type de retour": "Feedback type",
-  "Merci ! Ton retour a été envoyé à l’administration.": "Thank you! Your feedback has been sent to the administrator."
+  "Merci ! Ton retour a été envoyé à l’administration.": "Thank you! Your feedback has been sent to the administrator.",
+  "Gérer les tâches": "Manage tasks",
+  "Menus et aide": "Menus and help",
+  "Une navigation plus simple": "Simpler navigation",
+  "Plus de place pour le contenu : le bandeau supérieur a été retiré.": "More room for content: the top header has been removed.",
+  "Sur mobile : Binômes, Demandes, Suivi, Communauté et Profil.": "On mobile: Partners, Requests, Follow-up, Community and Profile.",
+  "Retrouve tes tâches dans Suivi, et les paramètres via la roue crantée du profil.": "Find tasks in Follow-up and settings via the gear on your profile.",
+  "Recherche rapidement un paramètre ou un menu depuis les paramètres.": "Quickly find a setting or menu from Settings.",
+  "Ouvrir les paramètres": "Open settings"
 }

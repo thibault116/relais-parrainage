@@ -84,7 +84,12 @@ const memberItems: Item[] = [
     tab: "tasks",
   },
 ];
-memberItems.push({ id: "community", label: "Communauté", icon: MessageCircle, view: "community" });
+memberItems.push({
+  id: "community",
+  label: "Communauté",
+  icon: MessageCircle,
+  view: "community",
+});
 const adminItems: Item[] = [
   {
     id: "crm",
@@ -182,18 +187,11 @@ export function WorkspaceNav({
 }) {
   const active = (item: Item) =>
     view === item.view &&
-    (!item.tab || (view === "profile" ? profileTab : adminTab) === item.tab);
-  const title =
-    view === "community" ? "Communauté" : view === "menu"
-      ? "Menu"
-      : view === "profile"
-        ? memberItems.find((i) => i.tab === profileTab)?.label || "Mon profil"
-        : view === "moderation"
-          ? adminItems.find((i) => i.tab === adminTab)?.label ||
-            "Administration"
-          : view === "help"
-            ? "Aide"
-            : "Trouver mon binôme";
+    (!item.tab ||
+      (view === "profile" ? profileTab : adminTab) === item.tab ||
+      (item.id === "accompaniments" &&
+        ["tasks", "following"].includes(profileTab)) ||
+      (item.id === "edit" && profileTab === "appearance"));
   function navigate(v: Destination, tab?: string) {
     onNavigate(v, tab);
   }
@@ -206,7 +204,12 @@ export function WorkspaceNav({
     >
       <item.icon size={19} />
       <span>{translateUi(item.label)}</span>
-      {item.id === "community" && <CommunityBadge />}
+      {item.id === "community" && (
+        <>
+          <small className="community-beta-label">Bêta</small>
+          <CommunityBadge />
+        </>
+      )}
     </button>
   );
   return (
@@ -288,31 +291,6 @@ export function WorkspaceNav({
           </button>
         </div>
       </aside>
-      <header className="workspace-topbar">
-        <a
-          href="#home"
-          className="brand-mark workspace-mobile-logo"
-          aria-label={translateUi("Mentora, accueil")}
-          onClick={() => navigate("home")}
-        >
-          <BrandLogo />
-        </a>
-        <div>
-          <small>
-            {translateUi(
-              view === "moderation" ? "ADMINISTRATION" : "MON ESPACE MENTORA",
-            )}
-          </small>
-          <h1>{translateUi(title)}</h1>
-        </div>
-        <button
-          className="workspace-top-help"
-          aria-label={translateUi("Ouvrir l’aide")}
-          onClick={() => navigate("help")}
-        >
-          <CircleHelp size={21} />
-        </button>
-      </header>
       <nav
         className="workspace-bottom-nav"
         aria-label={translateUi("Navigation mobile")}
@@ -326,16 +304,14 @@ export function WorkspaceNav({
           } as Item,
           { ...memberItems[0], label: "Demandes" },
           { ...memberItems[1], label: "Suivi" },
-          { ...memberItems[5], label: "To-do list" },
+          {
+            id: "community",
+            label: "Communauté",
+            icon: MessageCircle,
+            view: "community",
+          } as Item,
+          { ...memberItems[3], label: "Profil" },
         ].map(itemButton)}
-        <button
-          className={view === "menu" ? "is-current" : ""}
-          aria-current={view === "menu" ? "page" : undefined}
-          onClick={() => navigate("menu")}
-        >
-          <Menu size={21} />
-          <span>{translateUi("Menu")}</span>
-        </button>
       </nav>
     </>
   );
@@ -343,6 +319,8 @@ export function WorkspaceNav({
 export function WorkspaceMenuPage({
   mentor,
   moderator,
+  adminOnly = false,
+  externalQuery,
   crmOwner = false,
   discordUrl,
   onNavigate,
@@ -350,6 +328,8 @@ export function WorkspaceMenuPage({
 }: {
   mentor: boolean;
   moderator: boolean;
+  adminOnly?: boolean;
+  externalQuery?: string;
   crmOwner?: boolean;
   discordUrl: string;
   onNavigate: (view: Destination, tab?: string) => void;
@@ -363,7 +343,7 @@ export function WorkspaceMenuPage({
       .toLowerCase();
   const matches = (label: string, keywords = "") =>
     normalize(`${translateUi(label)} ${keywords}`).includes(
-      normalize(query.trim()),
+      normalize((externalQuery ?? query).trim()),
     );
   const keywords: Record<string, string> = {
     appearance:
@@ -372,10 +352,13 @@ export function WorkspaceMenuPage({
     following: "suivi suivre abonnes abonnements followers following",
     tasks: "taches todo to do progression objectifs tasks",
   };
-  const visibleMembers = memberItems.filter(
-    (i) =>
-      (i.id !== "verification" || mentor) && matches(i.label, keywords[i.id]),
-  );
+  const visibleMembers = adminOnly
+    ? []
+    : memberItems.filter(
+        (i) =>
+          (i.id !== "verification" || mentor) &&
+          matches(i.label, keywords[i.id]),
+      );
   const visibleAdmins = moderator
     ? adminItems.filter(
         (i) =>
@@ -389,32 +372,40 @@ export function WorkspaceMenuPage({
     "Accueil de Mentora",
     "Se déconnecter",
   ];
-  const hasCommunity = communityItems.some((label) => matches(label));
+  const hasCommunity =
+    !adminOnly && communityItems.some((label) => matches(label));
   const render = (item: Item) => (
     <button key={item.id} onClick={() => onNavigate(item.view, item.tab)}>
       <item.icon size={22} />
       <span>{translateUi(item.label)}</span>
-      {item.id === "community" && <CommunityBadge />}
+      {item.id === "community" && (
+        <>
+          <small className="community-beta-label">Bêta</small>
+          <CommunityBadge />
+        </>
+      )}
       <ArrowUpRight size={17} />
     </button>
   );
   return (
-    <section className="wrap workspace-menu-page">
+    <section className="workspace-menu-page">
       <div className="page-heading">
         <span className="eyebrow">{translateUi("TON ESPACE")}</span>
         <h1>{translateUi("Menu")}</h1>
         <p>{translateUi("Tous tes raccourcis, au m\u00EAme endroit.")}</p>
       </div>
-      <label className="menu-search">
-        <Search size={20} aria-hidden="true" />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          aria-label={translateUi("Rechercher un menu ou un paramètre")}
-          placeholder={translateUi("Rechercher un menu ou un paramètre")}
-        />
-      </label>
+      {externalQuery === undefined && (
+        <label className="menu-search">
+          <Search size={20} aria-hidden="true" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label={translateUi("Rechercher un menu ou un paramètre")}
+            placeholder={translateUi("Rechercher un menu ou un paramètre")}
+          />
+        </label>
+      )}
       {!visibleMembers.length && !visibleAdmins.length && !hasCommunity && (
         <p role="status">
           {translateUi("Aucun résultat. Essaie un autre mot.")}
@@ -433,31 +424,38 @@ export function WorkspaceMenuPage({
         </>
       )}
       {hasCommunity && <h2>{translateUi("Communaut\u00E9")}</h2>}
-      <div className="menu-page-grid">
-        {matches("Aide") &&
-          render({ id: "help", label: "Aide", icon: CircleHelp, view: "help" })}
-        <a
-          hidden={!matches("Rejoindre la communauté Discord")}
-          href={discordUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <MessageCircle size={22} />
-          <span>{translateUi("Rejoindre la communaut\u00E9 Discord")}</span>
-          <ArrowUpRight size={17} />
-        </a>
-        <button
-          hidden={!matches("Accueil de Mentora")}
-          onClick={() => onNavigate("home")}
-        >
-          <Compass size={22} />
-          <span>{translateUi("Accueil de Mentora")}</span>
-        </button>
-        <button hidden={!matches("Se déconnecter")} onClick={onSignOut}>
-          <LogOut size={22} />
-          <span>{translateUi("Se d\u00E9connecter")}</span>
-        </button>
-      </div>
+      {!adminOnly && (
+        <div className="menu-page-grid">
+          {matches("Aide") &&
+            render({
+              id: "help",
+              label: "Aide",
+              icon: CircleHelp,
+              view: "help",
+            })}
+          <a
+            hidden={!matches("Rejoindre la communauté Discord")}
+            href={discordUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <MessageCircle size={22} />
+            <span>{translateUi("Rejoindre la communaut\u00E9 Discord")}</span>
+            <ArrowUpRight size={17} />
+          </a>
+          <button
+            hidden={!matches("Accueil de Mentora")}
+            onClick={() => onNavigate("home")}
+          >
+            <Compass size={22} />
+            <span>{translateUi("Accueil de Mentora")}</span>
+          </button>
+          <button hidden={!matches("Se déconnecter")} onClick={onSignOut}>
+            <LogOut size={22} />
+            <span>{translateUi("Se d\u00E9connecter")}</span>
+          </button>
+        </div>
+      )}
     </section>
   );
 }
