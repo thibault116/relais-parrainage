@@ -1,5 +1,8 @@
-import { query } from "./db";
+import { query, inTransaction } from "./db";
 export async function migrateTasks() {
+  await query(
+    "CREATE TABLE IF NOT EXISTS task_push_events(id TEXT PRIMARY KEY,task_id TEXT NOT NULL,actor_id TEXT NOT NULL,recipient_id TEXT NOT NULL,kind TEXT NOT NULL,revision TEXT NOT NULL)",
+  );
   await query(
     "CREATE TABLE IF NOT EXISTS mentorship_tasks(id TEXT PRIMARY KEY,accompaniment_id TEXT NOT NULL REFERENCES accompaniments(id) ON DELETE CASCADE,body TEXT NOT NULL,done INTEGER NOT NULL DEFAULT 0 CHECK(done IN (0,1)),created_at TEXT NOT NULL,updated_at TEXT NOT NULL)",
   );
@@ -43,12 +46,17 @@ export async function taskLists(userId: string) {
 const allowed = (role: "mentor" | "beginner") =>
   `EXISTS(SELECT 1 FROM accompaniments a WHERE a.id=mentorship_tasks.accompaniment_id AND a.status='active' AND a.${role}_id=$2 AND NOT EXISTS(SELECT 1 FROM profile_blocks b WHERE b.user_id IN(a.mentor_id,a.beginner_id)))`;
 export async function addTask(userId: string, pairId: string, body: string) {
-  return query(
-    `INSERT INTO mentorship_tasks(id,accompaniment_id,body,created_at,updated_at)
+  return inTransaction(async (q) => {
+    const rows = await q(
+      `INSERT INTO mentorship_tasks(id,accompaniment_id,body,created_at,updated_at)
  SELECT $1,a.id,$3,$4,$4 FROM accompaniments a WHERE a.id=$2 AND a.mentor_id=$5 AND a.status='active'
  AND NOT EXISTS(SELECT 1 FROM profile_blocks b WHERE b.user_id IN(a.mentor_id,a.beginner_id)) RETURNING id`,
-    [crypto.randomUUID(), pairId, body, new Date().toISOString(), userId],
-  );
+      [crypto.randomUUID(), pairId, body, new Date().toISOString(), userId],
+    );
+    if (rows.length)
+      await queueTaskPush(q, String(rows[0].id), userId, "task_added");
+    return rows;
+  });
 }
 export async function changeTask(
   userId: string,
@@ -61,14 +69,57 @@ export async function changeTask(
       `UPDATE mentorship_tasks SET body=$3,updated_at=$4 WHERE id=$1 AND ${allowed("mentor")} RETURNING id`,
       [id, userId, body, new Date().toISOString()],
     );
-  return query(
-    `UPDATE mentorship_tasks SET done=$3,updated_at=$4 WHERE id=$1 AND ${allowed("beginner")} RETURNING id`,
-    [id, userId, done ? 1 : 0, new Date().toISOString()],
-  );
+  return inTransaction(async (q) => {
+    const rows = await q(
+      `UPDATE mentorship_tasks SET done=$3,updated_at=$4 WHERE id=$1 AND done<>$3 AND ${allowed("beginner")} RETURNING id`,
+      [id, userId, done ? 1 : 0, new Date().toISOString()],
+    );
+    if (rows.length)
+      await queueTaskPush(q, id, userId, done ? "task_done" : "task_reopened");
+    return rows;
+  });
 }
 export async function removeTask(userId: string, id: string) {
   return query(
     `DELETE FROM mentorship_tasks WHERE id=$1 AND ${allowed("mentor")} RETURNING id`,
     [id, userId],
   );
+}
+
+async function queueTaskPush(
+  q: typeof query,
+  taskId: string,
+  actorId: string,
+  kind: string,
+) {
+  const [task] = await q(
+    "SELECT t.updated_at,a.mentor_id,a.beginner_id FROM mentorship_tasks t JOIN accompaniments a ON a.id=t.accompaniment_id WHERE t.id=$1",
+    [taskId],
+  );
+  if (!task) return;
+  const recipient = String(
+    kind === "task_added" ? task.beginner_id : task.mentor_id,
+  );
+  const event = crypto.randomUUID();
+  await q(
+    "INSERT INTO task_push_events(id,task_id,actor_id,recipient_id,kind,revision) VALUES($1,$2,$3,$4,$5,$6)",
+    [event, taskId, actorId, recipient, kind, String(task.updated_at)],
+  );
+  for (const sub of await q(
+    "SELECT id FROM push_subscriptions WHERE user_id=$1",
+    [recipient],
+  )) {
+    await q(
+      "INSERT INTO push_outbox(id,subscription_id,user_id,event_id,kind,url,created_at) VALUES($1,$2,$3,$4,$5,$6,$7)",
+      [
+        crypto.randomUUID(),
+        String(sub.id),
+        recipient,
+        event,
+        kind,
+        "/?mobile=tasks&profileTab=tasks#profile",
+        new Date().toISOString(),
+      ],
+    );
+  }
 }

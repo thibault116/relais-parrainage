@@ -46,7 +46,9 @@ self.addEventListener("push", (event) => {
         data = event.data?.json() || {};
       } catch {}
       const title =
-        typeof data.title === "string" ? data.title.slice(0, 100) : "Mentora";
+        typeof data.title === "string"
+          ? data.title.slice(0, 100)
+          : "Nouvelle notification";
       const body =
         typeof data.body === "string"
           ? data.body.slice(0, 200)

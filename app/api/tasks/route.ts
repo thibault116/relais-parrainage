@@ -1,7 +1,10 @@
+import { after } from "next/server";
+import { runPushWorker } from "@/lib/push";
 import { guard, json, user } from "@/lib/http";
 import { addTask, changeTask, removeTask, taskLists } from "@/lib/tasks";
 import { z } from "zod";
 export const runtime = "nodejs";
+export const maxDuration = 60;
 const bodySchema = z.string().trim().min(1).max(1000);
 export async function GET(request: Request) {
   try {
@@ -57,6 +60,7 @@ async function mutate(request: Request, method: "POST" | "PATCH" | "DELETE") {
         },
         409,
       );
+    after(() => runPushWorker());
     return json({ ok: true }, method === "POST" ? 201 : 200);
   } catch {
     return json({ error: "Impossible d’enregistrer la tâche." }, 503);

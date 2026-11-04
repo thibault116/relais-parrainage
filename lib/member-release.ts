@@ -1,11 +1,11 @@
 export const memberRelease = {
-  id: "2026-11-04-mentor-portfolio",
-  title: "Un profil parrain plus simple",
+  id: "2026-11-04-personalized-push",
+  title: "Des notifications plus utiles",
   notes: [
-    "Le questionnaire parrain ne demande plus six mois de chiffres ni leurs captures.",
-    "Dans les réglages, « Finaliser mon profil » permet d’ajouter une biographie et jusqu’à dix images publiques.",
-    "Une bannière te guide jusqu’à la finalisation de ton profil parrain.",
+    "Messages et mentions : retrouve le nom de l’expéditeur et un aperçu du texte.",
+    "Les demandes et les nouvelles places disponibles indiquent le membre concerné.",
+    "Ton binôme est averti lorsqu’une tâche est ajoutée, terminée ou décochée.",
   ],
-  guideUrl: "/?mobile=settings&profileTab=verification#profile",
-  guideLabel: "Finaliser mon profil",
+  guideUrl: "/?mobile=settings&profileTab=notifications#profile",
+  guideLabel: "Mes notifications",
 };

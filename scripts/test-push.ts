@@ -94,7 +94,12 @@ try {
   await Promise.all([runPushWorker(), runPushWorker()]);
   assert.equal(sent.length, 1);
   assert.equal(sent[0].sub.endpoint, makeSub("3").endpoint);
-  assert(!JSON.stringify(sent).includes("Private"));
+  assert.equal(sent[0].data.title, "Nouvelle demande");
+  assert.equal(
+    sent[0].data.body,
+    "Private name a t’a envoyé une nouvelle demande.",
+  );
+  assert(!JSON.stringify(sent).includes("Private objective"));
   assert(!JSON.stringify(sent).includes("private.discord"));
   await query("UPDATE accompaniments SET status='active'");
   await query(
@@ -195,11 +200,11 @@ try {
   ])
     assert(sent.some((s) => s.data.title === title));
   await removeSubscription("a");
-  assert.equal(Object.keys(pushMessages).length, 10);
+  assert.equal(Object.keys(pushMessages).length, 12);
   await removeSubscription("b");
   assert.equal((await query("SELECT * FROM push_subscriptions")).length, 0);
   console.log(
-    "Push tests passed: shared event pipeline, multiple devices, dedupe/concurrent claims, owner isolation, opt-in vacancy preferences, generic payloads, expired endpoints, deletion. No external messages sent.",
+    "Push tests passed: shared event pipeline, multiple devices, dedupe/concurrent claims, owner isolation, opt-in vacancy preferences, personalized names without Discord or objectives, expired endpoints, deletion. No external messages sent.",
   );
 } finally {
   webpush.sendNotification = original;

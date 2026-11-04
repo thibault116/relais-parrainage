@@ -105,7 +105,7 @@ export const pushMessages: Record<string, { title: string; body: string }> = {
     body: "Un membre te mentionne dans ta communauté Mentora.",
   },
   request_received: {
-    title: "Nouvelle demande de parrainage",
+    title: "Nouvelle demande",
     body: "Une nouvelle demande t’attend dans Mentora.",
   },
   accepted: {
@@ -141,10 +141,76 @@ export const pushMessages: Record<string, { title: string; body: string }> = {
     body: "Un parrain que tu suis a de nouveau une place. Découvre son profil.",
   },
   test: {
-    title: "Mentora",
+    title: "Notification de test",
     body: "Les notifications fonctionnent sur cet appareil.",
   },
 };
+// Read previews only after recipient/access checks, so deleted or blocked content is never sent.
+export const preview = (value: unknown, limit = 150) => {
+  const text = String(value || "")
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return Array.from(text).length > limit
+    ? Array.from(text)
+        .slice(0, limit - 1)
+        .join("") + "…"
+    : text;
+};
+export async function pushContent(job: Record<string, unknown>) {
+  const kind = String(job.kind);
+  if (kind === "private_message" || kind === "community_mention") {
+    const table =
+      kind === "private_message" ? "private_messages" : "community_messages";
+    const [m] = await query(
+      `SELECT m.body,p.name FROM ${table} m LEFT JOIN profiles p ON p.user_id=m.author_id WHERE m.id=$1`,
+      [String(job.event_id)],
+    );
+    const name = preview(m?.name, 40) || "Un membre";
+    return {
+      title:
+        kind === "private_message" ? "Nouveau message" : "Tu as été mentionné",
+      body: `${name}${kind === "community_mention" ? " te mentionne" : ""} : ${preview(m?.body) || "Photo envoyée"}`,
+    };
+  }
+  if (kind.startsWith("task_")) {
+    const [t] = await query(
+      "SELECT t.body,p.name FROM task_push_events e JOIN mentorship_tasks t ON t.id=e.task_id LEFT JOIN profiles p ON p.user_id=e.actor_id WHERE e.id=$1",
+      [String(job.event_id)],
+    );
+    return {
+      title:
+        kind === "task_added"
+          ? "Nouvelle tâche"
+          : kind === "task_done"
+            ? "Tâche terminée"
+            : "Tâche à reprendre",
+      body: `${preview(t?.name, 40) || "Ton binôme"} ${kind === "task_added" ? "a ajouté" : kind === "task_done" ? "a terminé" : "a décoché"} : ${preview(t?.body)}`,
+    };
+  }
+  const [mail] = await query(
+    "SELECT payload FROM email_outbox WHERE event_id=$1 AND user_id=$2 AND kind=$3",
+    [String(job.event_id), String(job.user_id), kind],
+  );
+  let data: MailData = { name: "" };
+  try {
+    data = JSON.parse(String(mail?.payload || "{}"));
+  } catch {}
+  const partner = preview(data.partner, 50) || "Ton binôme";
+  const bodies: Record<string, string> = {
+    request_received: `${partner} t’a envoyé une nouvelle demande.`,
+    accepted: `Ton binôme avec ${partner} est confirmé.`,
+    declined: `${partner} a refusé ta demande. Consulte sa réponse.`,
+    cancelled: `${partner} a annulé sa demande.`,
+    completed_beginner: `Ton accompagnement avec ${partner} est terminé. Donne ton avis.`,
+    completed_mentor: `Ton accompagnement avec ${partner} est terminé.`,
+    place_available: `${partner} a de nouveau une place disponible.`,
+  };
+  return {
+    ...pushMessages[kind],
+    body: bodies[kind] || pushMessages[kind]?.body,
+  };
+}
 export async function enqueuePush(
   eventId: string,
   userId: string,
@@ -190,7 +256,14 @@ export async function enqueuePush(
     );
   }
 }
-async function stillRelevant(job: Record<string, unknown>) {
+export async function stillRelevant(job: Record<string, unknown>) {
+  if (String(job.kind).startsWith("task_")) {
+    const [t] = await query(
+      `SELECT t.id FROM task_push_events e JOIN mentorship_tasks t ON t.id=e.task_id JOIN accompaniments a ON a.id=t.accompaniment_id WHERE e.id=$1 AND e.recipient_id=$2 AND a.status='active' AND (a.mentor_id=$2 OR a.beginner_id=$2) AND e.kind=$3 AND t.updated_at=e.revision AND NOT EXISTS(SELECT 1 FROM profile_blocks b WHERE b.user_id IN(a.mentor_id,a.beginner_id))`,
+      [String(job.event_id), String(job.user_id), String(job.kind)],
+    );
+    return !!t;
+  }
   if (job.kind === "private_message") {
     if (!(await canUseFeature(String(job.user_id), "privateMessaging")))
       return false;
@@ -308,7 +381,7 @@ export async function runPushWorker(eventId?: string) {
     }
     try {
       await sendPush(sub, {
-        ...pushMessages[String(job.kind)],
+        ...(await pushContent(job)),
         url: job.url,
         tag: job.id,
       });
