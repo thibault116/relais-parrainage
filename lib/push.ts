@@ -1,3 +1,5 @@
+import { canUseFeature } from "./beta";
+import { privateAllowed } from "./mobile-space";
 import { communityMentionRelevant } from "./community";
 import webpush from "web-push";
 import { createHash, randomUUID } from "node:crypto";
@@ -94,6 +96,10 @@ export async function removeSubscription(userId: string, id?: string) {
     );
 }
 export const pushMessages: Record<string, { title: string; body: string }> = {
+  private_message: {
+    title: "Nouveau message",
+    body: "Un message privé t’attend dans Mentora.",
+  },
   community_mention: {
     title: "Nouvelle mention",
     body: "Un membre te mentionne dans ta communauté Mentora.",
@@ -185,6 +191,15 @@ export async function enqueuePush(
   }
 }
 async function stillRelevant(job: Record<string, unknown>) {
+  if (job.kind === "private_message") {
+    if (!(await canUseFeature(String(job.user_id), "privateMessaging")))
+      return false;
+    const [m] = await query(
+      `SELECT c.user_a,c.user_b,m.author_id FROM private_messages m JOIN private_chats c ON c.id=m.chat_id WHERE m.id=$1 AND (c.user_a=$2 OR c.user_b=$2) AND m.author_id<>$2 AND c.status='accepted'`,
+      [String(job.event_id), String(job.user_id)],
+    );
+    return !!m && (await privateAllowed(String(m.user_a), String(m.user_b)));
+  }
   if (job.kind === "community_mention")
     return communityMentionRelevant(String(job.event_id), String(job.user_id));
   const [event] = await query(

@@ -1,0 +1,1405 @@
+"use client";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  type ReactNode,
+} from "react";
+import {
+  Home,
+  Search,
+  Users,
+  MessageCircle,
+  UserRound,
+  Bell,
+  ChevronRight,
+  ChevronLeft,
+  Target,
+  Inbox,
+  CheckCircle2,
+  Bookmark,
+  Settings,
+  CircleHelp,
+  Send,
+  MoreHorizontal,
+  ImagePlus,
+  Pin,
+  ShieldBan,
+  Flag,
+  Plus,
+  Layers,
+  TrendingUp,
+  Megaphone,
+  NotebookPen,
+} from "lucide-react";
+import { BrandLogo } from "./brand-logo";
+import { useFeature } from "./beta";
+import { Community } from "./community";
+import { t } from "./language";
+import type { Profile } from "@/lib/profile";
+type Row = Record<string, any>;
+const BookmarkContext = createContext<{
+  ids: string[];
+  refresh: () => void;
+} | null>(null);
+export async function mobileApi(url: string, body?: unknown) {
+  const r = await fetch(url, {
+    method: body ? "POST" : "GET",
+    cache: "no-store",
+    signal: AbortSignal.timeout(15000),
+    headers:
+      body instanceof FormData
+        ? undefined
+        : { "Content-Type": "application/json" },
+    body:
+      body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+  });
+  const d = await r.json();
+  if (!r.ok) throw Error(d.error || "Connexion impossible. Réessaie.");
+  return d;
+}
+export function MobileProfileActions({
+  profileId,
+  compact = false,
+}: {
+  profileId: string;
+  compact?: boolean;
+}) {
+  const bookmarks = useContext(BookmarkContext);
+  const enabled = useFeature("mobileExtras"),
+    messaging = useFeature("privateMessaging");
+  const [saved, setSaved] = useState(false),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  useEffect(() => {
+    if (bookmarks) {
+      setSaved(bookmarks.ids.includes(profileId));
+      return;
+    }
+    if (enabled && window.matchMedia("(max-width:900px)").matches)
+      mobileApi("/api/mobile")
+        .then((d) => setSaved(d.bookmarks.some((p: Row) => p.id === profileId)))
+        .catch(() => {});
+  }, [enabled, profileId, bookmarks]);
+  async function act(kind: string) {
+    setBusy(true);
+    setError("");
+    try {
+      if (kind === "save") {
+        await mobileApi("/api/mobile", {
+          action: "bookmark",
+          id: profileId,
+          saved: !saved,
+        });
+        setSaved(!saved);
+        bookmarks?.refresh();
+      } else {
+        const d = await mobileApi("/api/messages", {
+          action: "connect",
+          profileId,
+        });
+        window.dispatchEvent(
+          new CustomEvent("mentora-mobile", {
+            detail: { screen: "messages", chat: d.id },
+          }),
+        );
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div
+      className={`mobile-profile-actions ${compact ? "compact-bookmark" : ""}`}
+    >
+      {enabled && (
+        <button
+          disabled={busy}
+          className="btn secondary"
+          aria-label={
+            saved ? "Retirer des profils enregistrés" : "Enregistrer le profil"
+          }
+          aria-pressed={saved}
+          onClick={() => act("save")}
+        >
+          <Bookmark size={17} fill={saved ? "currentColor" : "none"} />
+          {!compact && (saved ? "Enregistré" : "Enregistrer")}
+        </button>
+      )}
+      {messaging && !compact && (
+        <button
+          disabled={busy}
+          className="btn secondary"
+          onClick={() => act("chat")}
+        >
+          <MessageCircle size={17} />
+          Contacter en privé
+        </button>
+      )}
+      {error && <p role="alert">{error}</p>}
+    </div>
+  );
+}
+const routes: Record<string, [string, string?]> = {
+  discover: ["directory"],
+  edit: ["profile", "edit"],
+  settings: ["profile", "appearance"],
+  help: ["help"],
+  requests: ["profile", "requests"],
+  pairs: ["profile", "accompaniments"],
+  tasks: ["profile", "tasks"],
+  following: ["profile", "following"],
+  admin: ["moderation"],
+};
+export function MobileExperience({
+  legacy,
+  profile,
+  name,
+  userId,
+  view,
+  profileTab,
+  onNavigate,
+  onOpenProfile,
+}: {
+  legacy: ReactNode;
+  profile: Profile | null;
+  name: string;
+  userId: string;
+  view: string;
+  profileTab: string;
+  onNavigate: (view: string, tab?: string) => void;
+  onOpenProfile: (id: string, role: string) => void;
+}) {
+  const extras = useFeature("mobileExtras"),
+    dm = useFeature("privateMessaging"),
+    channels = useFeature("communityChannels");
+  const [screen, setScreen] = useState(() =>
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("mobile") ||
+        (view === "community" ? "community" : "home")
+      : "home",
+  );
+  const [pairs, setPairs] = useState<Row[]>([]),
+    [lists, setLists] = useState<Row[]>([]),
+    [notices, setNotices] = useState<Row[]>([]),
+    [bookmarks, setBookmarks] = useState<Row[]>([]),
+    [error, setError] = useState(""),
+    [loading, setLoading] = useState(true),
+    [unreadOnly, setUnreadOnly] = useState(false),
+    [channel, setChannel] = useState<string | null>(null),
+    [chat, setChat] = useState(() =>
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("chat") || ""
+        : "",
+    );
+  const initial = useRef(true);
+  const load = useCallback(async () => {
+    const results = await Promise.allSettled([
+      mobileApi("/api/accompaniments"),
+      mobileApi("/api/tasks"),
+      ...(extras ? [mobileApi("/api/mobile")] : []),
+    ]);
+    if (results[0].status === "fulfilled")
+      setPairs(results[0].value.accompaniments);
+    if (results[1].status === "fulfilled") setLists(results[1].value.lists);
+    if (results[2]?.status === "fulfilled") {
+      setNotices(results[2].value.notices);
+      setBookmarks(results[2].value.bookmarks);
+    }
+    setError(
+      results.some((r) => r.status === "rejected")
+        ? "Certaines informations n’ont pas pu être chargées. Réessaie."
+        : "",
+    );
+    setLoading(false);
+  }, [extras]);
+  useEffect(() => {
+    void load();
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") void load();
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [load]);
+  const go = useCallback(
+    (next: string) => {
+      setScreen(next);
+      setError("");
+      setChannel(null);
+      if (routes[next]) onNavigate(...routes[next]);
+      else onNavigate(next === "community" ? "community" : "profile");
+      const url = new URL(window.location.href);
+      url.searchParams.set("mobile", next);
+      url.hash =
+        routes[next]?.[0] || (next === "community" ? "community" : "profile");
+      url.searchParams.delete("chat");
+      if (routes[next]?.[1])
+        url.searchParams.set("profileTab", routes[next][1]!);
+      else url.searchParams.delete("profileTab");
+      window.history.pushState(null, "", url);
+      window.scrollTo({ top: 0, behavior: "instant" });
+    },
+    [onNavigate],
+  );
+  useEffect(() => {
+    const open = (e: Event) => {
+      const d = (e as CustomEvent).detail;
+      go(d.screen);
+      if (d.chat) setChat(d.chat);
+    };
+    window.addEventListener("mentora-mobile", open);
+    return () => window.removeEventListener("mentora-mobile", open);
+  }, [go]);
+  useEffect(() => {
+    if (initial.current) {
+      initial.current = false;
+      const param = new URLSearchParams(window.location.search).get(
+        "profileTab",
+      );
+      if (param && !new URLSearchParams(window.location.search).has("mobile")) {
+        setScreen(
+          param === "emails" ||
+            param === "verification" ||
+            param === "appearance"
+            ? "settings"
+            : param === "tasks"
+              ? "tasks"
+              : param === "requests"
+                ? "requests"
+                : "edit",
+        );
+      }
+      return;
+    }
+    if (view === "moderation") setScreen("admin");
+    if (view === "help") setScreen("help");
+  }, [view, profileTab]);
+  useEffect(() => {
+    const restore = () => {
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get("mobile") || "home";
+      setScreen(next);
+      setChannel(null);
+      setChat(params.get("chat") || "");
+      if (routes[next]) onNavigate(...routes[next]);
+    };
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, [onNavigate]);
+  const pending = pairs.filter((p) => p.status === "pending"),
+    active = pairs.filter((p) => p.status === "active"),
+    done = lists.reduce((n, l) => n + l.completed, 0),
+    total = lists.reduce((n, l) => n + l.total, 0),
+    percent = total ? Math.round((done / total) * 100) : 0;
+  function tile(
+    label: string,
+    sub: string,
+    icon: typeof Home,
+    next: string,
+    badge?: number,
+  ) {
+    const Icon = icon;
+    return (
+      <button className="mobile-tile" onClick={() => go(next)}>
+        <Icon />
+        <span>
+          <strong>{t(label)}</strong>
+          <small>{t(sub)}</small>
+        </span>
+        {!!badge && <b className="mobile-count">{badge}</b>}
+        <ChevronRight size={18} />
+      </button>
+    );
+  }
+  const beta = (
+    <section className="mobile-empty">
+      <h2>En avant-première</h2>
+      <p>
+        Active le programme bêta dans les paramètres pour découvrir cette
+        fonctionnalité.
+      </p>
+      <button className="btn" onClick={() => go("settings")}>
+        Ouvrir les paramètres
+      </button>
+    </section>
+  );
+  const nav = [
+    ["home", "Accueil", Home],
+    ["discover", "Découvrir", Search],
+    ["community", "Communauté", Users],
+    ["messages", "Messages", MessageCircle],
+    ["profile", "Profil", UserRound],
+  ] as const;
+  const legacyMode = !!routes[screen];
+  const selected =
+    screen === "discover" || screen === "requests"
+      ? "discover"
+      : screen === "messages"
+        ? "messages"
+        : screen === "community"
+          ? "community"
+          : [
+                "profile",
+                "edit",
+                "settings",
+                "help",
+                "saved",
+                "following",
+                "admin",
+              ].includes(screen)
+            ? "profile"
+            : "home";
+  return (
+    <BookmarkContext.Provider
+      value={{ ids: bookmarks.map((p) => p.id), refresh: () => void load() }}
+    >
+      <div
+        className={`mobile-app ${screen === "community" && channel !== null ? "mobile-chat-view" : ""}`}
+      >
+        <header className="mobile-app-header">
+          <button
+            className="mobile-app-brand"
+            onClick={() => go("home")}
+            aria-label="Accueil Mentora"
+          >
+            <BrandLogo />
+            <strong>Mentora</strong>
+          </button>
+          <button
+            className="mobile-icon"
+            aria-label="Notifications"
+            onClick={() => go("notifications")}
+          >
+            <Bell size={22} />
+            {notices.some((n) => !n.read) && <i />}
+          </button>
+          <button
+            className="mobile-avatar small"
+            onClick={() => go("profile")}
+            aria-label="Mon profil"
+          >
+            {profile?.photo ? (
+              <img src={profile.photo} alt="" />
+            ) : (
+              name.slice(0, 1)
+            )}
+          </button>
+        </header>
+        {error && (
+          <div role="alert" className="mobile-error">
+            {error}
+            <button onClick={() => void load()}>Réessayer</button>
+          </div>
+        )}
+        <main className="mobile-app-content">
+          {screen === "home" && (
+            <>
+              <h1>
+                Bonjour {name.split(" ")[0]} <span>👋</span>
+              </h1>
+              <p className="mobile-subtitle">
+                {profile?.role === "mentor"
+                  ? "Tes accompagnements et les prochaines étapes de tes binômes."
+                  : "Voici ton activité et tes prochaines étapes."}
+              </p>
+              <button
+                className="mobile-progress-card"
+                onClick={() => go("tasks")}
+              >
+                <Target size={42} />
+                <span>
+                  <strong>
+                    {profile?.role === "mentor"
+                      ? "La progression de tes binômes"
+                      : "Ma progression"}
+                  </strong>
+                  <small>
+                    {done}/{total} objectifs complétés
+                  </small>
+                  <progress max={100} value={percent} />
+                </span>
+                <ChevronRight size={20} />
+              </button>
+              <h2>Mes actions</h2>
+              {tile(
+                profile?.role === "mentor"
+                  ? "Mes accompagnements"
+                  : "Mon accompagnement",
+                active.length
+                  ? active.map((a) => a.partner_name).join(", ")
+                  : "Trouve ton prochain binôme",
+                Inbox,
+                "pairs",
+                active.length,
+              )}
+              {tile(
+                "Mes demandes",
+                `${pending.length} en attente de réponse`,
+                MessageCircle,
+                "requests",
+                pending.length,
+              )}
+              {tile(
+                "Objectifs",
+                "Continue ta progression",
+                CheckCircle2,
+                "tasks",
+              )}
+              {!active.length &&
+                tile(
+                  "Trouver mon binôme",
+                  "Parcours les profils de la communauté",
+                  Search,
+                  "discover",
+                )}
+              {loading && <p role="status">Chargement…</p>}
+            </>
+          )}
+          {screen === "profile" && (
+            <>
+              <div className="mobile-profile-hero">
+                <div className="mobile-avatar">
+                  {profile?.photo ? (
+                    <img src={profile.photo} alt="Ta photo" />
+                  ) : (
+                    name.slice(0, 2)
+                  )}
+                  <button
+                    aria-label="Modifier mon profil"
+                    onClick={() => go("edit")}
+                  >
+                    <NotebookPen size={16} />
+                  </button>
+                </div>
+                <h1>{name}</h1>
+                <span className="mobile-role">
+                  {profile?.role === "mentor" ? "Parrain" : "Débutant"}
+                </span>
+                <p>
+                  <i className={profile?.visible ? "available-dot" : ""} />
+                  {profile?.visible
+                    ? "Visible dans l’annuaire"
+                    : "Profil masqué"}
+                </p>
+              </div>
+              {tile(
+                "Mon accompagnement",
+                active.length
+                  ? active[0].partner_name
+                  : "Tes binômes et leur historique",
+                Target,
+                "pairs",
+              )}
+              {tile(
+                "Mes objectifs",
+                `${done}/${total} objectifs complétés`,
+                CheckCircle2,
+                "tasks",
+              )}
+              {tile(
+                "Mes profils enregistrés",
+                extras
+                  ? `${bookmarks.length} membre${bookmarks.length > 1 ? "s" : ""}`
+                  : "En avant-première",
+                Bookmark,
+                "saved",
+              )}
+              {tile(
+                "Mes abonnés et abonnements",
+                "Les membres que tu suis",
+                Users,
+                "following",
+              )}
+              {tile(
+                "Modifier mon profil",
+                "Photo, présentation et spécialités",
+                UserRound,
+                "edit",
+              )}
+              {tile(
+                "Paramètres",
+                "Compte, notifications, thème",
+                Settings,
+                "settings",
+              )}
+              {tile(
+                "Aide & support",
+                "FAQ, contact, signalement",
+                CircleHelp,
+                "help",
+              )}
+            </>
+          )}
+          {screen === "notifications" &&
+            (extras ? (
+              <>
+                <div className="mobile-title">
+                  <button
+                    className="mobile-icon"
+                    aria-label="Retour"
+                    onClick={() => go("home")}
+                  >
+                    <ChevronLeft />
+                  </button>
+                  <h1>Notifications</h1>
+                </div>
+                <div className="mobile-segments">
+                  <button
+                    className={!unreadOnly ? "selected" : ""}
+                    onClick={() => setUnreadOnly(false)}
+                  >
+                    Tout
+                  </button>
+                  <button
+                    className={unreadOnly ? "selected" : ""}
+                    onClick={() => setUnreadOnly(true)}
+                  >
+                    Non lues ({notices.filter((n) => !n.read).length})
+                  </button>
+                </div>
+                {notices
+                  .filter((n) => !unreadOnly || !n.read)
+                  .map((n) => (
+                    <button
+                      key={n.id}
+                      className={`mobile-tile ${!n.read ? "unread" : ""}`}
+                      onClick={async () => {
+                        try {
+                          await mobileApi("/api/mobile", {
+                            action: "read",
+                            ids: [n.id],
+                          });
+                          setNotices((v) =>
+                            v.map((x) =>
+                              x.id === n.id ? { ...x, read: true } : x,
+                            ),
+                          );
+                          go(n.destination);
+                        } catch (e) {
+                          setError((e as Error).message);
+                        }
+                      }}
+                    >
+                      <Bell />
+                      <span>
+                        <strong>{n.title}</strong>
+                        <small>
+                          {new Date(n.date).toLocaleString("fr-FR")}
+                        </small>
+                      </span>
+                      <ChevronRight />
+                    </button>
+                  ))}
+                {!notices.length && <p>Aucune notification pour le moment.</p>}
+              </>
+            ) : (
+              beta
+            ))}
+          {screen === "saved" &&
+            (extras ? (
+              <>
+                <h1>Profils enregistrés</h1>
+                {!bookmarks.length && (
+                  <p>
+                    Enregistre des profils depuis leur fiche pour les retrouver
+                    ici.
+                  </p>
+                )}
+                {bookmarks.map((p) => (
+                  <div className="mobile-tile" key={p.id}>
+                    <Bookmark />
+                    <button
+                      onClick={() => {
+                        setScreen("discover");
+                        onOpenProfile(p.id, p.role);
+                      }}
+                    >
+                      {p.name}
+                    </button>
+                    <button
+                      className="mobile-icon"
+                      aria-label={`Retirer ${p.name}`}
+                      onClick={async () => {
+                        try {
+                          await mobileApi("/api/mobile", {
+                            action: "bookmark",
+                            id: p.id,
+                            saved: false,
+                          });
+                          void load();
+                        } catch (e) {
+                          setError((e as Error).message);
+                        }
+                      }}
+                    >
+                      <Bookmark fill="currentColor" />
+                    </button>
+                  </div>
+                ))}
+              </>
+            ) : (
+              beta
+            ))}
+          {screen === "community" &&
+            (channel === null ? (
+              <>
+                <div className="mobile-room-note">
+                  {profile?.role === "mentor"
+                    ? "Entre parrains"
+                    : "Entre débutants"}{" "}
+                  · Ton espace d’entraide
+                </div>
+                {(
+                  [
+                    [
+                      "announcements",
+                      "Annonces & nouveautés",
+                      "Infos, mises à jour, événements",
+                      Megaphone,
+                    ],
+                    [
+                      "general",
+                      "Entraide & questions",
+                      "Pose tes questions, obtiens de l’aide",
+                      MessageCircle,
+                    ],
+                    [
+                      "sourcing",
+                      "Sourcing & bons plans",
+                      "Fournisseurs, lots, bonnes adresses",
+                      Layers,
+                    ],
+                    [
+                      "sales",
+                      "Ventes & marketplaces",
+                      "Vinted, eBay, Leboncoin…",
+                      TrendingUp,
+                    ],
+                    [
+                      "progress",
+                      "Progression & objectifs",
+                      "Résultats, conseils et retours d’expérience",
+                      Target,
+                    ],
+                    [
+                      "life",
+                      "Vie de la communauté",
+                      "Présentations et échanges",
+                      Users,
+                    ],
+                  ] as const
+                ).map(([id, label, sub, Icon]) => (
+                  <button
+                    key={String(id)}
+                    className="mobile-tile"
+                    onClick={() => {
+                      if (channels || id === "general") setChannel(String(id));
+                      else go("settings");
+                    }}
+                  >
+                    <Icon />
+                    <span>
+                      <strong>{t(String(label))}</strong>
+                      <small>{t(String(sub))}</small>
+                    </span>
+                    {!channels && id !== "general" ? (
+                      <small>Bêta</small>
+                    ) : (
+                      <ChevronRight />
+                    )}
+                  </button>
+                ))}
+              </>
+            ) : (
+              <>
+                <button
+                  className="mobile-back"
+                  onClick={() => setChannel(null)}
+                >
+                  <ChevronLeft size={18} />
+                  Rubriques de la communauté
+                </button>
+                <Community
+                  key={channel}
+                  channel={channels ? channel : undefined}
+                />
+              </>
+            ))}
+          {screen === "messages" &&
+            (dm ? (
+              <PrivateMessages
+                userId={userId}
+                chatId={chat}
+                setChatId={setChat}
+                pairs={active}
+                onProfile={(id, role) => {
+                  setScreen("discover");
+                  onOpenProfile(id, role);
+                }}
+              />
+            ) : (
+              beta
+            ))}
+          {legacyMode && (
+            <>
+              <button
+                className="mobile-back"
+                onClick={() =>
+                  go(
+                    ["edit", "settings", "help", "following", "admin"].includes(
+                      screen,
+                    )
+                      ? "profile"
+                      : "home",
+                  )
+                }
+              >
+                <ChevronLeft size={18} />
+                {["edit", "settings", "help", "following", "admin"].includes(
+                  screen,
+                )
+                  ? "Mon profil"
+                  : "Accueil"}
+              </button>
+              {screen === "pairs" && (
+                <>
+                  <h1>
+                    {profile?.role === "mentor"
+                      ? "Mes accompagnements"
+                      : "Mon accompagnement"}
+                  </h1>
+                  {active.map((pair) => {
+                    const list = lists.find((l) => l.id === pair.id);
+                    return (
+                      <section key={pair.id} className="mobile-note">
+                        <strong>{pair.partner_name}</strong>
+                        <small className="mobile-subtitle">
+                          {" "}
+                          · Depuis le{" "}
+                          {new Date(pair.created_at).toLocaleDateString(
+                            "fr-FR",
+                          )}
+                        </small>
+                        <button
+                          className="mobile-pair-progress"
+                          onClick={() => go("tasks")}
+                        >
+                          <span
+                            className="mobile-progress-ring"
+                            style={{
+                              background: `conic-gradient(var(--purple) ${list?.progress || 0}%, var(--line) 0)`,
+                            }}
+                          >
+                            <b>{list?.progress || 0}%</b>
+                          </span>
+                          <span>
+                            <strong>
+                              {list?.completed || 0}/{list?.total || 0}{" "}
+                              objectifs
+                            </strong>
+                            <small>Voir la progression et les tâches</small>
+                          </span>
+                          <ChevronRight size={18} />
+                        </button>
+                      </section>
+                    );
+                  })}
+                </>
+              )}
+              {screen === "pairs" && (
+                <div className="mobile-segments">
+                  <button onClick={() => go("tasks")}>
+                    Progression & tâches
+                  </button>
+                  {extras && (
+                    <button onClick={() => go("notes")}>Notes partagées</button>
+                  )}
+                </div>
+              )}
+              {screen === "help" && (
+                <section className="mobile-note">
+                  <h2>Ton espace mobile</h2>
+                  <p>
+                    <strong>Accueil</strong> rassemble tes actions et ta
+                    progression. <strong>Découvrir</strong> permet de chercher
+                    un binôme et de retrouver tes demandes.
+                  </p>
+                  <p>
+                    Dans <strong>Communauté</strong>, tu échanges uniquement
+                    avec les membres de ton rôle. Les nouvelles rubriques, les
+                    profils enregistrés, les notifications et les notes
+                    partagées sont disponibles en bêta.
+                  </p>
+                  <p>
+                    <strong>Messages</strong> permet aux bêta-testeurs de
+                    discuter avec leurs binômes ou des contacts acceptés. Le
+                    menu d’une conversation permet d’épingler, de bloquer ou de
+                    signaler un membre.
+                  </p>
+                  <p>
+                    Retrouve les réglages, l’aide et le programme bêta dans{" "}
+                    <strong>Profil → Paramètres</strong>.
+                  </p>
+                </section>
+              )}
+              <div className="mobile-legacy">{legacy}</div>
+              {screen === "discover" &&
+                tile(
+                  "Mes demandes",
+                  `${pending.length} en attente`,
+                  Inbox,
+                  "requests",
+                  pending.length,
+                )}
+            </>
+          )}
+          {screen === "notes" && (extras ? <PairNotes pairs={active} /> : beta)}
+        </main>
+        <nav className="mobile-app-dock" aria-label="Navigation mobile">
+          {nav.map(([id, label, Icon]) => (
+            <button
+              key={id}
+              className={selected === id ? "selected" : ""}
+              aria-current={selected === id ? "page" : undefined}
+              onClick={() => go(id)}
+            >
+              <Icon size={22} />
+              <span>{t(label)}</span>
+              {id === "community" && <small>Bêta</small>}
+            </button>
+          ))}
+        </nav>
+      </div>
+    </BookmarkContext.Provider>
+  );
+}
+function PairNotes({ pairs }: { pairs: Row[] }) {
+  const [pair, setPair] = useState(pairs[0]?.id || ""),
+    [notes, setNotes] = useState<Row[]>([]),
+    [body, setBody] = useState(""),
+    [error, setError] = useState("");
+  useEffect(() => {
+    if (pair)
+      mobileApi("/api/mobile?pair=" + pair)
+        .then((d) => setNotes(d.notes))
+        .catch((e) => setError(e.message));
+  }, [pair]);
+  return (
+    <>
+      <h1>Notes partagées</h1>
+      {!pairs.length ? (
+        <p>Un binôme actif est nécessaire pour partager des notes.</p>
+      ) : (
+        <>
+          <select
+            value={pair}
+            onChange={(e) => setPair(e.target.value)}
+            aria-label="Choisir un binôme"
+          >
+            {pairs.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.partner_name}
+              </option>
+            ))}
+          </select>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                await mobileApi("/api/mobile", {
+                  action: "note",
+                  id: pair,
+                  body,
+                });
+                setBody("");
+                setNotes((await mobileApi("/api/mobile?pair=" + pair)).notes);
+              } catch (e) {
+                setError((e as Error).message);
+              }
+            }}
+          >
+            <textarea
+              required
+              maxLength={2000}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Une note pour votre accompagnement…"
+              aria-label="Note partagée"
+            />
+            <button className="btn" type="submit">
+              Ajouter la note
+            </button>
+          </form>
+          {notes.map((n) => (
+            <article className="mobile-note" key={n.id}>
+              <strong>{n.name}</strong>
+              <p>{n.body}</p>
+              <small>
+                {new Date(n.created_at).toLocaleDateString("fr-FR")}
+              </small>
+            </article>
+          ))}
+        </>
+      )}
+      {error && <p role="alert">{error}</p>}
+    </>
+  );
+}
+function PrivateMessages({
+  userId,
+  chatId,
+  setChatId,
+  pairs,
+  onProfile,
+}: {
+  userId: string;
+  chatId: string;
+  setChatId: (s: string) => void;
+  pairs: Row[];
+  onProfile: (id: string, role: string) => void;
+}) {
+  const [chats, setChats] = useState<Row[]>([]),
+    [messages, setMessages] = useState<Row[]>([]),
+    [search, setSearch] = useState(""),
+    [filter, setFilter] = useState("all"),
+    [body, setBody] = useState(""),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false),
+    [menu, setMenu] = useState(false),
+    [canSend, setCanSend] = useState(false),
+    [older, setOlder] = useState(false),
+    [file, setFile] = useState<File | null>(null),
+    [report, setReport] = useState(false),
+    [reason, setReason] = useState("");
+  const dmContainer = useRef<HTMLElement>(null);
+  const bottom = useRef<HTMLDivElement>(null),
+    feed = useRef<HTMLDivElement>(null),
+    generation = useRef(0),
+    archived = useRef(false);
+  useEffect(() => {
+    if (!chatId) return;
+    const resize = () => {
+      const el = dmContainer.current,
+        v = window.visualViewport;
+      if (!el) return;
+      const keyboard = !!v && v.height < window.innerHeight * 0.75;
+      document.body.classList.toggle("private-keyboard", keyboard);
+      const dock = document.querySelector(".mobile-app-dock");
+      el.style.height =
+        Math.max(
+          220,
+          (v?.height || window.innerHeight) +
+            (v?.offsetTop || 0) -
+            el.getBoundingClientRect().top -
+            (keyboard ? 0 : dock?.getBoundingClientRect().height || 0) -
+            8,
+        ) + "px";
+    };
+    resize();
+    window.visualViewport?.addEventListener("resize", resize);
+    window.addEventListener("resize", resize);
+    return () => {
+      window.visualViewport?.removeEventListener("resize", resize);
+      window.removeEventListener("resize", resize);
+      document.body.classList.remove("private-keyboard");
+    };
+  }, [chatId]);
+  const refresh = useCallback(async () => {
+    const ticket = ++generation.current;
+    try {
+      const c = await mobileApi("/api/messages");
+      if (ticket !== generation.current) return;
+      setChats(c.chats);
+      if (chatId && !archived.current) {
+        const d = await mobileApi("/api/messages?chat=" + chatId);
+        if (ticket !== generation.current) return;
+        const near =
+          !feed.current ||
+          feed.current.scrollHeight -
+            feed.current.scrollTop -
+            feed.current.clientHeight <
+            100;
+        setMessages(d.messages);
+        setCanSend(d.chat.canSend);
+        setOlder(d.hasOlder);
+        await mobileApi("/api/messages", { action: "read", id: chatId });
+        if (near)
+          requestAnimationFrame(() =>
+            bottom.current?.scrollIntoView({ block: "end" }),
+          );
+      }
+      setError("");
+    } catch (e) {
+      if (ticket === generation.current) setError((e as Error).message);
+    }
+  }, [chatId]);
+  useEffect(() => {
+    archived.current = false;
+    setMessages([]);
+    setMenu(false);
+    setReport(false);
+    void refresh();
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") void refresh();
+    }, 7000);
+    return () => {
+      generation.current++;
+      clearInterval(timer);
+    };
+  }, [refresh]);
+  const selected = chats.find((c) => c.id === chatId);
+  async function action(action: string, value?: boolean) {
+    try {
+      await mobileApi("/api/messages", { action, id: chatId, value });
+      setMenu(false);
+      void refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    try {
+      if (file) {
+        const f = new FormData();
+        f.set("chat", chatId);
+        f.set("file", file);
+        f.set("body", body);
+        await mobileApi("/api/messages", f);
+      } else
+        await mobileApi("/api/messages", { action: "send", id: chatId, body });
+      setBody("");
+      setFile(null);
+      archived.current = false;
+      await refresh();
+      requestAnimationFrame(() =>
+        bottom.current?.scrollIntoView({ block: "end" }),
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section
+      ref={dmContainer}
+      className={chatId ? "mobile-dm open" : "mobile-dm"}
+    >
+      {error && (
+        <p role="alert" className="mobile-error">
+          {error}
+          <button onClick={() => void refresh()}>Réessayer</button>
+        </p>
+      )}
+      {!chatId ? (
+        <>
+          <div className="mobile-segments">
+            {[
+              ["all", "Tous"],
+              ["pairs", "Binômes"],
+              ["others", "Autres"],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                className={filter === id ? "selected" : ""}
+                onClick={() => setFilter(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <label className="mobile-search">
+            <Search size={17} />
+            <input
+              placeholder="Rechercher une conversation…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </label>
+          {pairs
+            .filter(
+              (p) =>
+                filter !== "others" &&
+                !chats.some((c) => c.profile_id === p.partner_profile_id) &&
+                p.partner_name.toLowerCase().includes(search.toLowerCase()),
+            )
+            .map((p) => (
+              <button
+                key={p.id}
+                className="mobile-tile"
+                onClick={async () => {
+                  try {
+                    const d = await mobileApi("/api/messages", {
+                      action: "connect",
+                      profileId: p.partner_profile_id,
+                    });
+                    setChatId(d.id);
+                  } catch (e) {
+                    setError((e as Error).message);
+                  }
+                }}
+              >
+                <Users />
+                <span>
+                  <strong>{p.partner_name}</strong>
+                  <small>Ouvrir la discussion du binôme</small>
+                </span>
+                <ChevronRight />
+              </button>
+            ))}
+          {chats
+            .filter(
+              (c) =>
+                c.name.toLowerCase().includes(search.toLowerCase()) &&
+                (filter === "all" ||
+                  (filter === "pairs"
+                    ? Number(c.is_pair)
+                    : !Number(c.is_pair))),
+            )
+            .map((c) => (
+              <button
+                className="mobile-chat-row"
+                key={c.id}
+                onClick={() => setChatId(c.id)}
+              >
+                <span className="mobile-avatar small">
+                  {c.name.slice(0, 1)}
+                </span>
+                <span>
+                  <strong>
+                    {c.name} {Number(c.pinned) ? "📌" : ""}
+                  </strong>
+                  <small>
+                    {c.status === "pending"
+                      ? "Demande de contact en attente"
+                      : c.status === "declined"
+                        ? "Demande refusée"
+                        : c.last_body || "Commencer la discussion"}
+                  </small>
+                </span>
+                {Number(c.unread) > 0 && (
+                  <b className="mobile-count">{c.unread}</b>
+                )}
+              </button>
+            ))}
+          {!chats.length && !pairs.length && (
+            <p>
+              Retrouve ici tes binômes et tes contacts acceptés. Tu peux
+              demander à contacter un membre depuis sa fiche.
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="mobile-dm-heading">
+            <button
+              className="mobile-icon"
+              aria-label="Retour aux messages"
+              onClick={() => setChatId("")}
+            >
+              <ChevronLeft />
+            </button>
+            <strong>{selected?.name || "Conversation"}</strong>
+            <button
+              className="mobile-icon"
+              aria-label="Options de conversation"
+              onClick={() => setMenu(!menu)}
+            >
+              <MoreHorizontal />
+            </button>
+          </div>
+          {menu && selected && (
+            <div className="mobile-chat-menu">
+              <button
+                onClick={() => onProfile(selected.profile_id, selected.role)}
+              >
+                <UserRound />
+                Voir le profil
+              </button>
+              <button onClick={() => action("pin", !Number(selected.pinned))}>
+                <Pin />
+                {Number(selected.pinned)
+                  ? "Désépingler"
+                  : "Épingler la conversation"}
+              </button>
+              <button
+                onClick={() =>
+                  action(Number(selected.blocked) ? "unblock" : "block")
+                }
+              >
+                <ShieldBan />
+                {Number(selected.blocked) ? "Débloquer" : "Bloquer le membre"}
+              </button>
+              <button
+                onClick={() => {
+                  setReport(true);
+                  setMenu(false);
+                }}
+              >
+                <Flag />
+                Signaler un problème
+              </button>
+            </div>
+          )}
+          {report && selected && (
+            <form
+              className="mobile-note"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  await mobileApi("/api/reports", {
+                    profileId: selected.profile_id,
+                    reason: "Comportement inapproprié",
+                    details: reason,
+                  });
+                  setReport(false);
+                  setReason("");
+                  setError("Signalement envoyé à l’administration.");
+                } catch (e) {
+                  setError((e as Error).message);
+                }
+              }}
+            >
+              <textarea
+                required
+                minLength={20}
+                maxLength={2000}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                aria-label="Décrire le problème"
+                placeholder="Décris le problème (20 caractères minimum)"
+              />
+              <button className="btn">Envoyer le signalement</button>
+              <button type="button" onClick={() => setReport(false)}>
+                Annuler
+              </button>
+            </form>
+          )}
+          {selected?.status === "pending" && (
+            <div className="mobile-note">
+              <p>
+                {selected.requested_by === userId
+                  ? "Ta demande de contact attend une réponse."
+                  : "Ce membre souhaite discuter avec toi."}
+              </p>
+              {selected.requested_by !== userId && (
+                <>
+                  <button className="btn" onClick={() => action("accept")}>
+                    Accepter
+                  </button>
+                  <button
+                    className="btn secondary"
+                    onClick={() => action("decline")}
+                  >
+                    Refuser
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+          <div className="mobile-dm-feed" ref={feed}>
+            {older && (
+              <button
+                onClick={async () => {
+                  try {
+                    const d = await mobileApi(
+                      "/api/messages?chat=" +
+                        chatId +
+                        "&before=" +
+                        messages[0].id,
+                    );
+                    archived.current = true;
+                    setMessages((m) => [...d.messages, ...m]);
+                    setOlder(d.hasOlder);
+                  } catch (e) {
+                    setError((e as Error).message);
+                  }
+                }}
+              >
+                Messages précédents
+              </button>
+            )}
+            {archived.current && (
+              <button
+                onClick={() => {
+                  archived.current = false;
+                  void refresh();
+                }}
+              >
+                Revenir aux derniers messages
+              </button>
+            )}
+            {messages.map((m) => (
+              <article key={m.id} className={Number(m.mine) ? "mine" : ""}>
+                {m.image === 1 && (
+                  <img
+                    src={"/api/messages?file=" + m.id}
+                    alt="Image partagée"
+                    loading="lazy"
+                  />
+                )}
+                <p>{m.body}</p>
+                <small>
+                  {new Date(m.created_at).toLocaleTimeString("fr-FR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </small>
+              </article>
+            ))}
+            <div ref={bottom} />
+          </div>
+          {canSend ? (
+            <form className="mobile-dm-compose" onSubmit={send}>
+              {file && (
+                <button type="button" onClick={() => setFile(null)}>
+                  {file.name} ×
+                </button>
+              )}
+              <label className="mobile-icon" aria-label="Joindre une photo">
+                <ImagePlus />
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f && f.size > 4000000)
+                      setError("Image trop volumineuse (4 Mo maximum).");
+                    else setFile(f || null);
+                  }}
+                />
+              </label>
+              <textarea
+                aria-label="Écrire un message"
+                placeholder="Écrire un message…"
+                rows={1}
+                maxLength={3000}
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+              />
+              <button
+                className="mobile-send"
+                disabled={busy || (!body.trim() && !file)}
+                aria-label="Envoyer le message"
+              >
+                <Send size={19} />
+              </button>
+            </form>
+          ) : (
+            <p className="mobile-subtitle">
+              L’envoi est indisponible tant que le contact n’est pas accepté ou
+              qu’un blocage est actif.
+            </p>
+          )}
+        </>
+      )}
+    </section>
+  );
+}

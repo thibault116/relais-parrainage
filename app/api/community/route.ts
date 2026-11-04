@@ -1,3 +1,4 @@
+import { query } from "@/lib/db";
 import { after } from "next/server";
 import { runPushWorker } from "@/lib/push";
 import { canUseFeature } from "@/lib/beta";
@@ -40,10 +41,17 @@ export async function GET(request: Request) {
       return json({ error: "Page invalide." }, 400);
     return json({
       role: access.role,
+      canPost:
+        params.get("channel") !== "announcements" ||
+        (await query("SELECT user_id FROM moderators WHERE user_id=$1", [u.id]))
+          .length > 0,
       ...(await communityMessages(
         u.id,
         before,
         params.get("mentions") === "1",
+        (await canUseFeature(u.id, "communityChannels"))
+          ? params.get("channel") || ""
+          : "",
       )),
       unread: await communityUnread(u.id),
     });
@@ -64,6 +72,16 @@ async function mutate(request: Request, method: string) {
       method === "POST"
         ? z
             .object({
+              channel: z
+                .enum([
+                  "general",
+                  "announcements",
+                  "sourcing",
+                  "sales",
+                  "progress",
+                  "life",
+                ])
+                .optional(),
               replyTo: z.string().uuid().nullable().optional(),
               body: z.string().trim().min(1).max(3000),
               mentions: z.array(z.string().min(1).max(200)).max(10).default([]),
@@ -91,17 +109,38 @@ async function mutate(request: Request, method: string) {
       return json({ error: "Accès indisponible." }, 403);
     if (method === "POST") {
       const data = parsed.data as {
+        channel?: string;
         body: string;
         mentions: string[];
         replyTo?: string | null;
       };
       if (data.replyTo && !(await canUseFeature(u.id, "communityReplies")))
         return json({ error: "Les réponses sont disponibles en bêta." }, 403);
+      if (
+        data.channel &&
+        data.channel !== "general" &&
+        !(await canUseFeature(u.id, "communityChannels"))
+      )
+        return json({ error: "Ces rubriques sont disponibles en bêta." }, 403);
+      if (
+        data.channel === "announcements" &&
+        !(
+          await query("SELECT user_id FROM moderators WHERE user_id=$1", [u.id])
+        ).length
+      )
+        return json(
+          {
+            error:
+              "Seule l’administration publie les annonces. Tu peux poser tes questions dans Entraide.",
+          },
+          403,
+        );
       const id = await postCommunity(
         u.id,
         data.body,
         [...new Set(data.mentions)],
         data.replyTo || null,
+        data.channel || "general",
       );
       after(async () => {
         try {

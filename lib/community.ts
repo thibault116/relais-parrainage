@@ -18,6 +18,7 @@ export async function migrateCommunity() {
   for (const [name, definition] of [
     ["reply_to", "TEXT"],
     ["edited_at", "TEXT"],
+    ["channel", "TEXT NOT NULL DEFAULT 'general'"],
   ]) {
     if (database() instanceof Pool)
       await query(
@@ -50,10 +51,11 @@ export async function communityMessages(
   userId: string,
   before = "",
   mentionsOnly = false,
+  channel = "",
 ) {
   const rows = await query(
-    `SELECT m.id,m.body,m.created_at,m.edited_at,m.reply_to,a.name,m.author_id FROM community_messages m JOIN profiles p ON p.role=m.room JOIN profiles a ON a.user_id=m.author_id AND a.role=m.room WHERE ${allowed} AND NOT EXISTS(SELECT 1 FROM profile_blocks b WHERE b.user_id=a.user_id) AND ($3=0 OR EXISTS(SELECT 1 FROM community_mentions n WHERE n.message_id=m.id AND n.user_id=p.user_id AND n.seen=0)) AND ($2='' OR EXISTS(SELECT 1 FROM community_messages c WHERE c.id=$2 AND c.room=p.role AND (m.created_at<c.created_at OR (m.created_at=c.created_at AND m.id<c.id)))) ORDER BY m.created_at DESC,m.id DESC LIMIT 51`,
-    [userId, before, mentionsOnly ? 1 : 0],
+    `SELECT m.id,m.body,m.created_at,m.edited_at,m.reply_to,a.name,m.author_id FROM community_messages m JOIN profiles p ON p.role=m.room JOIN profiles a ON a.user_id=m.author_id AND a.role=m.room WHERE ${allowed} AND NOT EXISTS(SELECT 1 FROM profile_blocks b WHERE b.user_id=a.user_id) AND ($4='' OR m.channel=$4) AND ($3=0 OR EXISTS(SELECT 1 FROM community_mentions n WHERE n.message_id=m.id AND n.user_id=p.user_id AND n.seen=0)) AND ($2='' OR EXISTS(SELECT 1 FROM community_messages c WHERE c.id=$2 AND c.room=p.role AND (m.created_at<c.created_at OR (m.created_at=c.created_at AND m.id<c.id)))) ORDER BY m.created_at DESC,m.id DESC LIMIT 51`,
+    [userId, before, mentionsOnly ? 1 : 0, channel],
   );
   const messages = rows.slice(0, 50);
   const mentions = messages.length
@@ -110,6 +112,7 @@ export async function postCommunity(
   body: string,
   mentions: string[],
   replyTo: string | null = null,
+  channel = "general",
 ) {
   const db = database();
   const execute = async (q: typeof query) => {
@@ -144,8 +147,8 @@ export async function postCommunity(
     const id = randomUUID(),
       now = new Date().toISOString();
     await q(
-      `INSERT INTO community_messages(id,author_id,room,body,created_at,reply_to) VALUES($1,$2,$3,$4,$5,$6)`,
-      [id, userId, String(p.role), body, now, replyTo],
+      `INSERT INTO community_messages(id,author_id,room,body,created_at,reply_to,channel) VALUES($1,$2,$3,$4,$5,$6,$7)`,
+      [id, userId, String(p.role), body, now, replyTo, channel],
     );
     for (const recipient of mentions) {
       await q(

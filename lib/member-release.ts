@@ -1,12 +1,12 @@
 export const memberRelease = {
-  id: "2026-11-03-mobile-navigation",
-  title: "Une navigation plus simple",
-  notes: [
-    "Plus de place pour le contenu : le bandeau supérieur a été retiré.",
-    "Sur mobile : Binômes, Demandes, Suivi, Communauté et Profil.",
-    "Retrouve tes tâches dans Suivi, et les paramètres via la roue crantée du profil.",
-    "Recherche rapidement un paramètre ou un menu depuis les paramètres.",
-  ],
-  guideUrl: "/?profileTab=appearance#profile",
-  guideLabel: "Ouvrir les paramètres",
+ id: "2026-11-03-mobile-app-redesign",
+ title: "Mentora, pensé pour ton téléphone",
+ notes: [
+  "Cinq onglets : Accueil, Découvrir, Communauté, Messages et Profil.",
+  "Un accueil adapté à ton rôle et un accès rapide à tes demandes et objectifs.",
+  "En bêta : messagerie privée, photos, profils enregistrés et notifications dans l’app.",
+  "En bêta : rubriques de communauté et notes partagées avec ton binôme.",
+ ],
+ guideUrl: "/?profileTab=appearance&mobile=settings#profile",
+ guideLabel: "Découvrir les réglages et la bêta",
 };

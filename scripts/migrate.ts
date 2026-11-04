@@ -1,3 +1,4 @@
+import { migrateMobileSpace } from "../lib/mobile-space";
 import { migrateOnboarding } from "../lib/onboarding";
 import { migrateBeta } from "../lib/beta";
 import { migrateCommunity } from "../lib/community";
@@ -35,5 +36,6 @@ await migrateOnboarding();
 await migrateProfileTiming();
 await migratePlatformSettings();
 await migrateCrm();
+await migrateMobileSpace();
 console.log("Base Relais initialisée.");
 process.exit(0);

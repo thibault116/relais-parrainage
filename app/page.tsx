@@ -1,4 +1,8 @@
 "use client";
+import {
+  MobileExperience,
+  MobileProfileActions,
+} from "./components/mobile-experience";
 import { useFeature, BetaSettings } from "./components/beta";
 import { OnboardingSummary } from "./components/onboarding-summary";
 import { ProfileForm as NewProfileForm } from "./components/onboarding";
@@ -126,6 +130,14 @@ export default function App() {
   const { discordUrl: DISCORD_GROUP } = usePlatformSettings();
   const [requestedView, setView] = useState<View>("home");
   const [mobile, setMobile] = useState(false);
+  const [phoneLayout, setPhoneLayout] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 900px)");
+    const sync = () => setPhoneLayout(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
   const { data: session, isPending } = authClient.useSession();
   const [moderator, setModerator] = useState(false);
   const [previewRole, setPreviewRole] = useState<"mentor" | "beginner" | null>(
@@ -315,7 +327,7 @@ export default function App() {
       notify((e as Error).message);
     }
   }
-  return (
+  const legacy = (
     <div className={inWorkspace ? "workspace-shell" : "public-shell"}>
       <ActivityTracker userId={session?.user.id} />
       {inWorkspace && session ? (
@@ -1367,6 +1379,32 @@ export default function App() {
       )}
     </div>
   );
+  return phoneLayout && inWorkspace && session ? (
+    <MobileExperience
+      legacy={legacy}
+      profile={profile}
+      name={session.user.name}
+      userId={session.user.id}
+      view={view}
+      profileTab={selectedProfileTab}
+      onNavigate={(next, tab) => {
+        setView(next as View);
+        if (next === "directory") setFocusMember(null);
+        if (tab) setProfileTab(tab);
+      }}
+      onOpenProfile={async (id, role) => {
+        try {
+          const d = await api("/api/profiles?role=" + role + "&profile=" + id);
+          go("directory");
+          setFocusMember(d.profile);
+        } catch (e) {
+          notify((e as Error).message);
+        }
+      }}
+    />
+  ) : (
+    legacy
+  );
 }
 function AuthModal({
   mode,
@@ -2197,6 +2235,7 @@ function ProfileCard({
       : `${p.experience} mois d’expérience`;
   return (
     <article className="member-card redesigned-card">
+      {!own && <MobileProfileActions profileId={p.id} compact />}
       <div className="mentor-card-head">
         <Avatar profile={p} />
         <div className="mentor-card-title">
@@ -2308,6 +2347,7 @@ function Directory({
   const [role, setRole] = useState(initialTarget?.role || initialRole);
   const [search, setSearch] = useState("");
   const [specialty, setSpecialty] = useState("");
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [time, setTime] = useState("");
   const [page, setPage] = useState(0);
   const [profiles, setProfiles] = useState<PublicProfile[]>([]);
@@ -2495,7 +2535,9 @@ function Directory({
           {translateUi(" Les d\u00E9butants")}
         </button>
       </div>
-      <div className="filters">
+      <div
+        className={`filters ${showMobileFilters ? "mobile-filters-open" : ""}`}
+      >
         <div className="search-field">
           <Search size={19} />
           <input
@@ -2508,6 +2550,15 @@ function Directory({
             }}
           />
         </div>
+        <button
+          type="button"
+          className="mobile-filter-toggle"
+          aria-label="Afficher les filtres"
+          aria-expanded={showMobileFilters}
+          onClick={() => setShowMobileFilters((v) => !v)}
+        >
+          <SlidersHorizontal size={19} />
+        </button>
         <label className="filter-select">
           <SlidersHorizontal size={16} />
           <select
@@ -2869,6 +2920,7 @@ function Directory({
                 "Informations d\u00E9clar\u00E9es par le membre, non v\u00E9rifi\u00E9es. Aucun r\u00E9sultat financier garanti.",
               )}
             </p>
+            <MobileProfileActions profileId={selected.id} />
             <OnboardingSummary data={selected.resell} profileId={selected.id} />
             {contact ? (
               <div className="contact-panel">

@@ -47,7 +47,7 @@ async function request(path = "", data?: object, method = "POST") {
     throw new Error(result.error || "Impossible de charger la communauté.");
   return result;
 }
-export function Community() {
+export function Community({ channel }: { channel?: string } = {}) {
   const repliesEnabled = useFeature("communityReplies"),
     editingEnabled = useFeature("communityEditing");
   const [reply, setReply] = useState<Message | null>(null),
@@ -75,7 +75,9 @@ export function Community() {
       const keyboard =
         !!viewport && viewport.height < window.innerHeight * 0.75;
       document.body.classList.toggle("community-keyboard", keyboard);
-      const nav = document.querySelector<HTMLElement>(".workspace-bottom-nav");
+      const nav = document.querySelector<HTMLElement>(
+        ".mobile-app-dock, .workspace-bottom-nav",
+      );
       const navHeight = keyboard ? 0 : nav?.getBoundingClientRect().height || 0;
       el.style.height =
         Math.max(
@@ -89,7 +91,7 @@ export function Community() {
     resize();
     const observer = new ResizeObserver(resize);
     for (const el of document.querySelectorAll(
-      ".workspace-topbar,.platform-announcement,.update-banner",
+      ".workspace-topbar,.mobile-app-header,.platform-announcement,.update-banner",
     ))
       observer.observe(el);
     window.addEventListener("resize", resize);
@@ -106,6 +108,7 @@ export function Community() {
 
   const [messages, setMessages] = useState<Message[]>([]),
     [role, setRole] = useState(""),
+    [canPost, setCanPost] = useState(true),
     [error, setError] = useState("");
   const [draft, setDraft] = useState(""),
     [selected, setSelected] = useState<Member[]>([]),
@@ -133,7 +136,7 @@ export function Community() {
       reading.current = true;
       try {
         const data = await request(
-          `?mentions=${mentionsOnly ? "1" : "0"}${before ? "&before=" + encodeURIComponent(before) : ""}`,
+          `?channel=${encodeURIComponent(channel || "")}&mentions=${mentionsOnly ? "1" : "0"}${before ? "&before=" + encodeURIComponent(before) : ""}`,
         );
         if (!alive.current || ticket !== sequence.current) return;
         const feed = thread.current;
@@ -145,6 +148,7 @@ export function Community() {
                 feed.scrollHeight - feed.scrollTop - feed.clientHeight < 100,
             };
         setRole(data.role);
+        setCanPost(data.canPost !== false);
         setMessages((previous) =>
           append
             ? [...data.messages, ...previous].filter(
@@ -165,7 +169,7 @@ export function Community() {
         }
       }
     },
-    [mentionsOnly],
+    [mentionsOnly, channel],
   );
   useLayoutEffect(() => {
     const feed = thread.current;
@@ -242,6 +246,7 @@ export function Community() {
         body: draft,
         mentions: selected.map((m) => m.user_id),
         ...(reply ? { replyTo: reply.id } : {}),
+        ...(channel ? { channel } : {}),
       });
       setReply(null);
       if (thread.current)
@@ -494,7 +499,13 @@ export function Community() {
           {t("Revenir aux derniers messages")}
         </button>
       )}
-      {role && (
+      {role && !canPost && (
+        <p className="mobile-room-note">
+          Les annonces sont publiées par l’administration. Pour échanger, ouvre
+          Entraide & questions.
+        </p>
+      )}
+      {role && canPost && (
         <form className="community-composer" onSubmit={send}>
           {editing && (
             <div className="community-reply-draft">
@@ -538,7 +549,12 @@ export function Community() {
               setDraft(value);
               if (!editing) {
                 const match = value.match(/(?:^|\s)@([^@\n]{0,40})$/);
-                if (match && !selected.some(member=>match[1].startsWith(member.name+" "))) {
+                if (
+                  match &&
+                  !selected.some((member) =>
+                    match[1].startsWith(member.name + " "),
+                  )
+                ) {
                   setSearch(match[1]);
                   setPicker(true);
                 } else {
