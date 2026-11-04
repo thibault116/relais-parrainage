@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   Home,
+  Hand,
   Search,
   Users,
   MessageCircle,
@@ -1403,7 +1404,13 @@ function CommunityRooms({
             enabled || room.id === "general" ? onSelect(room.id) : onSettings()
           }
         >
-          <MessageCircle />
+          {room.id === "questions" ? (
+            <CircleHelp />
+          ) : room.id === "presentations" ? (
+            <Hand />
+          ) : (
+            <MessageCircle />
+          )}
           <span>
             <strong>{room.name}</strong>
             <small>{room.description}</small>

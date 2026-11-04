@@ -249,9 +249,11 @@ export function ProfileForm({
   onSave,
   onCancel,
   onLogin,
+  requiredRefresh = false,
 }: {
   initial: ProfileInput & { questionnaire?: Onboarding | null };
   onSave: (p: Profile) => void;
+  requiredRefresh?: boolean;
   onCancel?: () => void;
   onLogin: () => void;
 }) {
@@ -805,7 +807,7 @@ export function ProfileForm({
               )}
             </button>
           </div>
-          {!onCancel && (
+          {!onCancel && !requiredRefresh && (
             <button type="button" className="text-btn" onClick={onLogin}>
               {t("Déjà un compte ? Se connecter")}
             </button>

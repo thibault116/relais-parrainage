@@ -7,7 +7,7 @@ export const featureReleases: Record<string, "beta" | "stable"> = {
   communityChannels: "beta",
   communityReplies: "beta",
   communityEditing: "beta",
-  onboardingV2: "beta",
+  onboardingV2: "stable",
   betaFeedback: "beta",
 };
 export function featureAvailable(feature: string, betaTester: boolean) {

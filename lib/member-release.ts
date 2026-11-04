@@ -1,12 +1,10 @@
 export const memberRelease = {
-  id: "2026-11-04-mobile-chat-polish",
-  title: "Une expérience mobile plus agréable",
+  id: "2026-11-04-questionnaire-required",
+  title: "Ton profil à jour",
   notes: [
-    "Un violet un peu plus lumineux et des photos de profil bien rondes.",
-    "En bêta : Général, Questions et Présentations, avec accès aux profils depuis les messages.",
-    "Messagerie : correction du déplacement de la saisie à l’ouverture du clavier.",
-    "Le profil affiche tous tes accompagnements et des objectifs adaptés à ton rôle.",
+    "Le questionnaire actualisé est maintenant obligatoire pour tous les comptes au retour sur Mentora. Tes réponses connues sont préremplies.",
+    "Questions et Présentations ont leurs nouvelles icônes violettes.",
   ],
-  guideUrl: "/?mobile=community#community",
-  guideLabel: "Ouvrir la communauté",
+  guideUrl: "/?mobile=profile#profile",
+  guideLabel: "Ouvrir mon profil",
 };

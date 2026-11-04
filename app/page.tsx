@@ -170,6 +170,8 @@ export default function App() {
         ? ["directory", "profile", "moderation", "help"]
         : ["directory", "profile", "help"]
       : ["home", "guide", "faq", "help"];
+  const [requiresQuestionnaire, setRequiresQuestionnaire] = useState(false);
+  const [profileChecked, setProfileChecked] = useState(false);
   const [savedProfile, setProfile] = useState<Profile | null>(null);
   const profile =
     savedProfile && preview ? { ...savedProfile, role: preview } : savedProfile;
@@ -284,6 +286,8 @@ export default function App() {
     try {
       const data = await api("/api/me");
       setProfile(data.profile);
+      setRequiresQuestionnaire(!!data.requiresQuestionnaire);
+      setProfileChecked(true);
       setModerator(!!data.isModerator);
       setModerationBlock(data.moderationBlock);
     } catch (e) {
@@ -296,6 +300,8 @@ export default function App() {
     if (session) void loadMe();
     else {
       setProfile(null);
+      setProfileChecked(false);
+      setRequiresQuestionnaire(false);
       setModerator(false);
       setPreviewRole(null);
     }
@@ -1379,6 +1385,44 @@ export default function App() {
       )}
     </div>
   );
+  if (session && !profileChecked)
+    return (
+      <main className="wrap mandatory-questionnaire">
+        <p role="status">{profileError || "Chargement de ton profil…"}</p>
+        {profileError && (
+          <button className="btn" onClick={() => void loadMe()}>
+            Réessayer
+          </button>
+        )}
+      </main>
+    );
+  if (session && savedProfile && requiresQuestionnaire)
+    return (
+      <main className="wrap mandatory-questionnaire">
+        <div className="mobile-note">
+          <h1>Actualise ton questionnaire</h1>
+          <p>
+            Le questionnaire Mentora a évolué. Vérifie et complète tes réponses
+            pour continuer à utiliser ton compte. Tes informations déjà connues
+            sont préremplies.
+          </p>
+        </div>
+        <NewProfileForm
+          key={session.user.id}
+          initial={{ ...savedProfile, consent: true }}
+          requiredRefresh
+          onLogin={() => {}}
+          onSave={(p) => {
+            setProfile(p);
+            setRequiresQuestionnaire(false);
+            go("profile");
+          }}
+        />
+        <button className="text-btn" onClick={() => void authClient.signOut()}>
+          Se déconnecter
+        </button>
+      </main>
+    );
   return phoneLayout && inWorkspace && session ? (
     <MobileExperience
       legacy={legacy}

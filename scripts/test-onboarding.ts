@@ -115,7 +115,7 @@ try {
   const payload = { ...normal, role: "mentor", questionnaire: mq };
   assert.equal(
     (await call("/api/me", "PUT", payload, legacy.cookie)).status,
-    403,
+    400,
   );
   assert.equal(
     (
@@ -126,7 +126,7 @@ try {
         legacy.cookie,
       )
     ).status,
-    200,
+    400,
   );
   assert.equal(
     (
@@ -235,6 +235,58 @@ try {
     exchange: "Message vocal",
     cash: 350,
   };
+  await query(
+    "INSERT INTO profiles(id,user_id,discord,role,name,details,visible,updated_at) VALUES($1,$2,$3,'beginner',$4,$5,1,$6)",
+    [
+      randomUUID(),
+      legacy.id,
+      normal.discord + "_old",
+      normal.name,
+      JSON.stringify(normal),
+      new Date().toISOString(),
+    ],
+  );
+  assert.equal(
+    (await call("/api/me", "GET", undefined, legacy.cookie)).data
+      .requiresQuestionnaire,
+    true,
+  );
+  const refreshed = await call(
+    "/api/me",
+    "PUT",
+    { ...normal, discord: normal.discord + "_old", questionnaire: bq },
+    legacy.cookie,
+  );
+  assert.equal(refreshed.status, 200, JSON.stringify(refreshed.data));
+  assert.equal(
+    (await call("/api/me", "GET", undefined, legacy.cookie)).data
+      .requiresQuestionnaire,
+    false,
+  );
+  await query("DELETE FROM onboarding_confirmations WHERE user_id=$1", [
+    legacy.id,
+  ]);
+  assert.equal(
+    (await call("/api/me", "GET", undefined, legacy.cookie)).data
+      .requiresQuestionnaire,
+    true,
+  );
+  assert.equal(
+    (
+      await call(
+        "/api/me",
+        "PUT",
+        { ...normal, discord: normal.discord + "_old" },
+        legacy.cookie,
+      )
+    ).status,
+    400,
+  );
+  assert.equal(
+    (await call("/api/me", "GET", undefined, legacy.cookie)).data
+      .requiresQuestionnaire,
+    true,
+  );
   const bp = { ...normal, discord: normal.discord + "_b", questionnaire: bq };
   assert.equal(
     (
@@ -273,7 +325,7 @@ try {
   await call("/api/beta", "PUT", { enabled: false }, mentor.cookie);
   assert.equal(
     (await call("/api/me", "PUT", payload, mentor.cookie)).status,
-    403,
+    200,
   );
   assert.equal(
     (await call("/api/me", "GET", undefined, mentor.cookie)).data.profile
@@ -281,7 +333,7 @@ try {
     6,
   );
   console.log(
-    "Onboarding passed: beta gating, legacy signup, experience, six months/screens, ownership, private proofs, public figures, beginner minimums, admin access, opt-out preservation.",
+    "Onboarding passed: mandatory renewal, non-beta access, legacy-profile enforcement, experience, six months/screens, ownership, private proofs, public figures, beginner minimums, admin access, opt-out preservation.",
   );
 } finally {
   for (const u of users) {

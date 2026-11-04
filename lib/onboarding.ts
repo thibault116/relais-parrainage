@@ -6,7 +6,18 @@ import {
   proofIds,
   type Onboarding,
 } from "./onboarding-schema";
+export const REQUIRED_ONBOARDING_REVISION = "2026-11-04-refresh";
+export async function needsOnboarding(userId: string) {
+  const rows = await query(
+    "SELECT user_id FROM onboarding_confirmations WHERE user_id=$1 AND revision=$2",
+    [userId, REQUIRED_ONBOARDING_REVISION],
+  );
+  return rows.length === 0;
+}
 export async function migrateOnboarding() {
+  await query(
+    "CREATE TABLE IF NOT EXISTS onboarding_confirmations(user_id TEXT PRIMARY KEY,revision TEXT NOT NULL,confirmed_at TEXT NOT NULL)",
+  );
   await query(
     `CREATE TABLE IF NOT EXISTS onboarding_answers(user_id TEXT PRIMARY KEY,answers TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
   );
@@ -61,6 +72,10 @@ export async function saveOnboarding(
   q: typeof query = query,
 ) {
   const now = new Date().toISOString();
+  await q(
+    "INSERT INTO onboarding_confirmations(user_id,revision,confirmed_at) VALUES($1,$2,$3) ON CONFLICT(user_id) DO UPDATE SET revision=excluded.revision,confirmed_at=excluded.confirmed_at",
+    [userId, REQUIRED_ONBOARDING_REVISION, now],
+  );
   await q(
     `INSERT INTO onboarding_answers(user_id,answers,created_at,updated_at) VALUES($1,$2,$3,$3) ON CONFLICT(user_id) DO UPDATE SET answers=excluded.answers,updated_at=excluded.updated_at`,
     [userId, JSON.stringify(d), now],

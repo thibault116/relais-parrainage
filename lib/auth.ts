@@ -34,9 +34,16 @@ function createAuth() {
         enabled: true,
         beforeDelete: async (user) => {
           await deleteMobileMember(user.id);
-          await query("DELETE FROM beta_preferences WHERE user_id=$1", [user.id]);
-          await query("DELETE FROM community_mentions WHERE user_id=$1 OR message_id IN (SELECT id FROM community_messages WHERE author_id=$1)", [user.id]);
-          await query("DELETE FROM community_messages WHERE author_id=$1", [user.id]);
+          await query("DELETE FROM beta_preferences WHERE user_id=$1", [
+            user.id,
+          ]);
+          await query(
+            "DELETE FROM community_mentions WHERE user_id=$1 OR message_id IN (SELECT id FROM community_messages WHERE author_id=$1)",
+            [user.id],
+          );
+          await query("DELETE FROM community_messages WHERE author_id=$1", [
+            user.id,
+          ]);
           await query("DELETE FROM push_outbox WHERE user_id=$1", [user.id]);
           await query("DELETE FROM push_subscriptions WHERE user_id=$1", [
             user.id,
@@ -55,7 +62,12 @@ function createAuth() {
           await query("DELETE FROM member_activity WHERE user_id=$1", [
             user.id,
           ]);
-          await query("DELETE FROM onboarding_answers WHERE user_id=$1", [user.id]);
+          await query("DELETE FROM onboarding_answers WHERE user_id=$1", [
+            user.id,
+          ]);
+          await query("DELETE FROM onboarding_confirmations WHERE user_id=$1", [
+            user.id,
+          ]);
           await deleteUserProofs(user.id);
           await deleteSuggestions(user.id);
           await deleteProfilePhoto(user.id);

@@ -4285,3 +4285,5 @@ html[data-reduce-motion=true] *,html[data-reduce-motion=true] *::before,html[dat
 .pwa-guide{width:min(520px,calc(100vw - 36px));max-height:85dvh;overflow:auto;box-sizing:border-box;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:24px;padding:28px}.pwa-guide::backdrop{background:#08030dba}.pwa-guide img{display:block;border-radius:18px;margin:16px 0}.pwa-guide ol{padding-left:24px;line-height:1.7}.pwa-guide li{display:list-item;margin:12px 0}.push-devices{padding:0;list-style:none}.push-devices li{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--line)}
 
 .pwa-install{margin:12px 0}
+
+.mandatory-questionnaire{max-width:900px;padding:24px 16px 48px}.mandatory-questionnaire h1{font-size:clamp(24px,5vw,36px)}.mandatory-questionnaire>.mobile-note{margin-bottom:24px}

@@ -3,6 +3,7 @@ import type { Onboarding } from "@/lib/onboarding-schema";
 import { publicAnswers, experienceMonths } from "@/lib/onboarding-schema";
 import {
   readOnboarding,
+  needsOnboarding,
   validateOnboarding,
   saveOnboarding,
 } from "@/lib/onboarding";
@@ -29,6 +30,7 @@ export async function GET(request: Request) {
     sendEmailsAfterResponse();
     return json({
       isModerator: await isModerator(u.id),
+      requiresQuestionnaire: !!rows[0] && (await needsOnboarding(u.id)),
       moderationBlock:
         (
           await query("SELECT reason FROM profile_blocks WHERE user_id=$1", [
@@ -75,7 +77,10 @@ export async function PUT(request: Request) {
       );
     if (
       body.questionnaire ||
-      (newQuestionnaireEnabled && (!existing || existing.role !== body.role))
+      (newQuestionnaireEnabled &&
+        (!existing ||
+          existing.role !== body.role ||
+          (await needsOnboarding(u.id))))
     ) {
       try {
         questionnaire = await validateOnboarding(
