@@ -27,6 +27,18 @@ export async function GET(request: Request) {
         403,
       );
     const params = new URL(request.url).searchParams;
+    if (params.has("channels"))
+      return json({
+        channels: await query(
+          "SELECT id,name,description FROM community_channels ORDER BY position,name",
+        ),
+        canManage:
+          (
+            await query("SELECT user_id FROM moderators WHERE user_id=$1", [
+              u.id,
+            ])
+          ).length > 0,
+      });
     if (params.has("members"))
       return json({
         members: await communityMembers(
@@ -41,10 +53,7 @@ export async function GET(request: Request) {
       return json({ error: "Page invalide." }, 400);
     return json({
       role: access.role,
-      canPost:
-        params.get("channel") !== "announcements" ||
-        (await query("SELECT user_id FROM moderators WHERE user_id=$1", [u.id]))
-          .length > 0,
+      canPost: true,
       ...(await communityMessages(
         u.id,
         before,
@@ -68,20 +77,36 @@ async function mutate(request: Request, method: string) {
     if (blocked) return blocked;
     const u = await user(request);
     if (!u) return json({ error: "Connexion requise." }, 401);
+    const input = await request.json();
+    if (method === "POST" && input.action === "createChannel") {
+      if (
+        !(
+          await query("SELECT user_id FROM moderators WHERE user_id=$1", [u.id])
+        ).length
+      )
+        return json({ error: "Accès réservé à l’administration." }, 403);
+      const data = z
+        .object({
+          action: z.literal("createChannel"),
+          name: z.string().trim().min(2).max(40),
+          description: z.string().trim().max(100).default(""),
+        })
+        .strict()
+        .safeParse(input);
+      if (!data.success)
+        return json({ error: "Choisis un nom de 2 à 40 caractères." }, 400);
+      const id = crypto.randomUUID();
+      await query(
+        "INSERT INTO community_channels(id,name,description,position) VALUES($1,$2,$3,100)",
+        [id, data.data.name, data.data.description],
+      );
+      return json({ id }, 201);
+    }
     const schema =
       method === "POST"
         ? z
             .object({
-              channel: z
-                .enum([
-                  "general",
-                  "announcements",
-                  "sourcing",
-                  "sales",
-                  "progress",
-                  "life",
-                ])
-                .optional(),
+              channel: z.string().min(1).max(64).optional(),
               replyTo: z.string().uuid().nullable().optional(),
               body: z.string().trim().min(1).max(3000),
               mentions: z.array(z.string().min(1).max(200)).max(10).default([]),
@@ -97,7 +122,7 @@ async function mutate(request: Request, method: string) {
           : method === "PATCH"
             ? z.object({ ids: z.array(z.string().uuid()).max(50) }).strict()
             : z.object({ id: z.string().uuid() }).strict();
-    const parsed = schema.safeParse(await request.json());
+    const parsed = schema.safeParse(input);
     if (!parsed.success)
       return json(
         {
@@ -123,18 +148,13 @@ async function mutate(request: Request, method: string) {
       )
         return json({ error: "Ces rubriques sont disponibles en bêta." }, 403);
       if (
-        data.channel === "announcements" &&
         !(
-          await query("SELECT user_id FROM moderators WHERE user_id=$1", [u.id])
+          await query("SELECT id FROM community_channels WHERE id=$1", [
+            data.channel || "general",
+          ])
         ).length
       )
-        return json(
-          {
-            error:
-              "Seule l’administration publie les annonces. Tu peux poser tes questions dans Entraide.",
-          },
-          403,
-        );
+        return json({ error: "Salon introuvable." }, 400);
       const id = await postCommunity(
         u.id,
         data.body,

@@ -1395,7 +1395,12 @@ export default function App() {
       onOpenProfile={async (id, role) => {
         try {
           const d = await api("/api/profiles?role=" + role + "&profile=" + id);
-          go("directory");
+          setView("directory");
+          const url = new URL(window.location.href);
+          url.searchParams.set("mobile", "discover");
+          url.searchParams.delete("profileTab");
+          url.hash = "directory";
+          window.history.pushState(null, "", url);
           setFocusMember(d.profile);
         } catch (e) {
           notify((e as Error).message);

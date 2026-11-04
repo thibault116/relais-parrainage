@@ -976,3 +976,87 @@
     margin-bottom: 14px;
   }
 }
+
+@media (max-width: 900px) {
+  .mobile-avatar.small {
+    width: 35px !important;
+    height: 35px !important;
+    min-width: 35px;
+    max-width: 35px;
+    min-height: 35px;
+    max-height: 35px;
+    flex: 0 0 35px;
+    aspect-ratio: 1;
+    padding: 0;
+    overflow: hidden;
+    border-radius: 50%;
+  }
+  .mobile-avatar.small img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .mobile-app:has(.mobile-dm.open) {
+    position: fixed;
+    top: var(--mobile-visible-top, 0px);
+    left: 0;
+    right: 0;
+    height: var(--mobile-visible-height, 100dvh);
+    min-height: 0;
+    padding-bottom: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .mobile-app:has(.mobile-dm.open) .mobile-app-header {
+    position: relative;
+    top: 0;
+    flex-shrink: 0;
+  }
+  .mobile-app:has(.mobile-dm.open) .mobile-app-content {
+    flex: 1;
+    min-height: 0;
+    padding-bottom: calc(78px + env(safe-area-inset-bottom));
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .mobile-app .mobile-dm.open {
+    height: auto;
+    min-height: 0;
+    flex: 1;
+  }
+  .private-keyboard .mobile-app:has(.mobile-dm.open) .mobile-app-content {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .mobile-dm-compose textarea {
+    font-size: 16px !important;
+  }
+  .community-profile-avatar {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--lavender);
+    color: var(--purple);
+    display: grid;
+    place-items: center;
+  }
+  .community-profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .mobile-note label {
+    display: block;
+    margin-bottom: 10px;
+  }
+  .mobile-note input {
+    width: 100%;
+    min-width: 0;
+  }
+}

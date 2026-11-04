@@ -138,7 +138,7 @@ export function MobileProfileActions({
           onClick={() => act("chat")}
         >
           <MessageCircle size={17} />
-          Contacter en privé
+          Envoyer une demande de message
         </button>
       )}
       {error && <p role="alert">{error}</p>}
@@ -487,15 +487,17 @@ export function MobileExperience({
                 </p>
               </div>
               {tile(
-                "Mon accompagnement",
+                "Mes accompagnements",
                 active.length
-                  ? active[0].partner_name
+                  ? active.map((p) => p.partner_name).join(" · ")
                   : "Tes binômes et leur historique",
                 Target,
                 "pairs",
               )}
               {tile(
-                "Mes objectifs",
+                profile?.role === "mentor"
+                  ? "Objectifs à atteindre"
+                  : "Mes objectifs",
                 `${done}/${total} objectifs complétés`,
                 CheckCircle2,
                 "tasks",
@@ -653,66 +655,11 @@ export function MobileExperience({
                     : "Entre débutants"}{" "}
                   · Ton espace d’entraide
                 </div>
-                {(
-                  [
-                    [
-                      "announcements",
-                      "Annonces & nouveautés",
-                      "Infos, mises à jour, événements",
-                      Megaphone,
-                    ],
-                    [
-                      "general",
-                      "Entraide & questions",
-                      "Pose tes questions, obtiens de l’aide",
-                      MessageCircle,
-                    ],
-                    [
-                      "sourcing",
-                      "Sourcing & bons plans",
-                      "Fournisseurs, lots, bonnes adresses",
-                      Layers,
-                    ],
-                    [
-                      "sales",
-                      "Ventes & marketplaces",
-                      "Vinted, eBay, Leboncoin…",
-                      TrendingUp,
-                    ],
-                    [
-                      "progress",
-                      "Progression & objectifs",
-                      "Résultats, conseils et retours d’expérience",
-                      Target,
-                    ],
-                    [
-                      "life",
-                      "Vie de la communauté",
-                      "Présentations et échanges",
-                      Users,
-                    ],
-                  ] as const
-                ).map(([id, label, sub, Icon]) => (
-                  <button
-                    key={String(id)}
-                    className="mobile-tile"
-                    onClick={() => {
-                      if (channels || id === "general") setChannel(String(id));
-                      else go("settings");
-                    }}
-                  >
-                    <Icon />
-                    <span>
-                      <strong>{t(String(label))}</strong>
-                      <small>{t(String(sub))}</small>
-                    </span>
-                    {!channels && id !== "general" ? (
-                      <small>Bêta</small>
-                    ) : (
-                      <ChevronRight />
-                    )}
-                  </button>
-                ))}
+                <CommunityRooms
+                  enabled={channels}
+                  onSelect={setChannel}
+                  onSettings={() => go("settings")}
+                />
               </>
             ) : (
               <>
@@ -726,6 +673,10 @@ export function MobileExperience({
                 <Community
                   key={channel}
                   channel={channels ? channel : undefined}
+                  onOpenProfile={(id, role) => {
+                    setScreen("discover");
+                    onOpenProfile(id, role);
+                  }}
                 />
               </>
             ))}
@@ -982,30 +933,32 @@ function PrivateMessages({
     archived = useRef(false);
   useEffect(() => {
     if (!chatId) return;
+    const app = dmContainer.current?.closest<HTMLElement>(".mobile-app");
+    const baseline = window.innerHeight;
     const resize = () => {
-      const el = dmContainer.current,
-        v = window.visualViewport;
-      if (!el) return;
-      const keyboard = !!v && v.height < window.innerHeight * 0.75;
-      document.body.classList.toggle("private-keyboard", keyboard);
-      const dock = document.querySelector(".mobile-app-dock");
-      el.style.height =
-        Math.max(
-          220,
-          (v?.height || window.innerHeight) +
-            (v?.offsetTop || 0) -
-            el.getBoundingClientRect().top -
-            (keyboard ? 0 : dock?.getBoundingClientRect().height || 0) -
-            8,
-        ) + "px";
+      const v = window.visualViewport;
+      const height = v?.height || window.innerHeight;
+      document.body.classList.toggle(
+        "private-keyboard",
+        height < baseline - 120,
+      );
+      app?.style.setProperty("--mobile-visible-height", height + "px");
+      app?.style.setProperty(
+        "--mobile-visible-top",
+        (v?.offsetTop || 0) + "px",
+      );
     };
     resize();
     window.visualViewport?.addEventListener("resize", resize);
+    window.visualViewport?.addEventListener("scroll", resize);
     window.addEventListener("resize", resize);
     return () => {
       window.visualViewport?.removeEventListener("resize", resize);
+      window.visualViewport?.removeEventListener("scroll", resize);
       window.removeEventListener("resize", resize);
       document.body.classList.remove("private-keyboard");
+      app?.style.removeProperty("--mobile-visible-height");
+      app?.style.removeProperty("--mobile-visible-top");
     };
   }, [chatId]);
   const refresh = useCallback(async () => {
@@ -1029,7 +982,10 @@ function PrivateMessages({
         await mobileApi("/api/messages", { action: "read", id: chatId });
         if (near)
           requestAnimationFrame(() =>
-            bottom.current?.scrollIntoView({ block: "end" }),
+            feed.current?.scrollTo({
+              top: feed.current.scrollHeight,
+              behavior: "instant",
+            }),
           );
       }
       setError("");
@@ -1079,7 +1035,10 @@ function PrivateMessages({
       archived.current = false;
       await refresh();
       requestAnimationFrame(() =>
-        bottom.current?.scrollIntoView({ block: "end" }),
+        feed.current?.scrollTo({
+          top: feed.current.scrollHeight,
+          behavior: "instant",
+        }),
       );
     } catch (e) {
       setError((e as Error).message);
@@ -1401,5 +1360,115 @@ function PrivateMessages({
         </>
       )}
     </section>
+  );
+}
+
+function CommunityRooms({
+  enabled,
+  onSelect,
+  onSettings,
+}: {
+  enabled: boolean;
+  onSelect: (id: string) => void;
+  onSettings: () => void;
+}) {
+  const [rooms, setRooms] = useState<Row[]>([]),
+    [admin, setAdmin] = useState(false),
+    [adding, setAdding] = useState(false),
+    [name, setName] = useState(""),
+    [description, setDescription] = useState(""),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  const load = useCallback(
+    () =>
+      mobileApi("/api/community?channels=1")
+        .then((d) => {
+          setRooms(d.channels);
+          setAdmin(d.canManage);
+        })
+        .catch((e) => setError(e.message)),
+    [],
+  );
+  useEffect(() => {
+    void load();
+  }, [load]);
+  return (
+    <>
+      {error && <p role="alert">{error}</p>}
+      {rooms.map((room) => (
+        <button
+          key={room.id}
+          className="mobile-tile"
+          onClick={() =>
+            enabled || room.id === "general" ? onSelect(room.id) : onSettings()
+          }
+        >
+          <MessageCircle />
+          <span>
+            <strong>{room.name}</strong>
+            <small>{room.description}</small>
+          </span>
+          {!enabled && room.id !== "general" ? (
+            <small>Bêta</small>
+          ) : (
+            <ChevronRight />
+          )}
+        </button>
+      ))}
+      {admin && (
+        <button className="btn secondary" onClick={() => setAdding(!adding)}>
+          <Plus size={18} />
+          Ajouter un salon
+        </button>
+      )}
+      {admin && adding && (
+        <form
+          className="mobile-note"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setBusy(true);
+            setError("");
+            try {
+              await mobileApi("/api/community", {
+                action: "createChannel",
+                name,
+                description,
+              });
+              setName("");
+              setDescription("");
+              setAdding(false);
+              await load();
+            } catch (e) {
+              setError((e as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <label>
+            Nom du salon
+            <input
+              required
+              minLength={2}
+              maxLength={40}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </label>
+          <label>
+            Description
+            <input
+              maxLength={100}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </label>
+          <p>Ce salon sera proposé séparément aux parrains et aux débutants.</p>
+          <button className="btn" disabled={busy}>
+            Créer le salon
+          </button>
+        </form>
+      )}
+    </>
   );
 }

@@ -27,6 +27,9 @@ type Message = {
   reply?: { id: string; name: string; body: string } | null;
   createdAt: string;
   name: string;
+  profileId?: string | null;
+  role?: string;
+  photo?: string | null;
   mine: boolean;
   mentions: Member[];
 };
@@ -47,7 +50,13 @@ async function request(path = "", data?: object, method = "POST") {
     throw new Error(result.error || "Impossible de charger la communauté.");
   return result;
 }
-export function Community({ channel }: { channel?: string } = {}) {
+export function Community({
+  channel,
+  onOpenProfile,
+}: {
+  channel?: string;
+  onOpenProfile?: (id: string, role: string) => void;
+} = {}) {
   const repliesEnabled = useFeature("communityReplies"),
     editingEnabled = useFeature("communityEditing");
   const [reply, setReply] = useState<Message | null>(null),
@@ -414,6 +423,23 @@ export function Community({ channel }: { channel?: string } = {}) {
             className={`community-message${message.mine ? " is-mine" : ""}`}
           >
             <header>
+              {onOpenProfile && (
+                <button
+                  className="community-profile-avatar"
+                  disabled={!message.profileId}
+                  aria-label={`Voir le profil de ${message.name}`}
+                  onClick={() =>
+                    message.profileId &&
+                    onOpenProfile(message.profileId, message.role || "mentor")
+                  }
+                >
+                  {message.photo ? (
+                    <img src={message.photo} alt="" />
+                  ) : (
+                    message.name.slice(0, 1)
+                  )}
+                </button>
+              )}
               <strong>{message.name}</strong>
               <time dateTime={message.createdAt}>
                 {new Date(message.createdAt).toLocaleString(undefined, {

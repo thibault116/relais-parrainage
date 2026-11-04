@@ -303,13 +303,13 @@ try {
   const topic = await call(
     "/api/community",
     "POST",
-    { body: "Sourcing test", channel: "sourcing" },
+    { body: "Sourcing test", channel: "questions" },
     a.cookie,
   );
   assert.equal(topic.status, 201, JSON.stringify(topic.data));
   assert.ok(
     (
-      await call("/api/community?channel=sourcing", "GET", undefined, a.cookie)
+      await call("/api/community?channel=questions", "GET", undefined, a.cookie)
     ).data.messages.some((m: any) => m.id === topic.data.id),
   );
   assert.ok(
@@ -319,7 +319,7 @@ try {
   );
   assert.ok(
     !(
-      await call("/api/community?channel=sourcing", "GET", undefined, b.cookie)
+      await call("/api/community?channel=questions", "GET", undefined, b.cookie)
     ).data.messages.some((m: any) => m.id === topic.data.id),
   );
   assert.equal(
@@ -327,12 +327,34 @@ try {
       await call(
         "/api/community",
         "POST",
-        { body: "Fausse annonce", channel: "announcements" },
+        { action: "createChannel", name: "Salon interdit" },
         a.cookie,
       )
     ).status,
     403,
   );
+  await query("INSERT INTO moderators(user_id,email) VALUES($1,$2)", [
+    a.id,
+    `moderator-${stamp}@example.invalid`,
+  ]);
+  const created = await call(
+    "/api/community",
+    "POST",
+    {
+      action: "createChannel",
+      name: "Salon test " + stamp,
+      description: "Test de création administrateur",
+    },
+    a.cookie,
+  );
+  assert.equal(created.status, 201, JSON.stringify(created.data));
+  assert.ok(
+    (
+      await call("/api/community?channels=1", "GET", undefined, b.cookie)
+    ).data.channels.some((r: any) => r.id === created.data.id),
+  );
+  await query("DELETE FROM community_channels WHERE id=$1", [created.data.id]);
+  await query("DELETE FROM moderators WHERE user_id=$1", [a.id]);
   await query("UPDATE beta_preferences SET enabled=0 WHERE user_id=$1", [a.id]);
   assert.equal(
     (await call("/api/messages?chat=" + id, "GET", undefined, a.cookie)).status,
@@ -356,6 +378,7 @@ try {
   await query("DELETE FROM accompaniments WHERE id=$1", [pairId]);
   await query("DELETE FROM email_events WHERE entity_id=$1", [pairId]);
   for (const a of accounts) {
+    await query("DELETE FROM moderators WHERE user_id=$1", [a.id]);
     await query(
       "DELETE FROM private_messages WHERE chat_id IN(SELECT id FROM private_chats WHERE user_a=$1 OR user_b=$1)",
       [a.id],

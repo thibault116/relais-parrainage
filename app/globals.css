@@ -1,7 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Manrope:wght@400;500;600;650;700;750;800&display=swap");
 :root {
-  --purple: #9855b5;
-  --purple-fill: #84449f;
+  --purple: #a64bc8;
+  --purple-fill: #9139b3;
   --purple-hover: #71368b;
   --purple-dark: #793b94;
   --ink: #292333;
@@ -4017,7 +4017,7 @@ textarea {
 @media(max-width:600px) { .role-preview-banner { margin:16px 16px 0; } .role-preview-actions { width:100%; } .role-preview-actions .btn { flex:1 1 160px; } }
 
 /* Appearance overrides preserve every original light color via token fallbacks. */
-:root[data-theme="dark"] { color-scheme:dark; --ink:#f4f0fa; --muted:#b4aabd; --paper:#07030b; --surface:#100a15; --line:#302037; --lavender:#21112c; --purple:#c486df; --purple-dark:#e4b6f7; --purple-fill:#84449f; --purple-hover:#9855b5; --green:#81d9ad;
+:root[data-theme="dark"] { color-scheme:dark; --ink:#f4f0fa; --muted:#b4aabd; --paper:#07030b; --surface:#100a15; --line:#302037; --lavender:#21112c; --purple:#cd7bef; --purple-dark:#e4b6f7; --purple-fill:#9139b3; --purple-hover:#a64bc8; --green:#81d9ad;
   --theme-border-aa87f6:#382956;
   --theme-bg-fcfbfef2:#0c0912f2;
   --theme-fg-ffffff:#f5f5f5;
@@ -4173,30 +4173,30 @@ textarea {
 }
 
 /* The reference uses a pale lilac light core surrounded by an orchid halo. */
-:root[data-neon="true"] { --purple:#9855b5; --purple-dark:#793b94; --purple-fill:#84449f; --purple-hover:#9855b5; --lavender:#f5eafa; --neon-core:#edc9ff; --neon-halo:#ba70d8; }
-:root[data-theme="dark"][data-neon="true"] { --purple:#c486df; --purple-dark:#e4b6f7; --lavender:#21112c; }
+:root[data-neon="true"] { --purple:#a64bc8; --purple-dark:#793b94; --purple-fill:#9139b3; --purple-hover:#a64bc8; --lavender:#f5eafa; --neon-core:#edc9ff; --neon-halo:#c566ea; }
+:root[data-theme="dark"][data-neon="true"] { --purple:#cd7bef; --purple-dark:#e4b6f7; --lavender:#21112c; }
 :root[data-neon="true"] .btn:not(.secondary),
 :root[data-neon="true"] .brand-mark,
 :root[data-neon="true"] .suggestion-launcher {
   background:linear-gradient(135deg,#a15dbc,#793995);
-  box-shadow:inset 0 0 0 1px #edc9ffb3,inset 0 1px 7px #edc9ff55,0 0 5px #dca0f399,0 0 18px #ba70d85c,0 0 32px #9855b526;
+  box-shadow:inset 0 0 0 1px #edc9ffb3,inset 0 1px 7px #edc9ff55,0 0 5px #dca0f399,0 0 18px #c566ea5c,0 0 32px #a64bc826;
 }
 :root[data-neon="true"] .workspace-links .is-current,
 :root[data-neon="true"] .workspace-bottom-nav .is-current,
 :root[data-neon="true"] .appearance-options .selected {
-  box-shadow:inset 0 0 0 1px #dca0f3b3,inset 3px 0 0 #edc9ff,0 0 7px #ba70d84d,0 0 22px #ba70d826;
+  box-shadow:inset 0 0 0 1px #dca0f3b3,inset 3px 0 0 #edc9ff,0 0 7px #c566ea4d,0 0 22px #c566ea26;
 }
 :root[data-neon="true"] .eyebrow,
 :root[data-neon="true"] .brand-dot,
 :root[data-neon="true"] .workspace-links .is-current svg,
 :root[data-neon="true"] .workspace-bottom-nav .is-current svg {
   text-shadow:0 0 8px #dca0f355;
-  filter:drop-shadow(0 0 4px #ba70d866);
+  filter:drop-shadow(0 0 4px #c566ea66);
 }
 :root[data-theme="dark"][data-neon="true"] .workspace-topbar,
 :root[data-theme="dark"][data-neon="true"] .workspace-bottom-nav {
   border-color:#79488b;
-  box-shadow:0 0 12px #ba70d824;
+  box-shadow:0 0 12px #c566ea24;
 }
 :root[data-theme="dark"] input,:root[data-theme="dark"] textarea,:root[data-theme="dark"] select { color:var(--ink); background-color:var(--surface); border-color:var(--line); }
 :root[data-theme="dark"] input::placeholder,:root[data-theme="dark"] textarea::placeholder { color:var(--muted); }
@@ -4217,7 +4217,7 @@ textarea {
 /* Use the supplied emblem unchanged in every theme, including the mobile dock. */
 .brand-mark, .footer .brand-mark { width:46px; height:46px; flex-shrink:0; transform:none; background:transparent; border-radius:12px; }
 .brand-emblem { display:block; width:100%; height:100%; object-fit:contain; border-radius:inherit; }
-:root[data-neon="true"] .brand-mark { background:transparent; box-shadow:0 0 15px #ba70d840; }
+:root[data-neon="true"] .brand-mark { background:transparent; box-shadow:0 0 15px #c566ea40; }
 @media(max-width:600px) { .brand-mark, .footer .brand-mark { width:40px; height:40px; } }
 
 .workspace-menu-page h2 { font-size:18px; margin:26px 0 12px; }
