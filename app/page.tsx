@@ -58,6 +58,10 @@ import {
   RatingSummary,
   RequestAccompaniment,
 } from "./components/accompaniments";
+import {
+  MentorPortfolio,
+  MentorCompletionBanner,
+} from "./components/mentor-portfolio";
 import { VerificationBadge } from "./components/verification";
 import { AdminDashboard, ReportProfile } from "./components/admin";
 import { Avatar, ProfilePhoto } from "./components/profile-photo";
@@ -187,7 +191,6 @@ export default function App() {
   const [role, setRole] = useState<"mentor" | "beginner">("beginner");
   const [profileTab, setProfileTab] = useState("accompaniments");
   const [adminTab, setAdminTab] = useState("overview");
-  const [verificationDismissed, setVerificationDismissed] = useState(false);
   const selectedProfileTab =
     profileTab === "verification" || profileTab === "emails"
       ? "appearance"
@@ -517,45 +520,14 @@ export default function App() {
             </div>
           </aside>
         )}
-        {session &&
-          inWorkspace &&
-          profile?.role === "mentor" &&
-          !profile.verification &&
-          !verificationDismissed &&
-          view !== "community" &&
-          !authMode &&
-          !(view === "profile" && selectedProfileTab === "appearance") && (
-            <aside
-              className="verification-invite"
-              aria-label={translateUi("Faire vérifier mon compte de parrain")}
-            >
-              <button
-                className="verification-invite-close"
-                aria-label={translateUi("Fermer le rappel de vérification")}
-                onClick={() => setVerificationDismissed(true)}
-              >
-                <X size={18} />
-              </button>
-              <ShieldCheck size={26} />
-              <h2>
-                {translateUi("Faire v\u00E9rifier mon compte de parrain")}
-              </h2>
-              <p>
-                {translateUi(
-                  "Pr\u00E9sente ton exp\u00E9rience en achat-revente pour obtenir ton badge. D\u00E9j\u00E0 envoy\u00E9 ? Retrouve ici le suivi de ton dossier.",
-                )}
-              </p>
-              <button
-                className="btn"
-                onClick={() => {
-                  go("profile");
-                  setProfileTab("verification");
-                }}
-              >
-                {translateUi("Faire v\u00E9rifier mon compte")}
-              </button>
-            </aside>
-          )}
+        {session && inWorkspace && profile?.role === "mentor" && (
+          <MentorCompletionBanner
+            onOpen={() => {
+              go("profile");
+              setProfileTab("verification");
+            }}
+          />
+        )}
 
         {!isPending && session && showAdmin && view === "moderation" && (
           <AdminDashboard
@@ -2970,6 +2942,9 @@ function Directory({
               )}
             </p>
             <MobileProfileActions profileId={selected.id} />
+            {selected.role === "mentor" && (
+              <MentorPortfolio profileId={selected.id} />
+            )}
             <OnboardingSummary data={selected.resell} profileId={selected.id} />
             {contact ? (
               <div className="contact-panel">

@@ -61,7 +61,8 @@ export const onboardingSchema = z
               .max(3),
           }),
         )
-        .length(6, "Les six mois doivent être renseignés."),
+        .max(6)
+        .default([]),
     }),
     z.object({
       ...common,
@@ -97,21 +98,6 @@ export const onboardingSchema = z
           "flexText",
           "Décris ta plus belle réussite (10 caractères minimum) ou ajoute une image.",
         );
-      if (new Set(d.months.map((m) => m.month)).size !== 6)
-        issue("months", "Chaque mois doit être différent.");
-      if (d.months.some((m) => m.revenue > d.record))
-        issue(
-          "record",
-          "Ton record ne peut pas être inférieur à un chiffre d’affaires déclaré.",
-        );
-      const ids = d.months.flatMap((m) => m.files);
-      if (d.flexFile && ids.includes(d.flexFile))
-        issue(
-          "flexFile",
-          "L’image publique de ta réussite doit être distincte des captures confidentielles.",
-        );
-      if (new Set(ids).size !== ids.length)
-        issue("months", "Ajoute des captures distinctes pour chaque mois.");
     } else if (d.support.includes("Autre") && d.supportOther.length < 3)
       issue("supportOther", "Précise le type d’accompagnement souhaité.");
   });

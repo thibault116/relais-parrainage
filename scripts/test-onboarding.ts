@@ -112,11 +112,12 @@ try {
       roi: 50,
       files: [await image(mentor.cookie)],
     });
-  const payload = { ...normal, role: "mentor", questionnaire: mq };
-  assert.equal(
-    (await call("/api/me", "PUT", payload, legacy.cookie)).status,
-    400,
-  );
+  const payload = {
+    ...normal,
+    role: "mentor",
+    questionnaire: { ...mq, months: [] },
+  };
+
   assert.equal(
     (
       await call(
@@ -145,64 +146,91 @@ try {
     ).status,
     400,
   );
-  assert.equal(
-    (
-      await call(
-        "/api/me",
-        "PUT",
-        { ...payload, questionnaire: { ...mq, months: mq.months.slice(1) } },
-        mentor.cookie,
-      )
-    ).status,
-    400,
-  );
-  assert.equal(
-    (
-      await call(
-        "/api/me",
-        "PUT",
-        {
-          ...payload,
-          questionnaire: {
-            ...mq,
-            months: mq.months.map((m, i) =>
-              i === 0 ? { ...m, files: [] } : m,
-            ),
-          },
-        },
-        mentor.cookie,
-      )
-    ).status,
-    400,
-  );
-  const stranger = await image(beginner.cookie);
-  assert.equal(
-    (
-      await call(
-        "/api/me",
-        "PUT",
-        {
-          ...payload,
-          questionnaire: {
-            ...mq,
-            months: mq.months.map((m, i) =>
-              i === 0 ? { ...m, files: [stranger] } : m,
-            ),
-          },
-        },
-        mentor.cookie,
-      )
-    ).status,
-    400,
-  );
   const saved = await call("/api/me", "PUT", payload, mentor.cookie);
   assert.equal(saved.status, 200, JSON.stringify(saved.data));
   const owner = await call("/api/me", "GET", undefined, mentor.cookie);
-  assert.equal(owner.data.profile.questionnaire.months.length, 6);
+  assert.equal(owner.data.profile.questionnaire.months.length, 0);
+  assert.equal((await call("/api/mentor-portfolio")).status, 403);
+  assert.equal(
+    (await call("/api/mentor-portfolio", "GET", undefined, mentor.cookie)).data
+      .complete,
+    false,
+  );
+  assert.equal(
+    (
+      await call(
+        "/api/mentor-portfolio",
+        "PUT",
+        { bio: "Mon parcours de revendeur et mes expériences de terrain." },
+        mentor.cookie,
+      )
+    ).status,
+    200,
+  );
+  const galleryIds: string[] = [];
+  for (let i = 0; i < 11; i++) {
+    const form = new FormData();
+    form.set(
+      "file",
+      new File(
+        [
+          Buffer.from(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==",
+            "base64",
+          ),
+        ],
+        "test.png",
+        { type: "image/png" },
+      ),
+    );
+    const upload = await call(
+      "/api/mentor-portfolio",
+      "POST",
+      form,
+      mentor.cookie,
+    );
+    assert.equal(
+      upload.status,
+      i < 10 ? 201 : 400,
+      JSON.stringify(upload.data),
+    );
+    if (i < 10) galleryIds.push(upload.data.id);
+  }
+  const gallery = await call(
+    "/api/mentor-portfolio?profile=" + saved.data.profile.id,
+  );
+  assert.equal(gallery.data.images.length, 10);
+  assert.equal(gallery.data.complete, true);
+  assert.equal((await fetch(base + gallery.data.images[0].url)).status, 200);
+  assert.equal(
+    (
+      await call(
+        "/api/mentor-portfolio",
+        "DELETE",
+        { id: galleryIds[0] },
+        beginner.cookie,
+      )
+    ).status,
+    403,
+  );
+  await query("UPDATE profiles SET visible=0 WHERE user_id=$1", [mentor.id]);
+  assert.equal((await fetch(base + gallery.data.images[0].url)).status, 404);
+  await query("UPDATE profiles SET visible=1 WHERE user_id=$1", [mentor.id]);
+  await call(
+    "/api/mentor-portfolio",
+    "DELETE",
+    { id: galleryIds[0] },
+    mentor.cookie,
+  );
+  assert.equal(
+    (await call("/api/mentor-portfolio", "GET", undefined, mentor.cookie)).data
+      .images.length,
+    9,
+  );
   const publicData = await call(
     "/api/profiles?profile=" + saved.data.profile.id,
   );
-  assert.ok(JSON.stringify(publicData.data).includes("1500"));
+  assert.ok(!JSON.stringify(publicData.data).includes("1500"));
   for (const m of mq.months)
     assert.ok(!JSON.stringify(publicData.data).includes(m.files[0]));
   assert.ok(!JSON.stringify(publicData.data).includes("questionnaire"));
@@ -211,17 +239,6 @@ try {
     { headers: { cookie: beginner.cookie } },
   );
   assert.equal(privateCapture.status, 403);
-  assert.equal(
-    (
-      await call(
-        "/api/verification-files",
-        "DELETE",
-        { id: mq.months[0].files[0] },
-        mentor.cookie,
-      )
-    ).status,
-    409,
-  );
   const bq = {
     version: 1,
     role: "beginner",
@@ -321,7 +338,7 @@ try {
     base + "/api/verification-files?id=" + mq.months[0].files[0],
     { headers: { cookie: legacy.cookie } },
   );
-  assert.equal(adminCapture.status, 200);
+  assert.equal(adminCapture.status, 403); // Unsubmitted private files are not public portfolio images.
   await call("/api/beta", "PUT", { enabled: false }, mentor.cookie);
   assert.equal(
     (await call("/api/me", "PUT", payload, mentor.cookie)).status,
@@ -330,10 +347,10 @@ try {
   assert.equal(
     (await call("/api/me", "GET", undefined, mentor.cookie)).data.profile
       .questionnaire.months.length,
-    6,
+    0,
   );
   console.log(
-    "Onboarding passed: mandatory renewal, non-beta access, legacy-profile enforcement, experience, six months/screens, ownership, private proofs, public figures, beginner minimums, admin access, opt-out preservation.",
+    "Onboarding passed: mandatory renewal, non-beta access, legacy-profile enforcement, experience, no monthly requirement, gallery limit/public visibility/ownership, private proofs, public figures, beginner minimums, admin access, opt-out preservation.",
   );
 } finally {
   for (const u of users) {

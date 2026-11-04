@@ -16,6 +16,15 @@ export async function needsOnboarding(userId: string) {
 }
 export async function migrateOnboarding() {
   await query(
+    "CREATE TABLE IF NOT EXISTS mentor_portfolios(user_id TEXT PRIMARY KEY,bio TEXT NOT NULL DEFAULT '')",
+  );
+  await query(
+    "CREATE TABLE IF NOT EXISTS mentor_portfolio_images(id TEXT PRIMARY KEY,user_id TEXT NOT NULL,stored_path TEXT NOT NULL,mime TEXT NOT NULL,created_at TEXT NOT NULL)",
+  );
+  await query(
+    "CREATE INDEX IF NOT EXISTS mentor_portfolio_owner ON mentor_portfolio_images(user_id)",
+  );
+  await query(
     "CREATE TABLE IF NOT EXISTS onboarding_confirmations(user_id TEXT PRIMARY KEY,revision TEXT NOT NULL,confirmed_at TEXT NOT NULL)",
   );
   await query(
@@ -36,7 +45,14 @@ export async function validateOnboarding(
   input: unknown,
   role: string,
 ) {
-  const parsed = onboardingSchema.safeParse(input);
+  const cleaned =
+    input &&
+    typeof input === "object" &&
+    "role" in input &&
+    input.role === "mentor"
+      ? { ...input, months: [] }
+      : input;
+  const parsed = onboardingSchema.safeParse(cleaned);
   if (!parsed.success) throw Error(parsed.error.issues[0].message);
   const d = parsed.data;
   if (d.role !== role)
@@ -46,13 +62,6 @@ export async function validateOnboarding(
       throw Error(
         "Il faut au moins six mois complets d’achat-revente pour devenir parrain.",
       );
-    const previous = await readOnboarding(userId);
-    const expected =
-      previous?.role === "mentor"
-        ? previous.months.map((m) => m.month)
-        : completedMonths();
-    if (d.months.some((m) => !expected.includes(m.month)))
-      throw Error("Renseigne chacun des six mois indiqués.");
     for (const id of proofIds(d)) {
       const [f] = await query(
         "SELECT mime FROM verification_files WHERE id=$1 AND user_id=$2",

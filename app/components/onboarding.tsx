@@ -38,14 +38,7 @@ function fresh(role: "mentor" | "beginner"): Onboarding {
         calls: false,
         flexText: "",
         flexFile: "",
-        months: completedMonths().map((month) => ({
-          month,
-          revenue: NaN,
-          profit: NaN,
-          basket: NaN,
-          roi: NaN,
-          files: [],
-        })),
+        months: [],
       }
     : {
         ...common,
@@ -259,7 +252,9 @@ export function ProfileForm({
 }) {
   const [draft, setDraft] = useState({ ...initialProfile, ...initial });
   const [q, setQ] = useState<Onboarding>(
-    initial.questionnaire || fresh(initial.role),
+    initial.questionnaire?.role === "mentor"
+      ? { ...initial.questionnaire, months: [] }
+      : initial.questionnaire || fresh(initial.role),
   );
   const [step, setStep] = useState(0),
     [busy, setBusy] = useState(false),
@@ -269,12 +264,7 @@ export function ProfileForm({
     setQ((previous) => ({ ...previous, [key]: value }) as Onboarding);
   const mentor = q.role === "mentor";
   const steps = mentor
-    ? [
-        "Identité et parcours",
-        "Expertise et réussite",
-        "Six mois de résultats",
-        "Accompagnement",
-      ]
+    ? ["Identité et parcours", "Expertise et réussite", "Accompagnement"]
     : [
         "Identité et expérience",
         "Objectifs et intérêts",
@@ -302,10 +292,6 @@ export function ProfileForm({
         setError(
           "Complète les spécialités et ta plus belle réussite (texte ou image).",
         );
-        return;
-      }
-      if (mentor && step === 2 && q.months.some((m) => !m.files.length)) {
-        setError("Ajoute au moins une capture pour chacun des six mois.");
         return;
       }
       setStep(step + 1);
@@ -382,7 +368,7 @@ export function ProfileForm({
         </ol>
         <p>
           {t(
-            "Les chiffres renseignés seront visibles dans le détail de ton profil. Les captures mensuelles restent privées et servent à l’examen par l’administration.",
+            "Les informations renseignées seront visibles dans le détail de ton profil. Tu pourras ensuite ajouter une biographie et des images dans « Finaliser mon profil ».",
           )}
         </p>
       </aside>
@@ -561,63 +547,6 @@ export function ProfileForm({
                 value={q.flexFile ? [q.flexFile] : []}
                 onChange={(v) => edit("flexFile", v[0] || "")}
               />
-            </>
-          )}
-          {step === 2 && mentor && (
-            <>
-              <p>
-                {t(
-                  "Pour chaque mois, indique le chiffre d’affaires, le bénéfice net, le panier moyen et le ROI. Ajoute au moins une capture où ces quatre indicateurs et le mois sont lisibles. Plusieurs captures sont possibles si nécessaire.",
-                )}
-              </p>
-              <p className="small-text">
-                {t(
-                  "CA, bénéfice et panier moyen en euros ; ROI en %. Les chiffres sont publics, les captures confidentielles. Leur contenu sera examiné par l’administration : l’import ne donne pas automatiquement le badge vérifié.",
-                )}
-              </p>
-              {q.months.map((m, i) => (
-                <section className="verification-panel" key={m.month}>
-                  <h3>{monthLabel(m.month)}</h3>
-                  <div className="fields">
-                    {(
-                      [
-                        ["revenue", "Chiffre d’affaires (€)", 0],
-                        ["profit", "Bénéfice net (€)", -1e9],
-                        ["basket", "Panier moyen (€)", 0],
-                        ["roi", "ROI (%)", -100],
-                      ] as const
-                    ).map(([key, label, min]) => (
-                      <NumberField
-                        key={key}
-                        label={label}
-                        min={min}
-                        max={key === "roi" ? 1e6 : 1e9}
-                        value={m[key]}
-                        onChange={(v) =>
-                          edit(
-                            "months",
-                            q.months.map((row, index) =>
-                              index === i ? { ...row, [key]: v } : row,
-                            ),
-                          )
-                        }
-                      />
-                    ))}
-                  </div>
-                  <Screens
-                    label={"Captures — " + monthLabel(m.month)}
-                    value={m.files}
-                    onChange={(files) =>
-                      edit(
-                        "months",
-                        q.months.map((row, index) =>
-                          index === i ? { ...row, files } : row,
-                        ),
-                      )
-                    }
-                  />
-                </section>
-              ))}
             </>
           )}
           {step === 1 && !mentor && (

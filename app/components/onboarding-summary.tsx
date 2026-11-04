@@ -71,27 +71,6 @@ export function OnboardingSummary({
               }}
             />
           )}
-          <h4>Ses six mois de résultats</h4>
-          <p className="small-text">
-            Chiffres déclarés par le membre. Le badge vérifié indique l’examen
-            du dossier.
-          </p>
-          <div className="intake-month-grid">
-            {data.months.map((m) => (
-              <div className="verification-panel" key={m.month}>
-                <strong>{monthLabel(m.month)}</strong>
-                <p>
-                  CA : {money(m.revenue)}
-                  <br />
-                  Bénéfice : {money(m.profit)}
-                  <br />
-                  Panier moyen : {money(m.basket)}
-                  <br />
-                  ROI : {m.roi.toLocaleString("fr-FR")} %
-                </p>
-              </div>
-            ))}
-          </div>
         </>
       ) : (
         <>

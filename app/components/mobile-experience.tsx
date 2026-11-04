@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "./brand-logo";
 import { useFeature } from "./beta";
+import { MentorCompletionBanner } from "./mentor-portfolio";
 import { Community } from "./community";
 import { t } from "./language";
 import type { Profile } from "@/lib/profile";
@@ -390,6 +391,17 @@ export function MobileExperience({
             )}
           </button>
         </header>
+        {profile?.role === "mentor" && (
+          <MentorCompletionBanner
+            onOpen={() => {
+              go("settings");
+              onNavigate("profile", "verification");
+              const url = new URL(window.location.href);
+              url.searchParams.set("profileTab", "verification");
+              window.history.replaceState(null, "", url);
+            }}
+          />
+        )}
         {error && (
           <div role="alert" className="mobile-error">
             {error}

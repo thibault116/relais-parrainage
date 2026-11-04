@@ -3,7 +3,7 @@ import { useState, useEffect, type ReactNode, type FormEvent } from "react";
 import { BetaSettings } from "./beta";
 import { authClient } from "@/lib/auth-client";
 import { AppearanceSettings } from "./appearance";
-import { VerificationForm } from "./verification";
+import { MentorPortfolio } from "./mentor-portfolio";
 import { PushSettings } from "./push-settings";
 import { InstallMentora } from "./pwa";
 import { EmailPreferences } from "./emails";
@@ -52,7 +52,7 @@ export function MemberSettings({
           ["notifications", "Notifications"],
           ["menus", "Menus et aide"],
           ...(administration ? [["administration", "Administration"]] : []),
-          ...(mentor ? [["verification", "Vérification du compte"]] : []),
+          ...(mentor ? [["verification", "Finaliser mon profil"]] : []),
         ]
           .filter(
             ([id, label]) =>
@@ -65,7 +65,8 @@ export function MemberSettings({
                     "langue anglais français apparence sombre clair néon bêta installer application",
                   security: "mot de passe password sécurité",
                   notifications: "email push notification",
-                  verification: "badge parrain compte",
+                  verification:
+                    "finaliser profil parrain biographie images photos confiance",
                 }[id] || "")
               )
                 .normalize("NFD")
@@ -131,13 +132,11 @@ export function MemberSettings({
       {!normalized &&
         section === "verification" &&
         (mentor ? (
-          <VerificationForm onChange={onVerificationChange} />
+          <MentorPortfolio editing />
         ) : (
           <section className="verification-panel">
-            <h2>{t("Vérification du compte")}</h2>
-            <p>
-              {t("La vérification concerne uniquement les comptes parrains.")}
-            </p>
+            <h2>{t("Finaliser mon profil")}</h2>
+            <p>{t("Cet espace concerne uniquement les profils parrains.")}</p>
           </section>
         ))}
     </div>
