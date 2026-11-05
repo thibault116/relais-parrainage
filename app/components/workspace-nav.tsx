@@ -91,6 +91,7 @@ memberItems.push({
   view: "community",
 });
 const adminItems: Item[] = [
+  {id:"pricing", label:"Tarifs · étude privée", icon:ChartNoAxesCombined,view:"moderation",tab:"pricing"},
   {
     id: "crm",
     label: "Mon CRM Vinted",
@@ -253,7 +254,7 @@ export function WorkspaceNav({
                 {translateUi("Administration")}
               </p>
               {adminItems
-                .filter((i) => crmOwner || !["crm", "extension"].includes(i.id))
+                .filter((i) => crmOwner || !["crm", "extension", "pricing"].includes(i.id))
                 .map(itemButton)}
             </>
           )}
@@ -362,7 +363,7 @@ export function WorkspaceMenuPage({
   const visibleAdmins = moderator
     ? adminItems.filter(
         (i) =>
-          (crmOwner || !["crm", "extension"].includes(i.id)) &&
+          (crmOwner || !["crm", "extension", "pricing"].includes(i.id)) &&
           matches(i.label),
       )
     : [];
