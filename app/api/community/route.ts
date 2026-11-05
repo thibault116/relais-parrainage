@@ -4,6 +4,8 @@ import { runPushWorker } from "@/lib/push";
 import { canUseFeature } from "@/lib/beta";
 import { guard, json, user } from "@/lib/http";
 import {
+  communityCounts,
+  readCommunityChannel,
   editCommunity,
   communityAccess,
   communityMessages,
@@ -27,8 +29,18 @@ export async function GET(request: Request) {
         403,
       );
     const params = new URL(request.url).searchParams;
+    const canManage =
+      (await query("SELECT user_id FROM moderators WHERE user_id=$1", [u.id]))
+        .length > 0;
+    const room = params.get("room") || String(access.role);
+    if (
+      !["mentor", "beginner"].includes(room) ||
+      (room !== access.role && !canManage)
+    )
+      return json({ error: "Accès refusé." }, 403);
     if (params.has("channels"))
       return json({
+        counts: await communityCounts(u.id),
         channels: await query(
           "SELECT id,name,description FROM community_channels ORDER BY position,name",
         ),
@@ -47,13 +59,20 @@ export async function GET(request: Request) {
         ),
       });
     if (params.has("summary"))
-      return json({ unread: await communityUnread(u.id) });
+      return json({
+        unread: await communityUnread(u.id),
+        messagesUnread: (await communityCounts(u.id)).reduce(
+          (n, c) => n + Number(c.unread),
+          0,
+        ),
+      });
     const before = params.get("before") || "";
     if (before && !z.string().uuid().safeParse(before).success)
       return json({ error: "Page invalide." }, 400);
     return json({
-      role: access.role,
-      canPost: true,
+      role: room,
+      canManage,
+      canPost: room === access.role,
       ...(await communityMessages(
         u.id,
         before,
@@ -61,6 +80,7 @@ export async function GET(request: Request) {
         (await canUseFeature(u.id, "communityChannels"))
           ? params.get("channel") || ""
           : "",
+        room,
       )),
       unread: await communityUnread(u.id),
     });
@@ -78,6 +98,13 @@ async function mutate(request: Request, method: string) {
     const u = await user(request);
     if (!u) return json({ error: "Connexion requise." }, 401);
     const input = await request.json();
+    if (method === "POST" && input.action === "readChannel") {
+      if (!z.string().uuid().safeParse(input.messageId).success)
+        return json({ error: "Message invalide." }, 400);
+      return (await readCommunityChannel(u.id, input.messageId))
+        ? json({ ok: true })
+        : json({ error: "Accès refusé." }, 403);
+    }
     if (method === "POST" && input.action === "createChannel") {
       if (
         !(

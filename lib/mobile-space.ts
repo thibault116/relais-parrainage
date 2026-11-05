@@ -92,8 +92,8 @@ export async function chatAccess(userId: string, id: string) {
 }
 export async function listChats(userId: string) {
   await mobileMember(userId);
-  return query(
-    `SELECT c.id,c.status,c.created_at,c.requested_by,p.id AS profile_id,p.name,p.role,COALESCE(pr.pinned,0) AS pinned,
+  const rows = await query(
+    `SELECT c.id,c.status,c.created_at,c.requested_by,p.id AS profile_id,p.name,p.role,p.details,p.visible,COALESCE(pr.pinned,0) AS pinned,
  (SELECT body FROM private_messages m WHERE m.chat_id=c.id ORDER BY m.created_at DESC,m.id DESC LIMIT 1) AS last_body,
  (SELECT MAX(created_at) FROM private_messages m WHERE m.chat_id=c.id) AS last_at,
  (SELECT COUNT(*) FROM private_messages m WHERE m.chat_id=c.id AND m.author_id<>$1 AND m.created_at>COALESCE(pr.read_at,'')) AS unread,
@@ -102,6 +102,13 @@ export async function listChats(userId: string) {
  FROM private_chats c JOIN profiles p ON p.user_id=CASE WHEN c.user_a=$1 THEN c.user_b ELSE c.user_a END LEFT JOIN private_chat_preferences pr ON pr.chat_id=c.id AND pr.user_id=$1 WHERE (c.user_a=$1 OR c.user_b=$1) AND NOT EXISTS(SELECT 1 FROM profile_blocks WHERE user_id IN(c.user_a,c.user_b)) ORDER BY COALESCE(pr.pinned,0) DESC,last_at DESC,c.created_at DESC`,
     [userId],
   );
+  return rows.map(({ details, ...row }): Record<string, unknown> => {
+    let photo = false;
+    try {
+      photo = !!JSON.parse(String(details || "{}")).photo;
+    } catch {}
+    return { ...row, photo: Number(row.visible) === 1 && photo };
+  });
 }
 export async function sendPrivate(
   userId: string,
@@ -218,7 +225,7 @@ export async function mobileNotices(userId: string) {
       if (Number(c.unread) > 0)
         notices.push({
           id: "chat:" + c.id + ":" + c.last_at,
-          title: "Nouveau message privé",
+          title: `${c.name} : ${String(c.last_body || "Photo envoyée").slice(0, 120)}`,
           date: String(c.last_at),
           destination: "messages",
         });

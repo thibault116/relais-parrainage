@@ -247,3 +247,14 @@ body:has(.community-page){overflow:hidden}
 .community-reply-draft>span{min-width:0}
 .community-keyboard .workspace-bottom-nav{display:none}
 @media(max-width:900px){.workspace-shell main>.community-page.wrap{padding:6px 10px!important}.community-page .community-intro p{display:none}.community-page .community-message{max-width:96%;padding:9px 11px}.community-page .community-composer{padding:8px}.community-page .community-intro{padding:6px 10px}.community-page .community-message header{gap:4px}.community-page .community-message .community-icon{min-width:32px;min-height:32px}.community-page .community-thread{gap:8px}.community-page .community-composer textarea{font-size:16px}.community-keyboard .community-intro{display:none}}
+/* Compact, one-line chat controls; the history retains the available height. */
+.community-page .community-composer{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;padding:6px;gap:6px;border-radius:16px}
+.community-page .community-composer textarea{height:40px;min-height:40px;max-height:88px;margin:0;font-size:16px;line-height:22px;padding:8px 10px;overflow-y:auto}
+.community-compose-actions{flex-wrap:nowrap;gap:4px}.community-page .community-compose-actions .btn{padding:8px;min-height:40px;width:40px;border-radius:50%}
+.community-reply-draft,.community-composer>.community-mentions{grid-column:1/-1;max-height:54px;overflow:auto}
+.community-page .community-message.is-mine{background:var(--purple-fill,var(--purple));color:white;border-color:transparent}
+.community-page .community-message.is-mine :is(header strong,time,.community-icon){color:white}
+.community-page .community-message p{line-height:1.4}.community-message.is-mine .community-quote{background:#ffffff20;color:white}
+@media(max-width:900px){.community-keyboard .mobile-app-header,.community-keyboard .mentor-completion-banner,.community-keyboard .mobile-back,.community-keyboard .community-filters,.community-keyboard .community-notice{display:none!important}.community-page .community-message{min-width:0;max-width:90%}.community-page .community-composer{margin:0!important}.community-page .community-intro{padding:4px 8px}}
+
+.mobile-app .community-page .community-message.is-mine p{color:white}

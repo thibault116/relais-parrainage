@@ -199,7 +199,88 @@ export function MobileExperience({
         ? new URLSearchParams(window.location.search).get("chat") || ""
         : "",
     );
+  const [toast, setToast] = useState<Row | null>(null),
+    [communityCount, setCommunityCount] = useState(0);
+  const seenNotices = useRef<Set<string> | null>(null);
+  const currentScreen = useRef(screen);
+  currentScreen.current = screen;
+  const currentChat = useRef(chat);
+  currentChat.current = chat;
+  const audio = useRef<AudioContext | null>(null);
+  useEffect(() => {
+    const unlock = () => {
+      try {
+        audio.current ??= new AudioContext();
+        void audio.current.resume();
+      } catch {}
+    };
+    window.addEventListener("pointerdown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      void audio.current?.close();
+    };
+  }, []);
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 6000);
+    return () => clearTimeout(timer);
+  }, [toast]);
   const initial = useRef(true);
+  const applyNotices = useCallback((data: { notices: Row[] }) => {
+    const incoming: Row[] = data.notices;
+    const fresh =
+      seenNotices.current &&
+      incoming.find(
+        (n) =>
+          !n.read &&
+          n.id.startsWith("chat:") &&
+          !seenNotices.current!.has(n.id) &&
+          !(
+            currentScreen.current === "messages" &&
+            n.id.startsWith("chat:" + currentChat.current + ":")
+          ),
+      );
+    if (fresh && document.visibilityState === "visible") {
+      setToast(fresh);
+      try {
+        const ctx = audio.current;
+        if (ctx?.state === "running") {
+          const osc = ctx.createOscillator(),
+            gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.value = 660;
+          gain.gain.setValueAtTime(0.04, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.15);
+        }
+      } catch {}
+    }
+    seenNotices.current = new Set(incoming.map((n) => n.id));
+    setNotices(incoming);
+  }, []);
+  useEffect(() => {
+    if (!extras) return;
+    let busy = false,
+      active = true;
+    const poll = async () => {
+      if (busy || document.visibilityState !== "visible") return;
+      busy = true;
+      try {
+        const data = await mobileApi("/api/mobile");
+        if (active) applyNotices(data);
+      } catch {
+      } finally {
+        busy = false;
+      }
+    };
+    const timer = setInterval(() => void poll(), 7000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [extras, applyNotices]);
   const load = useCallback(async () => {
     const results = await Promise.allSettled([
       mobileApi("/api/accompaniments"),
@@ -210,7 +291,7 @@ export function MobileExperience({
       setPairs(results[0].value.accompaniments);
     if (results[1].status === "fulfilled") setLists(results[1].value.lists);
     if (results[2]?.status === "fulfilled") {
-      setNotices(results[2].value.notices);
+      applyNotices(results[2].value);
       setBookmarks(results[2].value.bookmarks);
     }
     setError(
@@ -219,7 +300,7 @@ export function MobileExperience({
         : "",
     );
     setLoading(false);
-  }, [extras]);
+  }, [extras, applyNotices]);
   useEffect(() => {
     void load();
     const timer = setInterval(() => {
@@ -227,6 +308,17 @@ export function MobileExperience({
     }, 30000);
     return () => clearInterval(timer);
   }, [load]);
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible")
+        void mobileApi("/api/community?summary=1")
+          .then((d) => setCommunityCount(d.messagesUnread || 0))
+          .catch(() => {});
+    };
+    refresh();
+    const timer = setInterval(refresh, 10000);
+    return () => clearInterval(timer);
+  }, []);
   const go = useCallback(
     (next: string) => {
       setScreen(next);
@@ -362,6 +454,27 @@ export function MobileExperience({
       <div
         className={`mobile-app ${screen === "community" && channel !== null ? "mobile-chat-view" : ""}`}
       >
+        {toast && (
+          <aside className="in-app-message" role="status">
+            <button
+              onClick={() => {
+                const id = String(toast.id).split(":")[1];
+                go("messages");
+                setChat(id);
+                setToast(null);
+              }}
+            >
+              <strong>Nouveau message</strong>
+              <span>{toast.title}</span>
+            </button>
+            <button
+              aria-label="Fermer la notification"
+              onClick={() => setToast(null)}
+            >
+              ×
+            </button>
+          </aside>
+        )}
         <header className="mobile-app-header">
           <button
             className="mobile-app-brand"
@@ -377,7 +490,11 @@ export function MobileExperience({
             onClick={() => go("notifications")}
           >
             <Bell size={22} />
-            {notices.some((n) => !n.read) && <i />}
+            {notices.some((n) => !n.read) && (
+              <b className="mobile-count notification-count">
+                {Math.min(99, notices.filter((n) => !n.read).length)}
+              </b>
+            )}
           </button>
           <button
             className="mobile-avatar small"
@@ -832,6 +949,11 @@ export function MobileExperience({
               onClick={() => go(id)}
             >
               <Icon size={22} />
+              {id === "community" && communityCount > 0 && (
+                <b className="mobile-count dock-count">
+                  {communityCount > 99 ? "99+" : communityCount}
+                </b>
+              )}
               <span>{t(label)}</span>
               {id === "community" && <small>Bêta</small>}
             </button>
@@ -1044,6 +1166,8 @@ function PrivateMessages({
       } else
         await mobileApi("/api/messages", { action: "send", id: chatId, body });
       setBody("");
+      const field = dmContainer.current?.querySelector("textarea");
+      if (field) field.style.height = "40px";
       setFile(null);
       archived.current = false;
       await refresh();
@@ -1095,6 +1219,45 @@ function PrivateMessages({
               onChange={(e) => setSearch(e.target.value)}
             />
           </label>
+          {chats
+            .filter(
+              (c) =>
+                c.name.toLowerCase().includes(search.toLowerCase()) &&
+                (filter === "all" ||
+                  (filter === "pairs"
+                    ? Number(c.is_pair)
+                    : !Number(c.is_pair))),
+            )
+            .map((c) => (
+              <button
+                className="mobile-chat-row"
+                key={c.id}
+                onClick={() => setChatId(c.id)}
+              >
+                <span className="mobile-avatar small">
+                  {c.photo ? (
+                    <img src={"/api/profile-photo?id=" + c.profile_id} alt="" />
+                  ) : (
+                    c.name.slice(0, 1)
+                  )}
+                </span>
+                <span>
+                  <strong>
+                    {c.name} {Number(c.pinned) ? "📌" : ""}
+                  </strong>
+                  <small>
+                    {c.status === "pending"
+                      ? "Demande de contact en attente"
+                      : c.status === "declined"
+                        ? "Demande refusée"
+                        : c.last_body || "Commencer la discussion"}
+                  </small>
+                </span>
+                {Number(c.unread) > 0 && (
+                  <b className="mobile-count">{c.unread}</b>
+                )}
+              </button>
+            ))}
           {pairs
             .filter(
               (p) =>
@@ -1126,41 +1289,6 @@ function PrivateMessages({
                 <ChevronRight />
               </button>
             ))}
-          {chats
-            .filter(
-              (c) =>
-                c.name.toLowerCase().includes(search.toLowerCase()) &&
-                (filter === "all" ||
-                  (filter === "pairs"
-                    ? Number(c.is_pair)
-                    : !Number(c.is_pair))),
-            )
-            .map((c) => (
-              <button
-                className="mobile-chat-row"
-                key={c.id}
-                onClick={() => setChatId(c.id)}
-              >
-                <span className="mobile-avatar small">
-                  {c.name.slice(0, 1)}
-                </span>
-                <span>
-                  <strong>
-                    {c.name} {Number(c.pinned) ? "📌" : ""}
-                  </strong>
-                  <small>
-                    {c.status === "pending"
-                      ? "Demande de contact en attente"
-                      : c.status === "declined"
-                        ? "Demande refusée"
-                        : c.last_body || "Commencer la discussion"}
-                  </small>
-                </span>
-                {Number(c.unread) > 0 && (
-                  <b className="mobile-count">{c.unread}</b>
-                )}
-              </button>
-            ))}
           {!chats.length && !pairs.length && (
             <p>
               Retrouve ici tes binômes et tes contacts acceptés. Tu peux
@@ -1178,6 +1306,22 @@ function PrivateMessages({
             >
               <ChevronLeft />
             </button>
+            {selected && (
+              <button
+                className="mobile-avatar small"
+                aria-label="Voir le profil"
+                onClick={() => onProfile(selected.profile_id, selected.role)}
+              >
+                {selected.photo ? (
+                  <img
+                    src={"/api/profile-photo?id=" + selected.profile_id}
+                    alt=""
+                  />
+                ) : (
+                  selected.name.slice(0, 1)
+                )}
+              </button>
+            )}
             <strong>{selected?.name || "Conversation"}</strong>
             <button
               className="mobile-icon"
@@ -1354,10 +1498,16 @@ function PrivateMessages({
                 rows={1}
                 maxLength={3000}
                 value={body}
-                onChange={(e) => setBody(e.target.value)}
+                onChange={(e) => {
+                  setBody(e.target.value);
+                  e.target.style.height = "40px";
+                  e.target.style.height =
+                    Math.min(88, e.target.scrollHeight) + "px";
+                }}
               />
               <button
                 className="mobile-send"
+                onPointerDown={(e) => e.preventDefault()}
                 disabled={busy || (!body.trim() && !file)}
                 aria-label="Envoyer le message"
               >
@@ -1396,7 +1546,12 @@ function CommunityRooms({
     () =>
       mobileApi("/api/community?channels=1")
         .then((d) => {
-          setRooms(d.channels);
+          setRooms(
+            d.channels.map((c: Row) => ({
+              ...c,
+              unread: d.counts?.find((n: Row) => n.id === c.id)?.unread || 0,
+            })),
+          );
           setAdmin(d.canManage);
         })
         .catch((e) => setError(e.message)),
@@ -1404,6 +1559,10 @@ function CommunityRooms({
   );
   useEffect(() => {
     void load();
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") void load();
+    }, 10000);
+    return () => clearInterval(timer);
   }, [load]);
   return (
     <>
@@ -1427,6 +1586,11 @@ function CommunityRooms({
             <strong>{room.name}</strong>
             <small>{room.description}</small>
           </span>
+          {Number(room.unread) > 0 && (
+            <b className="mobile-count">
+              {Number(room.unread) > 99 ? "99+" : room.unread}
+            </b>
+          )}
           {!enabled && room.id !== "general" ? (
             <small>Bêta</small>
           ) : (

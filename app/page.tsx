@@ -1097,7 +1097,7 @@ export default function App() {
                     </button>
                   </div>
                 )}
-                {["accompaniments", "tasks", "following"].includes(
+                {["accompaniments", "following"].includes(
                   selectedProfileTab,
                 ) && (
                   <nav

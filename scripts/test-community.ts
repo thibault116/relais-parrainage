@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { query } from "../lib/db";
 import { initialProfile } from "../lib/profile";
-import { communityMentionRelevant } from "../lib/community";
+import {
+  communityMentionRelevant,
+  communityCounts,
+  readCommunityChannel,
+} from "../lib/community";
 const base = process.env.TEST_URL || "http://127.0.0.1:3000";
 if (
   process.env.DATABASE_URL ||
@@ -46,23 +50,18 @@ async function account(role: string, n: number) {
   assert.equal(a.status, 200, JSON.stringify(a.data));
   const user = { id: a.data.user.id, cookie: a.cookie };
   accounts.push(user);
-  const p = await call(
-    "/api/me",
-    "PUT",
-    {
-      ...initialProfile,
+  await query(
+    "INSERT INTO profiles(id,user_id,discord,role,name,details,visible,updated_at) VALUES($1,$2,$3,$4,$5,$6,1,$7)",
+    [
+      randomUUID(),
+      user.id,
+      `community_${stamp}_${n}`,
       role,
-      name: `Communauté ${role} ${n}`,
-      discord: `community_${stamp}_${n}`,
-      experience: 12,
-      bio: "Compte fictif pour vérifier les échanges.",
-      goals: "Progresser en achat-revente",
-      references: "Vintage",
-      specialty: ["Vintage"],
-    },
-    a.cookie,
+      `Communauté ${role} ${n}`,
+      JSON.stringify({ ...initialProfile, role, experience: 12 }),
+      new Date().toISOString(),
+    ],
   );
-  assert.equal(p.status, 200, JSON.stringify(p.data));
   return user;
 }
 try {
@@ -124,14 +123,64 @@ try {
   );
   assert.equal(posted.status, 201, JSON.stringify(posted.data));
   const id = posted.data.id;
-  assert.equal((await call('/api/community','PUT',{id,body:'Correction'},mentor.cookie)).status,403);
-  await call('/api/beta','PUT',{enabled:true},mentor.cookie);
-  await call('/api/beta','PUT',{enabled:true},otherMentor.cookie);
-  await call('/api/beta','PUT',{enabled:true},beginner.cookie);
-  assert.equal((await call('/api/community','PUT',{id,body:'Correction interdite'},otherMentor.cookie)).status,403);
-  assert.equal((await call('/api/community','PUT',{id,body:'Conseil corrigé'},mentor.cookie)).status,200);
-  assert.equal((await call('/api/community','POST',{body:'Réponse dans mon salon',replyTo:id},otherMentor.cookie)).status,201);
-  assert.equal((await call('/api/community','POST',{body:'Réponse hors salon',replyTo:id},beginner.cookie)).status,403);
+  assert.equal(
+    (
+      await call(
+        "/api/community",
+        "PUT",
+        { id, body: "Correction" },
+        mentor.cookie,
+      )
+    ).status,
+    403,
+  );
+  await call("/api/beta", "PUT", { enabled: true }, mentor.cookie);
+  await call("/api/beta", "PUT", { enabled: true }, otherMentor.cookie);
+  await call("/api/beta", "PUT", { enabled: true }, beginner.cookie);
+  assert.equal(
+    (
+      await call(
+        "/api/community",
+        "PUT",
+        { id, body: "Correction interdite" },
+        otherMentor.cookie,
+      )
+    ).status,
+    403,
+  );
+  assert.equal(
+    (
+      await call(
+        "/api/community",
+        "PUT",
+        { id, body: "Conseil corrigé" },
+        mentor.cookie,
+      )
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await call(
+        "/api/community",
+        "POST",
+        { body: "Réponse dans mon salon", replyTo: id },
+        otherMentor.cookie,
+      )
+    ).status,
+    201,
+  );
+  assert.equal(
+    (
+      await call(
+        "/api/community",
+        "POST",
+        { body: "Réponse hors salon", replyTo: id },
+        beginner.cookie,
+      )
+    ).status,
+    403,
+  );
 
   const list = await call(
     "/api/community",
@@ -176,8 +225,34 @@ try {
       undefined,
       beginner.cookie,
     );
-    assert.ok(!data.data.messages.some((m: { id: string }) => m.id === id));
+    if (suffix === "?room=mentor") assert.equal(data.status, 403);
+    else
+      assert.ok(!data.data.messages.some((m: { id: string }) => m.id === id));
   }
+  assert.ok(
+    (await communityCounts(otherMentor.id)).some((c) => Number(c.unread) > 0),
+  );
+  assert.equal(await readCommunityChannel(beginner.id, id), false);
+  assert.equal(await readCommunityChannel(otherMentor.id, id), true);
+  assert.equal(
+    (await communityCounts(otherMentor.id)).find((c) => c.id === "general")
+      ?.unread,
+    0,
+  );
+  await query("INSERT INTO moderators(user_id,email) VALUES($1,$2)", [
+    beginner.id,
+    `admin-${stamp}@example.invalid`,
+  ]);
+  const adminFeed = await call(
+    "/api/community?room=mentor",
+    "GET",
+    undefined,
+    beginner.cookie,
+  );
+  assert.equal(adminFeed.status, 200);
+  assert.equal(adminFeed.data.canPost, false);
+  assert.ok(adminFeed.data.messages.some((m: { id: string }) => m.id === id));
+  await query("DELETE FROM moderators WHERE user_id=$1", [beginner.id]);
   const members = await call(
     "/api/community?members=Communaut",
     "GET",
@@ -262,6 +337,8 @@ try {
   );
 } finally {
   for (const a of accounts) {
+    await query("DELETE FROM community_reads WHERE user_id=$1", [a.id]);
+    await query("DELETE FROM moderators WHERE user_id=$1", [a.id]);
     await query("DELETE FROM push_outbox WHERE user_id=$1", [a.id]);
     await query("DELETE FROM push_subscriptions WHERE user_id=$1", [a.id]);
     await query(

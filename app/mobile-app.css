@@ -1060,3 +1060,18 @@
     min-width: 0;
   }
 }
+@media(max-width:900px){
+.mobile-dm-compose{flex-wrap:nowrap;align-items:flex-end;gap:6px;padding:5px 0!important}
+.mobile-dm-compose textarea{height:40px;min-height:40px!important;max-height:88px!important;font-size:16px!important;line-height:22px;padding:8px 10px!important;margin:0;box-sizing:border-box;overflow-y:auto;field-sizing:content}
+.mobile-dm-feed article.mine{background:var(--purple-fill,var(--purple));color:#fff;border-color:transparent}.mobile-dm-feed article.mine small{color:#ffffffce}
+.mobile-dm-heading{min-height:44px;flex-shrink:0}.mobile-dm-heading .mobile-avatar{width:30px;height:30px;flex:0 0 30px}
+.private-keyboard .mobile-app-header,.private-keyboard .mentor-completion-banner,.private-keyboard .mobile-back{display:none!important}
+.mobile-dm-feed{overscroll-behavior:contain;overflow-anchor:none;scrollbar-width:thin}.mobile-dm-feed article{flex-shrink:0}
+.mobile-icon,.mobile-app-dock>button{position:relative}.notification-count{position:absolute;right:-4px;top:-4px;min-width:18px;font-size:10px;padding:2px 4px}.dock-count{position:absolute;right:5px;top:0;font-size:9px;padding:1px 4px}
+.mobile-legacy .follow-section-tabs:has(.btn){gap:6px}.mobile-legacy .todo-panel{padding:10px!important}.todo-panel>.refresh-icon{float:right;margin-top:-42px}.todo-panel>.eyebrow{display:none}
+.in-app-message{position:fixed;top:calc(8px + env(safe-area-inset-top));left:10px;right:10px;z-index:250;display:flex;gap:8px;background:var(--surface);color:var(--ink);border:1px solid var(--purple);border-radius:16px;box-shadow:0 8px 30px #0005;padding:12px;animation:message-toast-in .18s ease-out}.in-app-message button{border:0;background:none;color:inherit;text-align:left}.in-app-message button:first-child{flex:1;min-width:0}.in-app-message strong,.in-app-message span{display:block}.in-app-message span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;margin-top:4px}
+@keyframes message-toast-in{from{transform:translateY(-12px);opacity:0}to{transform:translateY(0);opacity:1}}
+}
+@media(prefers-reduced-motion:reduce){.in-app-message{animation:none}}
+
+@media(max-width:900px){.mobile-app:has(.community-page){position:fixed;inset:auto 0;top:var(--mobile-visible-top,0px);height:var(--mobile-visible-height,100dvh);min-height:0;display:flex;flex-direction:column;overflow:hidden;padding-bottom:0}.mobile-app:has(.community-page) .mobile-app-header{position:relative;flex-shrink:0}.mobile-app:has(.community-page) .mobile-app-content{flex:1;min-height:0;display:flex;flex-direction:column;padding-bottom:0;overflow:hidden}.mobile-app .community-page{min-height:0;flex-shrink:1}}

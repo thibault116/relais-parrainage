@@ -41,6 +41,7 @@ function createAuth() {
             "DELETE FROM community_mentions WHERE user_id=$1 OR message_id IN (SELECT id FROM community_messages WHERE author_id=$1)",
             [user.id],
           );
+          await query("DELETE FROM community_reads WHERE user_id=$1", [user.id]);
           await query("DELETE FROM community_messages WHERE author_id=$1", [
             user.id,
           ]);

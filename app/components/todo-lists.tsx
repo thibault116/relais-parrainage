@@ -1,7 +1,7 @@
 "use client";
 import { t as translateUi } from "@/app/components/language";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ListChecks, Plus, Pencil, Trash2 } from "lucide-react";
+import { ListChecks, Plus, Pencil, Trash2, RefreshCw } from "lucide-react";
 type Task = {
   id: string;
   body: string;
@@ -77,13 +77,13 @@ export function TodoLists() {
         <ListChecks size={25} />
         {translateUi(" To-do list")}
       </h2>
-      <p>
-        {translateUi(
-          "Le parrain pr\u00E9pare les actions \u00E0 r\u00E9aliser. Le d\u00E9butant coche ses avanc\u00E9es, \u00E0 son rythme.",
-        )}
-      </p>
-      <button className="text-btn" onClick={() => void load()}>
-        {translateUi("Actualiser les listes")}
+      <button
+        className="refresh-icon"
+        aria-label={translateUi("Actualiser les listes")}
+        title={translateUi("Actualiser les listes")}
+        onClick={() => void load()}
+      >
+        <RefreshCw size={18} />
       </button>
       {translateUi(
         error && (
@@ -227,9 +227,11 @@ function TaskList({
       ) : (
         <p>
           {translateUi(
-            list.side === "mentor"
-              ? "Ajoute une première action pour guider ton débutant."
-              : "Ton parrain n’a pas encore ajouté de tâche.",
+            !writable
+              ? "Aucune tâche dans cet accompagnement."
+              : list.side === "mentor"
+                ? "Ajoute une première action pour guider ton débutant."
+                : "Ton parrain n’a pas encore ajouté de tâche.",
           )}
         </p>
       )}

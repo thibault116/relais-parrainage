@@ -4,6 +4,9 @@ import { database, query, inTransaction } from "./db";
 
 export async function migrateCommunity() {
   await query(
+    "CREATE TABLE IF NOT EXISTS community_reads(user_id TEXT NOT NULL,room TEXT NOT NULL,channel TEXT NOT NULL,read_at TEXT NOT NULL,PRIMARY KEY(user_id,room,channel))",
+  );
+  await query(
     `CREATE TABLE IF NOT EXISTS community_messages (id TEXT PRIMARY KEY, author_id TEXT NOT NULL, room TEXT NOT NULL CHECK(room IN ('mentor','beginner')), body TEXT NOT NULL, created_at TEXT NOT NULL)`,
   );
   await query(
@@ -73,20 +76,44 @@ export async function communityMessages(
   before = "",
   mentionsOnly = false,
   channel = "",
+  room = "",
 ) {
-  const rows = await query(
+  const own = await communityAccess(userId);
+  if (!own) throw Error("ACCESS");
+  const other = room && room !== own.role;
+  if (room && !["mentor", "beginner"].includes(room)) throw Error("ACCESS");
+  if (
+    other &&
+    !(await query("SELECT user_id FROM moderators WHERE user_id=$1", [userId]))
+      .length
+  )
+    throw Error("ACCESS");
+  const q: typeof query = (sql, params) =>
+    query(
+      other
+        ? sql
+            .replace(
+              /JOIN profiles p ON p.role=([mr]).room/g,
+              (_, alias) =>
+                `JOIN profiles p ON p.user_id=$1 AND ${alias}.room='${room}'`,
+            )
+            .replace("c.room=p.role", `c.room='${room}'`)
+        : sql,
+      params,
+    );
+  const rows = await q(
     `SELECT m.id,m.body,m.created_at,m.edited_at,m.reply_to,a.name,a.role,a.id AS profile_id,a.visible,a.details,m.author_id FROM community_messages m JOIN profiles p ON p.role=m.room JOIN profiles a ON a.user_id=m.author_id AND a.role=m.room WHERE ${allowed} AND NOT EXISTS(SELECT 1 FROM profile_blocks b WHERE b.user_id=a.user_id) AND ($4='' OR m.channel=$4) AND ($3=0 OR EXISTS(SELECT 1 FROM community_mentions n WHERE n.message_id=m.id AND n.user_id=p.user_id AND n.seen=0)) AND ($2='' OR EXISTS(SELECT 1 FROM community_messages c WHERE c.id=$2 AND c.room=p.role AND (m.created_at<c.created_at OR (m.created_at=c.created_at AND m.id<c.id)))) ORDER BY m.created_at DESC,m.id DESC LIMIT 51`,
     [userId, before, mentionsOnly ? 1 : 0, channel],
   );
   const messages = rows.slice(0, 50);
   const mentions = messages.length
-    ? await query(
+    ? await q(
         `SELECT n.message_id,t.user_id,t.name FROM community_mentions n JOIN profiles t ON t.user_id=n.user_id JOIN community_messages m ON m.id=n.message_id JOIN profiles p ON p.role=m.room WHERE ${allowed} AND m.id IN (${messages.map((_, i) => "$" + (i + 2)).join(",")}) AND t.role=m.room AND NOT EXISTS(SELECT 1 FROM profile_blocks b WHERE b.user_id=t.user_id)`,
         [userId, ...messages.map((m) => String(m.id))],
       )
     : [];
   const replies = messages.length
-    ? await query(
+    ? await q(
         `SELECT r.id,r.body,a.name FROM community_messages r JOIN profiles p ON p.role=r.room JOIN profiles a ON a.user_id=r.author_id AND a.role=r.room WHERE ${allowed} AND NOT EXISTS(SELECT 1 FROM profile_blocks b WHERE b.user_id=a.user_id) AND r.id IN (${messages.map((_, i) => "$" + (i + 2)).join(",")})`,
         [userId, ...messages.map((m) => String(m.reply_to || ""))],
       )
@@ -294,4 +321,23 @@ export async function editCommunity(userId: string, id: string, body: string) {
     // Existing mentions remain attached; editing text never re-sends notifications.
     return id;
   });
+}
+
+export async function communityCounts(userId: string) {
+  return query(
+    `SELECT c.id,COUNT(m.id) AS unread FROM community_channels c JOIN profiles p ON p.user_id=$1 LEFT JOIN community_reads r ON r.user_id=p.user_id AND r.room=p.role AND r.channel=c.id LEFT JOIN community_messages m ON m.channel=c.id AND m.room=p.role AND m.author_id<>p.user_id AND m.created_at>COALESCE(r.read_at,'') AND NOT EXISTS(SELECT 1 FROM profile_blocks b WHERE b.user_id=m.author_id) WHERE NOT EXISTS(SELECT 1 FROM profile_blocks b WHERE b.user_id=p.user_id) GROUP BY c.id`,
+    [userId],
+  );
+}
+export async function readCommunityChannel(userId: string, messageId: string) {
+  const [m] = await query(
+    `SELECT m.room,m.channel,m.created_at FROM community_messages m JOIN profiles p ON p.role=m.room WHERE ${allowed} AND m.id=$2`,
+    [userId, messageId],
+  );
+  if (!m) return false;
+  await query(
+    "INSERT INTO community_reads(user_id,room,channel,read_at) VALUES($1,$2,$3,$4) ON CONFLICT(user_id,room,channel) DO UPDATE SET read_at=CASE WHEN excluded.read_at>community_reads.read_at THEN excluded.read_at ELSE community_reads.read_at END",
+    [userId, String(m.room), String(m.channel), String(m.created_at)],
+  );
+  return true;
 }

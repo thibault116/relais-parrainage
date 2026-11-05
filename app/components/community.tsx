@@ -77,13 +77,22 @@ export function Community({
   const swipe = useRef<{ id: string; x: number; y: number } | null>(null);
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
+    const baseline = window.innerHeight;
     const resize = () => {
       const el = container.current;
       if (!el) return;
       const viewport = window.visualViewport;
-      const keyboard =
-        !!viewport && viewport.height < window.innerHeight * 0.75;
+      const keyboard = !!viewport && viewport.height < baseline - 120;
       document.body.classList.toggle("community-keyboard", keyboard);
+      const app = el.closest<HTMLElement>(".mobile-app");
+      app?.style.setProperty(
+        "--mobile-visible-height",
+        (viewport?.height || window.innerHeight) + "px",
+      );
+      app?.style.setProperty(
+        "--mobile-visible-top",
+        (viewport?.offsetTop || 0) + "px",
+      );
       const nav = document.querySelector<HTMLElement>(
         ".mobile-app-dock, .workspace-bottom-nav",
       );
@@ -129,6 +138,8 @@ export function Community({
     [older, setOlder] = useState(false),
     [archived, setArchived] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [admin, setAdmin] = useState(false),
+    [room, setRoom] = useState("");
   const [deleteId, setDeleteId] = useState("");
   const reading = useRef(false),
     alive = useRef(true),
@@ -145,7 +156,7 @@ export function Community({
       reading.current = true;
       try {
         const data = await request(
-          `?channel=${encodeURIComponent(channel || "")}&mentions=${mentionsOnly ? "1" : "0"}${before ? "&before=" + encodeURIComponent(before) : ""}`,
+          `?room=${room}&channel=${encodeURIComponent(channel || "")}&mentions=${mentionsOnly ? "1" : "0"}${before ? "&before=" + encodeURIComponent(before) : ""}`,
         );
         if (!alive.current || ticket !== sequence.current) return;
         const feed = thread.current;
@@ -157,6 +168,18 @@ export function Community({
                 feed.scrollHeight - feed.scrollTop - feed.clientHeight < 100,
             };
         setRole(data.role);
+        setAdmin(!!data.canManage);
+        if (
+          data.messages.length &&
+          !append &&
+          scrollPlan.current.bottom &&
+          data.canPost !== false &&
+          document.visibilityState === "visible"
+        )
+          void request("", {
+            action: "readChannel",
+            messageId: data.messages[data.messages.length - 1].id,
+          }).catch(() => {});
         setCanPost(data.canPost !== false);
         setMessages((previous) =>
           append
@@ -178,7 +201,7 @@ export function Community({
         }
       }
     },
-    [mentionsOnly, channel],
+    [mentionsOnly, channel, room],
   );
   useLayoutEffect(() => {
     const feed = thread.current;
@@ -261,6 +284,7 @@ export function Community({
       if (thread.current)
         thread.current.scrollTop = thread.current.scrollHeight;
       setDraft("");
+      if (input.current) input.current.style.height = "40px";
       setSelected([]);
       setPicker(false);
       setArchived(false);
@@ -335,6 +359,28 @@ export function Community({
         <p role="alert" className="community-error">
           {t(error)}
         </p>
+      )}
+      {admin && (
+        <div className="community-filters" aria-label="Communauté à consulter">
+          {[
+            ["mentor", "Parrains"],
+            ["beginner", "Débutants"],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              className={role === id ? "btn" : "btn secondary"}
+              onClick={() => {
+                setRoom(id);
+                setMessages([]);
+                setArchived(false);
+                setMentionsOnly(false);
+                scrollPlan.current = { bottom: true };
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       )}
       <div className="community-filters">
         <button
@@ -527,8 +573,7 @@ export function Community({
       )}
       {role && !canPost && (
         <p className="mobile-room-note">
-          Les annonces sont publiées par l’administration. Pour échanger, ouvre
-          Entraide & questions.
+          Consultation administrateur de cet espace.
         </p>
       )}
       {role && canPost && (
@@ -573,6 +618,9 @@ export function Community({
             onChange={(e) => {
               const value = e.target.value;
               setDraft(value);
+              e.target.style.height = "40px";
+              e.target.style.height =
+                Math.min(88, e.target.scrollHeight) + "px";
               if (!editing) {
                 const match = value.match(/(?:^|\s)@([^@\n]{0,40})$/);
                 if (
@@ -590,10 +638,8 @@ export function Community({
               }
             }}
             maxLength={3000}
-            rows={2}
-            placeholder={t(
-              "Une question, une astuce ou un retour d’expérience…",
-            )}
+            rows={1}
+            placeholder={t("Écrire un message…")}
             required
           />
           {!!selected.length && (
@@ -658,29 +704,23 @@ export function Community({
               type="button"
               className="btn secondary"
               disabled={!!editing}
+              aria-label={t("Mentionner")}
               aria-expanded={picker}
               onClick={() => setPicker(!picker)}
             >
               <AtSign size={18} />
-              {t("Mentionner")}
             </button>
-            <small>{draft.length}/3 000</small>
+
             <button
               type="submit"
+              onPointerDown={(e) => e.preventDefault()}
               className="btn"
+              aria-label={t(editing ? "Enregistrer" : "Envoyer")}
               disabled={busy || !draft.trim()}
             >
               <Send size={18} />
-              {t(busy ? "Envoi…" : editing ? "Enregistrer" : "Envoyer")}
             </button>
           </div>
-          <small>
-            {t(
-              editing
-                ? "La modification ne renvoie pas de notification."
-                : "Tape @ puis choisis un membre pour le notifier.",
-            )}
-          </small>
         </form>
       )}
     </section>
@@ -696,7 +736,7 @@ export function CommunityBadge() {
       running = true;
       try {
         const result = await request("?summary=1");
-        if (active) setCount(result.unread);
+        if (active) setCount(result.messagesUnread ?? result.unread);
       } catch {
         if (active) setCount(0);
       } finally {

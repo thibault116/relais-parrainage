@@ -1,11 +1,12 @@
 export const memberRelease = {
-  id: "2026-11-04-personalized-push",
-  title: "Des notifications plus utiles",
+  id: "2026-11-05-chat-comfort",
+  title: "Des conversations plus confortables",
   notes: [
-    "Messages et mentions : retrouve le nom de l’expéditeur et un aperçu du texte.",
-    "Les demandes et les nouvelles places disponibles indiquent le membre concerné.",
-    "Ton binôme est averti lorsqu’une tâche est ajoutée, terminée ou décochée.",
+    "Une saisie compacte pour garder la conversation visible avec le clavier.",
+    "Des bulles violettes, les photos de profil et des compteurs de messages non lus.",
+    "Une alerte discrète dans l’application à l’arrivée d’un message privé.",
+    "L’écran des tâches est simplifié pour aller à l’essentiel.",
   ],
-  guideUrl: "/?mobile=settings&profileTab=notifications#profile",
-  guideLabel: "Mes notifications",
+  guideUrl: "/?mobile=community#community",
+  guideLabel: "Ouvrir la communauté",
 };
