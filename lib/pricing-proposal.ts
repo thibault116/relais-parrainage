@@ -1,106 +1,118 @@
-// Server-delivered proposal: never import this value into a client component.
+// Owner-only proposal, delivered by the authenticated pricing endpoint.
 export const pricingProposal = {
-  heading: "Des outils pour progresser. L’entraide reste accessible.",
+  heading: "Quatre plans. Des crédits à utiliser selon ses besoins.",
   intro:
-    "Une piste de monétisation pour Mentora : garder les échanges gratuits et faire payer les outils qui font gagner du temps. Ces prix sont des hypothèses à tester auprès des membres.",
+    "Ta proposition Free, Starter, Plus et Pro, reprise depuis tes maquettes. Étude privée uniquement : aucun abonnement, crédit ou changement d’accès n’est activé.",
   plans: [
     {
       id: "free",
-      name: "Communauté",
-      audience: "Pour découvrir et trouver son binôme",
-      monthly: 0,
-      annual: 0,
-      recommended: false,
-      tagline: "Le cœur de Mentora, accessible à tous.",
-      features: [
-        {
-          text: "Profil, annuaire et demandes de parrainage",
-          status: "Existant",
-        },
-        {
-          text: "Communauté et messages entre contacts acceptés",
-          status: "Existant · selon accès bêta",
-        },
-        { text: "Tâches essentielles et notifications", status: "Existant" },
-        {
-          text: "Suivi de membres et avis après accompagnement",
-          status: "Existant",
-        },
-      ],
+      name: "Free",
+      credits: 0,
+      description: "Découvrir Mentora et commencer à échanger.",
+    },
+    {
+      id: "starter",
+      name: "Starter",
+      credits: 10,
+      description: "Structurer ses premiers accompagnements.",
     },
     {
       id: "plus",
-      name: "Progression",
-      audience: "Pour les revendeurs qui veulent mieux s’organiser",
-      monthly: 9.9,
-      annual: 99,
-      recommended: true,
-      tagline: "Un cadre clair pour passer à l’action.",
-      features: [
-        { text: "Tout le socle gratuit", status: "Inclus dans la proposition" },
-        {
-          text: "Plans d’action et modèles d’objectifs prêts à adapter",
-          status: "À développer",
-        },
-        {
-          text: "Journal de progression et bilan mensuel personnel",
-          status: "À développer",
-        },
-        {
-          text: "Rappels programmés et tâches récurrentes",
-          status: "À développer",
-        },
-        {
-          text: "Bibliothèque de checklists : annonces, sourcing, expédition",
-          status: "À créer",
-        },
-      ],
+      name: "Plus",
+      credits: 22,
+      description: "Suivre sa progression avec des outils avancés.",
     },
     {
-      id: "studio",
-      name: "Studio Parrain",
-      audience: "Pour les parrains qui accompagnent plusieurs membres",
-      monthly: 19.9,
-      annual: 199,
-      recommended: false,
-      tagline: "Moins d’administration, plus de temps pour transmettre.",
-      features: [
-        {
-          text: "Tout le socle gratuit et les outils Progression",
-          status: "Inclus dans la proposition",
-        },
-        {
-          text: "Tableau de bord multi-binômes et alertes de décrochage",
-          status: "À développer",
-        },
-        {
-          text: "Modèles de parcours à réutiliser pour chaque débutant",
-          status: "À développer",
-        },
-        {
-          text: "Bibliothèque privée de ressources à partager",
-          status: "À développer",
-        },
-        {
-          text: "Bilans exportables et rappels de suivi automatisés",
-          status: "À développer",
-        },
-      ],
+      id: "pro",
+      name: "Pro",
+      credits: 38,
+      description: "Piloter plusieurs accompagnements en profondeur.",
+    },
+  ],
+  comparison: [
+    {
+      label: "Accès à la communauté",
+      values: ["Inclus", "Inclus", "Inclus", "Inclus"],
+    },
+    {
+      label: "Découvrir les parrains",
+      values: ["Inclus", "Inclus", "Inclus", "Inclus"],
+    },
+    { label: "Messagerie", values: ["Inclus", "Inclus", "Inclus", "Inclus"] },
+    { label: "Crédits par mois", values: ["0", "10", "22", "38"] },
+    {
+      label: "Objectifs et tâches des binômes",
+      values: ["Basique", "Basique", "Avancé", "Avancé"],
+    },
+    {
+      label: "Historique de progression",
+      values: ["30 jours", "3 mois", "Illimité", "Illimité"],
+    },
+    {
+      label: "Modèles de plans d’action",
+      values: ["Non inclus", "3 modèles", "5 modèles", "Tous"],
+    },
+    {
+      label: "Statistiques de progression",
+      values: ["Non inclus", "Basiques", "Avancées", "Professionnelles"],
+    },
+    {
+      label: "Export de bilans",
+      values: ["Non inclus", "Non inclus", "PDF", "PDF + CSV"],
+    },
+    {
+      label: "Bilan hebdomadaire automatique",
+      values: ["Non inclus", "Non inclus", "Basique", "Avancé"],
+    },
+    {
+      label: "Espaces d’accompagnement simultanés",
+      values: ["1", "2", "5", "Illimité"],
+    },
+  ],
+  packs: [
+    { credits: 5, price: 8.9 },
+    { credits: 10, price: 16.9 },
+    { credits: 20, price: 32.9 },
+    { credits: 40, price: 62.9 },
+  ],
+  uses: [
+    {
+      name: "Analyse de compte Vinted",
+      credits: 12,
+      description: "Périmètre de l’analyse, livrable et délai à préciser.",
+    },
+    {
+      name: "Appel de 30 minutes",
+      credits: 20,
+      description: "Intervenant, disponibilités et rémunération à définir.",
+    },
+    {
+      name: "Boost de visibilité du profil parrain",
+      credits: null,
+      description: "Coût, durée et emplacement du boost à définir.",
+    },
+    {
+      name: "Recherche de compatibilité entre profils",
+      credits: null,
+      description:
+        "Coût et critères de compatibilité à définir. Interprétation du libellé de ta capture, à confirmer.",
     },
   ],
   recommendation:
-    "Commencer avec Communauté gratuite + Progression à 9,90 €/mois. Proposer Studio Parrain seulement lorsque plusieurs parrains confirment un vrai besoin de gestion multi-binômes. Ne pas faire payer simplement le droit d’aider ou de trouver un parrain.",
-  launch: [
-    "Présenter cette maquette à 10 débutants et 5 parrains. Demander quels outils ils utiliseraient chaque semaine et ce qui justifierait un paiement.",
-    "Développer un premier avantage concret, puis le faire tester en bêta. Mesurer son usage avant de rendre une offre payante.",
-    "Tester un prix fondateur de 6,90 €/mois pendant 12 mois pour les 50 premiers abonnés Progression, puis 9,90 €/mois annoncé dès le départ.",
-    "Lancer d’abord au mois, sans engagement. Ajouter l’année à 99 € ou 199 € une fois la valeur confirmée : l’équivalent de deux mois offerts environ.",
+    "Le socle gratuit garde de la valeur : communauté, découverte et messagerie restent accessibles. Les crédits donnent une utilité concrète aux offres payantes. Avant de fixer les abonnements, définir surtout qui réalise les analyses et les appels, combien cette personne reçoit et combien de prestations peuvent être assurées.",
+  decisions: [
+    "Prix mensuels de Starter, Plus et Pro non fournis : à définir. Aucun tarif annuel n’est supposé.",
+    "La mention « crédits PM (1,50 €) » doit être clarifiée : prix de vente, valeur de référence ou rémunération du parrain ? Tes packs sont conservés tels quels.",
+    "Starter fournit 10 crédits, alors que la première prestation chiffrée en demande 12. Prévoir le cumul, une prestation à 10 crédits ou une recharge clairement expliquée.",
+    "Préciser ce qui distingue tâches basiques et avancées, statistiques avancées et professionnelles, ainsi que les limites par rôle.",
   ],
-  principles: [
-    "Aucun accès actuel n’est retiré. Cette page ne change pas les droits des membres.",
-    "Le paiement ne donne ni badge vérifié, ni priorité artificielle dans l’annuaire, ni garantie de réponse d’un parrain.",
-    "Aucun accompagnement humain illimité, appel ou résultat financier n’est promis dans ces prix.",
-    "Les abonnements soutiendraient les outils de Mentora. Ils ne rémunéreraient pas automatiquement les parrains ; une éventuelle offre d’accompagnement payant demanderait un modèle distinct.",
+  suggestions: [
+    "Afficher un solde et un historique des crédits : reçus, dépensés, restitués et date d’expiration éventuelle.",
+    "Définir séparément le report des crédits mensuels et la durée de validité des crédits achetés, y compris après résiliation.",
+    "Réserver les crédits à la demande, les débiter à la réalisation et les restituer si la prestation est refusée ou annulée selon les règles annoncées.",
+    "Décrire chaque prestation : résultat attendu, délai, personne responsable et nombre de retours inclus.",
+    "Identifier les boosts comme sponsorisés, sans les confondre avec un badge de confiance ou la compatibilité réelle.",
+    "Conserver les données de progression et les binômes existants en cas de changement d’offre ; définir ce qui reste consultable sans supprimer l’historique.",
   ],
 };
 export type PricingProposal = typeof pricingProposal;

@@ -19,18 +19,43 @@ try {
   assert.equal(r.status, 403);
   assert.match(r.headers.get("cache-control") || "", /no-store/);
   assert.ok(!(await r.text()).includes(pricingProposal.heading));
-  assert.equal(pricingProposal.plans.length, 3);
-  for (const p of pricingProposal.plans) {
-    assert.ok(p.monthly >= 0);
-    assert.ok(p.annual <= p.monthly * 12);
-  }
+  assert.deepEqual(
+    pricingProposal.plans.map((p) => p.name),
+    ["Free", "Starter", "Plus", "Pro"],
+  );
+  assert.deepEqual(
+    pricingProposal.plans.map((p) => p.credits),
+    [0, 10, 22, 38],
+  );
+  assert.equal(pricingProposal.comparison.length, 11);
+  for (const row of pricingProposal.comparison)
+    assert.equal(row.values.length, 4);
+  assert.deepEqual(
+    pricingProposal.packs.map((p) => [p.credits, p.price]),
+    [
+      [5, 8.9],
+      [10, 16.9],
+      [20, 32.9],
+      [40, 62.9],
+    ],
+  );
+  assert.deepEqual(
+    pricingProposal.uses.map((p) => p.credits),
+    [12, 20, null, null],
+  );
   assert.equal(
-    50 * pricingProposal.plans[1].monthly +
-      10 * pricingProposal.plans[2].monthly,
-    694,
+    pricingProposal.plans[1].credits - pricingProposal.uses[0].credits!,
+    -2,
+  );
+  assert.equal(
+    pricingProposal.plans[2].credits +
+      pricingProposal.packs[1].credits -
+      12 -
+      20,
+    0,
   );
   console.log(
-    "Pricing passed: owner + moderator required; no anonymous proposal exposure; private cache headers; prices and simulator defaults consistent.",
+    "Pricing passed: owner + moderator required; no anonymous proposal exposure; private cache headers; four plans, packs and credit scenarios match the supplied proposal.",
   );
 } finally {
   await query("DELETE FROM moderators WHERE user_id=$1", [id]);
