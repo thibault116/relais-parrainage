@@ -1,10 +1,9 @@
 export const memberRelease = {
-  id: "2026-11-07-interface-refonte",
-  title: "Un espace plus clair, à ton rythme",
+  id: "2026-11-07-mobile-layout-fix",
+  title: "Un affichage mobile plus lisible",
   notes: [
-    "Un accueil mobile centré sur tes prochaines actions et tes accompagnements.",
-    "Des profils et des conversations plus faciles à parcourir.",
-    "Un aperçu de Mentora en quatre étapes sur la page d’accueil.",
+    "Les photos et les textes des profils ne se chevauchent plus dans Découvrir.",
+    "Les noms longs, les cartes et la navigation s’adaptent mieux aux petits écrans.",
   ],
   guideUrl: "/?mobile=community#community",
   guideLabel: "Ouvrir la communauté",
