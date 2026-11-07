@@ -1,9 +1,11 @@
 export const memberRelease = {
-  id: "2026-11-07-mobile-layout-fix",
-  title: "Un affichage mobile plus lisible",
+  id: "2026-11-07-profile-menu",
+  title: "Ton profil et ton menu mieux organisés",
   notes: [
-    "Les photos et les textes des profils ne se chevauchent plus dans Découvrir.",
-    "Les noms longs, les cartes et la navigation s’adaptent mieux aux petits écrans.",
+    "Un menu par catégories pour retrouver accompagnements, réglages et aide.",
+    "Ton profil est accessible depuis ta photo et ton nom en haut de l’écran.",
+    "Abonnés, abonnements, profils enregistrés et invitations réunis dans ton profil.",
+    "Un indicateur discret remplace la bannière pour les profils parrains à finaliser.",
   ],
   guideUrl: "/?mobile=community#community",
   guideLabel: "Ouvrir la communauté",

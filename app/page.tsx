@@ -59,10 +59,7 @@ import {
   RatingSummary,
   RequestAccompaniment,
 } from "./components/accompaniments";
-import {
-  MentorPortfolio,
-  MentorCompletionBanner,
-} from "./components/mentor-portfolio";
+import { MentorPortfolio } from "./components/mentor-portfolio";
 import { VerificationBadge } from "./components/verification";
 import { AdminDashboard, ReportProfile } from "./components/admin";
 import { Avatar, ProfilePhoto } from "./components/profile-photo";
@@ -192,7 +189,13 @@ export default function App() {
   const [role, setRole] = useState<"mentor" | "beginner">("beginner");
   const [profileTab, setProfileTab] = useState("accompaniments");
   const [adminTab, setAdminTab] = useState("overview");
-  useEffect(() => { if (new URLSearchParams(window.location.search).get("adminTab") === "monetization") setAdminTab("monetization"); }, []);
+  useEffect(() => {
+    if (
+      new URLSearchParams(window.location.search).get("adminTab") ===
+      "monetization"
+    )
+      setAdminTab("monetization");
+  }, []);
   const selectedProfileTab =
     profileTab === "verification" || profileTab === "emails"
       ? "appearance"
@@ -521,14 +524,6 @@ export default function App() {
               </button>
             </div>
           </aside>
-        )}
-        {session && inWorkspace && profile?.role === "mentor" && (
-          <MentorCompletionBanner
-            onOpen={() => {
-              go("profile");
-              setProfileTab("verification");
-            }}
-          />
         )}
 
         {!isPending && session && showAdmin && view === "moderation" && (
@@ -1054,11 +1049,15 @@ export default function App() {
                 mentor={profile?.role === "mentor"}
                 onVerificationChange={refreshProfile}
                 initialSection={
-                  profileTab === "verification"
+                  (typeof window !== "undefined" &&
+                    new URLSearchParams(window.location.search).get(
+                      "settingsSection",
+                    )) ||
+                  (profileTab === "verification"
                     ? "verification"
                     : profileTab === "emails"
                       ? "notifications"
-                      : "general"
+                      : "general")
                 }
               />
             ) : profileError ? (
@@ -1400,6 +1399,7 @@ export default function App() {
     );
   return phoneLayout && inWorkspace && session ? (
     <MobileExperience
+      administrator={showAdmin}
       legacy={legacy}
       profile={profile}
       name={session.user.name}

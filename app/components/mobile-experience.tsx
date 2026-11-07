@@ -10,6 +10,10 @@ import {
 } from "react";
 import {
   Home,
+  Menu,
+  AlertCircle,
+  Shield,
+  Globe,
   Hand,
   Search,
   Users,
@@ -38,7 +42,7 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "./brand-logo";
 import { useFeature } from "./beta";
-import { MentorCompletionBanner } from "./mentor-portfolio";
+import { useMentorCompletion } from "./mentor-portfolio";
 import { Community } from "./community";
 import { t } from "./language";
 import type { Profile } from "@/lib/profile";
@@ -152,6 +156,7 @@ const routes: Record<string, [string, string?]> = {
   edit: ["profile", "edit"],
   settings: ["profile", "appearance"],
   help: ["help"],
+  faq: ["faq"],
   requests: ["profile", "requests"],
   pairs: ["profile", "accompaniments"],
   tasks: ["profile", "tasks"],
@@ -160,6 +165,7 @@ const routes: Record<string, [string, string?]> = {
 };
 export function MobileExperience({
   legacy,
+  administrator = false,
   profile,
   name,
   userId,
@@ -168,6 +174,7 @@ export function MobileExperience({
   onNavigate,
   onOpenProfile,
 }: {
+  administrator?: boolean;
   legacy: ReactNode;
   profile: Profile | null;
   name: string;
@@ -177,6 +184,7 @@ export function MobileExperience({
   onNavigate: (view: string, tab?: string) => void;
   onOpenProfile: (id: string, role: string) => void;
 }) {
+  const completionNeeded = useMentorCompletion(profile?.role === "mentor");
   const extras = useFeature("mobileExtras"),
     dm = useFeature("privateMessaging"),
     channels = useFeature("communityChannels");
@@ -331,6 +339,7 @@ export function MobileExperience({
       url.hash =
         routes[next]?.[0] || (next === "community" ? "community" : "profile");
       url.searchParams.delete("chat");
+      url.searchParams.delete("settingsSection");
       if (routes[next]?.[1])
         url.searchParams.set("profileTab", routes[next][1]!);
       else url.searchParams.delete("profileTab");
@@ -409,6 +418,87 @@ export function MobileExperience({
       </button>
     );
   }
+  const [menuSearch, setMenuSearch] = useState("");
+  function openSettings(section: string) {
+    go("settings");
+    const url = new URL(window.location.href);
+    url.searchParams.set("settingsSection", section);
+    window.history.replaceState(null, "", url);
+    window.dispatchEvent(
+      new CustomEvent("mentora-settings-section", { detail: section }),
+    );
+  }
+  function openNetwork(type: string) {
+    go("following");
+    const url = new URL(window.location.href);
+    url.searchParams.set("network", type);
+    window.history.replaceState(null, "", url);
+    window.dispatchEvent(
+      new CustomEvent("mentora-network-section", { detail: type }),
+    );
+  }
+  const menuGroups: {
+    title: string;
+    items: [string, typeof Home, () => void][];
+  }[] = [
+    {
+      title: "Gestion des accompagnements",
+      items: [
+        ["Accompagnements en cours", Inbox, () => go("pairs")],
+        [
+          profile?.role === "mentor"
+            ? "Objectifs à atteindre"
+            : "Mes objectifs",
+          Target,
+          () => go("tasks"),
+        ],
+        ["Demandes de parrainage", Inbox, () => go("requests")],
+      ],
+    },
+    {
+      title: "Paramètres",
+      items: [
+        ["Général", Settings, () => openSettings("general")],
+        ["Sécurité", Shield, () => openSettings("security")],
+        ["Notifications", Bell, () => openSettings("notifications")],
+        ...(administrator
+          ? [
+              [
+                "Administration",
+                Layers,
+                () => openSettings("administration"),
+              ] as [string, typeof Home, () => void],
+            ]
+          : []),
+        ...(profile?.role === "mentor"
+          ? [
+              [
+                "Finaliser mon profil",
+                UserRound,
+                () => openSettings("verification"),
+              ] as [string, typeof Home, () => void],
+            ]
+          : []),
+      ],
+    },
+    {
+      title: "Aide et à propos",
+      items: [
+        ["FAQ", CircleHelp, () => go("faq")],
+        ["Tutoriels", NotebookPen, () => go("help")],
+        [
+          "Notre Discord",
+          Globe,
+          () =>
+            window.open(
+              "https://discord.gg/SRVs9Y5ze",
+              "_blank",
+              "noopener,noreferrer",
+            ),
+        ],
+      ],
+    },
+  ];
   const beta = (
     <section className="mobile-empty">
       <h2>En avant-première</h2>
@@ -426,7 +516,7 @@ export function MobileExperience({
     ["discover", "Découvrir", Search],
     ["community", "Communauté", Users],
     ["messages", "Messages", MessageCircle],
-    ["profile", "Profil", UserRound],
+    ["menu", "Menu", Menu],
   ] as const;
   const legacyMode = !!routes[screen];
   const selected =
@@ -437,6 +527,7 @@ export function MobileExperience({
         : screen === "community"
           ? "community"
           : [
+                "menu",
                 "profile",
                 "edit",
                 "settings",
@@ -445,7 +536,7 @@ export function MobileExperience({
                 "following",
                 "admin",
               ].includes(screen)
-            ? "profile"
+            ? "menu"
             : "home";
   return (
     <BookmarkContext.Provider
@@ -497,28 +588,25 @@ export function MobileExperience({
             )}
           </button>
           <button
-            className="mobile-avatar small"
+            className="mobile-profile-access"
             onClick={() => go("profile")}
-            aria-label="Mon profil"
+            aria-label={`Mon profil : ${name}${completionNeeded ? ", à finaliser" : ""}`}
           >
-            {profile?.photo ? (
-              <img src={profile.photo} alt="" />
-            ) : (
-              name.slice(0, 1)
-            )}
+            <span className="mobile-avatar small">
+              {profile?.photo ? (
+                <img src={profile.photo} alt="" />
+              ) : (
+                name.slice(0, 1)
+              )}
+              {completionNeeded && (
+                <span className="profile-incomplete" aria-hidden="true">
+                  !
+                </span>
+              )}
+            </span>
+            <span className="mobile-profile-name">{name}</span>
           </button>
         </header>
-        {profile?.role === "mentor" && (
-          <MentorCompletionBanner
-            onOpen={() => {
-              go("settings");
-              onNavigate("profile", "verification");
-              const url = new URL(window.location.href);
-              url.searchParams.set("profileTab", "verification");
-              window.history.replaceState(null, "", url);
-            }}
-          />
-        )}
         {error && (
           <div role="alert" className="mobile-error">
             {error}
@@ -538,15 +626,25 @@ export function MobileExperience({
               </p>
               <button
                 className="mobile-progress-card"
-                onClick={() => go(total ? "tasks" : active.length ? "pairs" : "discover")}
+                onClick={() =>
+                  go(total ? "tasks" : active.length ? "pairs" : "discover")
+                }
               >
                 <Target size={42} />
                 <span>
                   <strong>
-                    {!total ? (active.length ? "Reprendre mon accompagnement" : "Trouver mon prochain binôme") : profile?.role === "mentor" ? "La progression de tes binômes" : "Ma progression"}
+                    {!total
+                      ? active.length
+                        ? "Reprendre mon accompagnement"
+                        : "Trouver mon prochain binôme"
+                      : profile?.role === "mentor"
+                        ? "La progression de tes binômes"
+                        : "Ma progression"}
                   </strong>
                   <small>
-                    {total ? `${done}/${total} objectifs complétés` : "Une prochaine étape à construire ensemble"}
+                    {total
+                      ? `${done}/${total} objectifs complétés`
+                      : "Une prochaine étape à construire ensemble"}
                   </small>
                   {total > 0 && <progress max={100} value={percent} />}
                 </span>
@@ -555,26 +653,47 @@ export function MobileExperience({
               {active.length > 0 && <h2>En cours</h2>}
               {active.map((pair) => {
                 const list = lists.find((l) => l.id === pair.id);
-                return <button key={pair.id} className="refonte-pair-card" onClick={() => go("pairs")}>
-                  <span className="refonte-pair-top"><span className="mobile-role">Accompagnement actif</span><ChevronRight size={18}/></span>
-                  <strong>{pair.partner_name}</strong>
-                  <span>{profile?.role === "mentor" ? "Accompagner sa progression" : "Reprendre mon accompagnement"}</span>
-                  <span className="refonte-pair-bottom">{list?.total ? `${list.completed}/${list.total} tâches terminées` : "Voir les prochaines étapes"}<span>{list?.total ? `${list.progress}%` : "→"}</span></span>
-                  {Boolean(list?.total) && <progress max={100} value={list?.progress ?? 0}/>}
-                </button>;
+                return (
+                  <button
+                    key={pair.id}
+                    className="refonte-pair-card"
+                    onClick={() => go("pairs")}
+                  >
+                    <span className="refonte-pair-top">
+                      <span className="mobile-role">Accompagnement actif</span>
+                      <ChevronRight size={18} />
+                    </span>
+                    <strong>{pair.partner_name}</strong>
+                    <span>
+                      {profile?.role === "mentor"
+                        ? "Accompagner sa progression"
+                        : "Reprendre mon accompagnement"}
+                    </span>
+                    <span className="refonte-pair-bottom">
+                      {list?.total
+                        ? `${list.completed}/${list.total} tâches terminées`
+                        : "Voir les prochaines étapes"}
+                      <span>{list?.total ? `${list.progress}%` : "→"}</span>
+                    </span>
+                    {Boolean(list?.total) && (
+                      <progress max={100} value={list?.progress ?? 0} />
+                    )}
+                  </button>
+                );
               })}
               <h2>À retrouver</h2>
-              {!active.length && tile(
-                profile?.role === "mentor"
-                  ? "Mes accompagnements"
-                  : "Mon accompagnement",
-                active.length
-                  ? active.map((a) => a.partner_name).join(", ")
-                  : "Trouve ton prochain binôme",
-                Inbox,
-                "pairs",
-                active.length,
-              )}
+              {!active.length &&
+                tile(
+                  profile?.role === "mentor"
+                    ? "Mes accompagnements"
+                    : "Mon accompagnement",
+                  active.length
+                    ? active.map((a) => a.partner_name).join(", ")
+                    : "Trouve ton prochain binôme",
+                  Inbox,
+                  "pairs",
+                  active.length,
+                )}
               {tile(
                 "Mes demandes",
                 `${pending.length} en attente de réponse`,
@@ -625,35 +744,42 @@ export function MobileExperience({
                     : "Profil masqué"}
                 </p>
               </div>
-              {tile(
-                "Mes accompagnements",
-                active.length
-                  ? active.map((p) => p.partner_name).join(" · ")
-                  : "Tes binômes et leur historique",
-                Target,
-                "pairs",
-              )}
-              {tile(
-                profile?.role === "mentor"
-                  ? "Objectifs à atteindre"
-                  : "Mes objectifs",
-                `${done}/${total} objectifs complétés`,
-                CheckCircle2,
-                "tasks",
+              <div className="profile-social-counts">
+                <button onClick={() => openNetwork("followers")}>
+                  <strong>{profile?.followerCount ?? 0}</strong>
+                  <span>Abonnés</span>
+                </button>
+                <button onClick={() => openNetwork("following")}>
+                  <strong>{profile?.followingCount ?? 0}</strong>
+                  <span>Abonnements</span>
+                </button>
+              </div>
+              {completionNeeded && (
+                <button
+                  className="profile-completion-card"
+                  onClick={() => openSettings("verification")}
+                >
+                  <AlertCircle />
+                  <span>
+                    <strong>Finalise ton profil parrain</strong>
+                    <small>
+                      Présente ton parcours pour inspirer confiance.
+                    </small>
+                  </span>
+                  <ChevronRight />
+                </button>
               )}
               {tile(
                 "Mes profils enregistrés",
-                extras
-                  ? `${bookmarks.length} membre${bookmarks.length > 1 ? "s" : ""}`
-                  : "En avant-première",
+                extras ? `${bookmarks.length} membre(s)` : "En avant-première",
                 Bookmark,
                 "saved",
               )}
               {tile(
-                "Mes abonnés et abonnements",
-                "Les membres que tu suis",
-                Users,
-                "following",
+                "Mes demandes de message",
+                "Retrouver mes conversations et invitations",
+                MessageCircle,
+                "messages",
               )}
               {tile(
                 "Modifier mon profil",
@@ -661,18 +787,39 @@ export function MobileExperience({
                 UserRound,
                 "edit",
               )}
-              {tile(
-                "Paramètres",
-                "Compte, notifications, thème",
-                Settings,
-                "settings",
-              )}
-              {tile(
-                "Aide & support",
-                "FAQ, contact, signalement",
-                CircleHelp,
-                "help",
-              )}
+            </>
+          )}
+          {screen === "menu" && (
+            <>
+              <h1>Menu</h1>
+              <label className="mobile-search">
+                <Search size={18} />
+                <input
+                  type="search"
+                  aria-label="Rechercher dans le menu"
+                  placeholder="Rechercher un menu ou un paramètre"
+                  value={menuSearch}
+                  onChange={(e) => setMenuSearch(e.target.value)}
+                />
+              </label>
+              {menuGroups.map((group) => {
+                const items = group.items.filter((item) =>
+                  item[0].toLowerCase().includes(menuSearch.toLowerCase()),
+                );
+                return items.length ? (
+                  <section className="mobile-menu-category" key={group.title}>
+                    <h2>{group.title}</h2>
+                    <div className="mobile-menu-grid">
+                      {items.map(([label, Icon, action]) => (
+                        <button key={label} onClick={action}>
+                          <Icon size={23} />
+                          <span>{label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                ) : null;
+              })}
             </>
           )}
           {screen === "notifications" &&

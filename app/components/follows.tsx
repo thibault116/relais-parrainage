@@ -107,7 +107,12 @@ export function FollowNetwork({
   onOpen: (p: PublicProfile) => void;
   onChange: () => Promise<void>;
 }) {
-  const [type, setType] = useState<"following" | "followers">("following"),
+  const [type, setType] = useState<"following" | "followers">(() =>
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("network") === "followers"
+        ? "followers"
+        : "following",
+    ),
     [items, setItems] = useState<Item[]>([]),
     [total, setTotal] = useState(0),
     [page, setPage] = useState(0),
@@ -115,6 +120,14 @@ export function FollowNetwork({
     [error, setError] = useState(""),
     [reload, setReload] = useState(0),
     [busy, setBusy] = useState("");
+  useEffect(() => {
+    const change = (e: Event) =>
+      setType(
+        (e as CustomEvent).detail === "followers" ? "followers" : "following",
+      );
+    window.addEventListener("mentora-network-section", change);
+    return () => window.removeEventListener("mentora-network-section", change);
+  }, []);
   useEffect(() => {
     let live = true;
     setLoading(true);
@@ -182,7 +195,13 @@ export function FollowNetwork({
             {translateUi(t === "following" ? "Mes abonnements" : "Mes abonnés")}
           </button>
         ))}
-        <button className="refresh-icon" aria-label={translateUi("Actualiser")} title={translateUi("Actualiser")} disabled={loading} onClick={() => setReload((v) => v + 1)}>
+        <button
+          className="refresh-icon"
+          aria-label={translateUi("Actualiser")}
+          title={translateUi("Actualiser")}
+          disabled={loading}
+          onClick={() => setReload((v) => v + 1)}
+        >
           <RefreshCw size={18} className={loading ? "spin" : undefined} />
         </button>
       </div>

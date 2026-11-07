@@ -30,6 +30,11 @@ export function MemberSettings({
     .trim();
   const [section, setSection] = useState(initialSection);
   useEffect(() => setSection(initialSection), [initialSection]);
+  useEffect(() => {
+    const change = (e: Event) => setSection((e as CustomEvent<string>).detail);
+    window.addEventListener("mentora-settings-section", change);
+    return () => window.removeEventListener("mentora-settings-section", change);
+  }, []);
   return (
     <div className="member-settings">
       <h1 className="compact-page-title">{t("Paramètres")}</h1>

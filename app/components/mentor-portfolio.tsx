@@ -20,9 +20,13 @@ async function request(path = "", method = "GET", body?: unknown) {
   if (!r.ok) throw Error(d.error);
   return d;
 }
-export function MentorCompletionBanner({ onOpen }: { onOpen: () => void }) {
+export function useMentorCompletion(enabled: boolean) {
   const [needed, setNeeded] = useState(false);
   useEffect(() => {
+    if (!enabled) {
+      setNeeded(false);
+      return;
+    }
     let active = true;
     const load = () =>
       request()
@@ -36,13 +40,8 @@ export function MentorCompletionBanner({ onOpen }: { onOpen: () => void }) {
       active = false;
       window.removeEventListener("mentor-portfolio-updated", load);
     };
-  }, []);
-  return needed ? (
-    <aside className="mentor-completion-banner">
-      <span>Finalise ton profil parrain pour inspirer confiance.</span>
-      <button onClick={onOpen}>Finaliser mon profil</button>
-    </aside>
-  ) : null;
+  }, [enabled]);
+  return needed;
 }
 export function MentorPortfolio({
   editing = false,
