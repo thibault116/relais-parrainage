@@ -688,4 +688,69 @@
     width: 20px;
   }
 }
-@media(max-width:360px){.mobile-menu-grid button{flex-direction:column;align-items:flex-start;justify-content:center}.mobile-menu-grid span{overflow-wrap:normal;word-break:normal;width:100%}}
+@media (max-width: 360px) {
+  .mobile-menu-grid button {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+  }
+  .mobile-menu-grid span {
+    overflow-wrap: normal;
+    word-break: normal;
+    width: 100%;
+  }
+}
+.owner-plan-badge {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  background: color-mix(in srgb, var(--purple) 16%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--purple) 45%, var(--line));
+  color: var(--ink);
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  padding: 4px 7px;
+  letter-spacing: 0;
+  flex-shrink: 0;
+}
+.money-billing-details {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  margin: 18px 0;
+}
+.money-billing-details .btn {
+  margin: 5px;
+}
+.mobile-app-brand .owner-plan-badge {
+  font-size: 9px;
+  padding: 3px 5px;
+}
+.mobile-profile-hero .owner-plan-badge {
+  margin: 8px;
+}
+.workspace-brand-row {
+  flex-wrap: wrap;
+}
+@media (max-width: 360px) {
+  .mobile-app .mobile-app-brand {
+    font-size: 19px;
+    gap: 4px;
+  }
+  .mobile-app .mobile-app-brand img {
+    width: 25px;
+    height: 25px;
+  }
+  .mobile-app .mobile-app-header {
+    gap: 7px;
+    padding-inline: 12px;
+  }
+  .mobile-app .mobile-profile-access {
+    max-width: 62px;
+  }
+  .mobile-app .mobile-profile-name {
+    max-width: 62px;
+  }
+}

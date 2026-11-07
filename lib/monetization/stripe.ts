@@ -19,5 +19,7 @@ export function appOrigin() {
     throw Error("Origine invalide");
   return url.origin;
 }
-export const returnUrl = () =>
-  `${appOrigin()}/?adminTab=monetization#moderation`;
+export const returnUrl = (page: "admin" | "billing" | "credits" = "admin") =>
+  page === "admin"
+    ? `${appOrigin()}/?adminTab=monetization#moderation`
+    : `${appOrigin()}/?mobile=${page}#profile`;

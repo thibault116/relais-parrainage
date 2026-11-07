@@ -1,3 +1,4 @@
+import { manageSubscription } from "@/lib/monetization/billing";
 import { user, json, guard } from "@/lib/http";
 import { isCrmOwner } from "@/lib/crm";
 import { query } from "@/lib/db";
@@ -115,10 +116,47 @@ export async function POST(r: Request) {
           id,
           z.string().parse(d.offer),
           z.string().uuid().parse(d.key),
+          z
+            .enum(["admin", "billing", "credits"])
+            .default("admin")
+            .parse(d.returnTo),
         ),
       });
     }
-    if (action === "portal") return json({ url: await portal(id) });
+    if (
+      ["change-plan", "cancel-subscription", "resume-subscription"].includes(
+        action,
+      )
+    ) {
+      await manageSubscription(
+        id,
+        action === "change-plan"
+          ? "change"
+          : action === "cancel-subscription"
+            ? "cancel"
+            : "resume",
+        d.plan ? z.enum(["starter", "plus", "pro"]).parse(d.plan) : undefined,
+      );
+      return json({
+        ok: true,
+        message:
+          action === "change-plan"
+            ? "Changement programmé au prochain renouvellement."
+            : action === "cancel-subscription"
+              ? "Résiliation programmée en fin de période."
+              : "Abonnement repris.",
+      });
+    }
+    if (action === "portal")
+      return json({
+        url: await portal(
+          id,
+          z
+            .enum(["admin", "billing", "credits"])
+            .default("admin")
+            .parse(d.returnTo),
+        ),
+      });
     if (action === "refund") {
       const p = (
         await query(

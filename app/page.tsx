@@ -1,4 +1,5 @@
 "use client";
+import { OwnerPlanBadge } from "./components/owner-billing";
 import { ProductStory } from "./components/product-story";
 import {
   MobileExperience,
@@ -402,6 +403,14 @@ export default function App() {
               </span>
               {translateUi("mentora")}
               <span className="brand-dot">.</span>
+              <OwnerPlanBadge
+                enabled={
+                  !!session &&
+                  showAdmin &&
+                  session.user.email.toLowerCase() ===
+                    "thibault.cordiez@hotmail.com"
+                }
+              />
             </a>
             <nav
               id="main-navigation"
@@ -1109,6 +1118,13 @@ export default function App() {
                     <h1 className="compact-page-title">
                       {translateUi("Mon profil")}
                     </h1>
+                    <OwnerPlanBadge
+                      enabled={
+                        showAdmin &&
+                        session.user.email.toLowerCase() ===
+                          "thibault.cordiez@hotmail.com"
+                      }
+                    />
                     <button
                       className="btn secondary"
                       aria-label={translateUi("Paramètres")}

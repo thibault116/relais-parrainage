@@ -12,7 +12,7 @@ let last = "";
 try {
   const sessions: string[] = [];
   for (const plan of ["starter", "plus", "pro"]) {
-    await checkout(owner, plan, crypto.randomUUID());
+    await checkout(owner, plan, crypto.randomUUID(), "billing");
     const row = (
       await query(
         "SELECT session_id FROM money_orders WHERE owner_id=$1 ORDER BY created_at DESC",
@@ -21,6 +21,11 @@ try {
     )[0];
     last = String(row.session_id);
     sessions.push(last);
+    assert.ok(
+      (await s.checkout.sessions.retrieve(last)).success_url?.includes(
+        "mobile=billing",
+      ),
+    );
   }
   assert.equal(
     (await s.checkout.sessions.retrieve(sessions[0])).status,

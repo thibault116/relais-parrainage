@@ -18,7 +18,7 @@ Le bac à sable mentora-admin-test et le webhook de production sont configurés.
 5. Réservations : accepter, terminer, refuser ou annuler ; restitution unique. Un remboursement de prestation terminée annule la rémunération due.
 6. Rémunérations : suivi des montants prévus et dus, aucun versement automatique.
 
-Le portail Stripe permet factures, moyen de paiement et résiliation en fin de période. Pour changer de formule, résilier puis attendre la fin de l’abonnement. Les crédits cumulés sont conservés. Un remboursement monétaire retire proportionnellement les crédits, arrondis au supérieur ; si déjà consommés, le solde peut devenir négatif et bloque de nouvelles réservations.
+Le portail Stripe permet factures, moyen de paiement et résiliation en fin de période. Le changement de formule peut être programmé au prochain renouvellement via un échéancier Stripe, sans débit ni crédit anticipé. La résiliation annule cet échéancier et prend effet en fin de période ; la reprise réactive le renouvellement. Les crédits cumulés sont conservés. Un remboursement monétaire retire proportionnellement les crédits, arrondis au supérieur ; si déjà consommés, le solde peut devenir négatif et bloque de nouvelles réservations.
 
 ## Vérifications effectuées
 - Build Next.js et tests locaux (scripts/test-monetization.ts).
@@ -33,3 +33,8 @@ Tests Stripe effectués avec un compte local fictif et événements Stripe sign�
 
 ## Point économique à décider avant ouverture
 À 1,50 € de rémunération par crédit, Pro contient 57 € de rémunération potentielle pour 49,90 € encaissés, avant frais. Ce taux est une hypothèse de test à revoir, pas un tarif de rémunération validé.
+
+## Accès administrateur dédiés
+La formule s’affiche près du logo et sur le profil uniquement pour le propriétaire. Dans le menu mobile, Abonnement et Crédits réutilisent le système privé existant. Le profil parrain propriétaire dispose aussi de Prestations et Rémunération. Les nouvelles routes summary et billing vérifient l’identité du propriétaire côté serveur. Aucun autre membre ne reçoit ces entrées.
+
+Tests supplémentaires : refus anonyme des deux nouvelles API, carte masquée et factures réelles sandbox, changement Starter → Plus au renouvellement via horloge Stripe, résiliation et reprise, portail de changement de carte. Contrôle visuel avec compte fictif local et largeur 320/390 px. Aucune donnée réelle modifiée.

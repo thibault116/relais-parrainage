@@ -26,7 +26,12 @@ export async function customer(owner: string) {
   );
   return c.id;
 }
-export async function checkout(owner: string, code: string, key: string) {
+export async function checkout(
+  owner: string,
+  code: string,
+  key: string,
+  destination: "admin" | "billing" | "credits" = "admin",
+) {
   const item = offer(code);
   if (!item || !item.cents) throw Error("Offre inconnue");
   const s = stripeTest(),
@@ -97,8 +102,8 @@ export async function checkout(owner: string, code: string, key: string) {
         ...(subscription
           ? { subscription_data: { metadata: { mentora_plan: code } } }
           : { invoice_creation: { enabled: true } }),
-        success_url: returnUrl(),
-        cancel_url: returnUrl(),
+        success_url: returnUrl(destination),
+        cancel_url: returnUrl(destination),
       },
       { idempotencyKey: `checkout:${id}` },
     );
@@ -341,7 +346,10 @@ export async function handleEvent(event: Stripe.Event) {
     [event.id, new Date().toISOString()],
   );
 }
-export async function portal(owner: string) {
+export async function portal(
+  owner: string,
+  destination: "admin" | "billing" | "credits" = "admin",
+) {
   const cid = await customer(owner),
     s = stripeTest();
   const config = await s.billingPortal.configurations.create(
@@ -359,7 +367,7 @@ export async function portal(owner: string) {
     await s.billingPortal.sessions.create({
       customer: cid,
       configuration: config.id,
-      return_url: returnUrl(),
+      return_url: returnUrl(destination),
     })
   ).url;
 }

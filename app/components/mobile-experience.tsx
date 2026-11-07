@@ -40,6 +40,8 @@ import {
   Megaphone,
   NotebookPen,
 } from "lucide-react";
+import { AdminMonetization } from "./admin-monetization";
+import { OwnerPlanBadge } from "./owner-billing";
 import { BrandLogo } from "./brand-logo";
 import { useFeature } from "./beta";
 import { useMentorCompletion } from "./mentor-portfolio";
@@ -467,6 +469,15 @@ export function MobileExperience({
           () => go("tasks"),
         ],
         ["Demandes de parrainage", Inbox, () => go("requests")],
+        ...(administrator && profile?.role === "mentor"
+          ? [
+              ["Prestations", Layers, () => go("services")] as [
+                string,
+                typeof Home,
+                () => void,
+              ],
+            ]
+          : []),
       ],
     },
     {
@@ -475,6 +486,15 @@ export function MobileExperience({
         ["Général", Settings, () => openSettings("general")],
         ["Sécurité", Shield, () => openSettings("security")],
         ["Notifications", Bell, () => openSettings("notifications")],
+        ...(administrator
+          ? ([
+              ["Abonnement", Layers, () => go("billing")],
+              ["Crédits", Layers, () => go("credits")],
+              ...(profile?.role === "mentor"
+                ? [["Rémunération", TrendingUp, () => go("payouts")]]
+                : []),
+            ] as [string, typeof Home, () => void][])
+          : []),
         ...(profile?.role === "mentor"
           ? [
               [
@@ -557,6 +577,10 @@ export function MobileExperience({
         : screen === "community"
           ? "community"
           : [
+                "billing",
+                "credits",
+                "services",
+                "payouts",
                 "menu",
                 "profile",
                 "edit",
@@ -604,6 +628,7 @@ export function MobileExperience({
           >
             <BrandLogo />
             <strong>Mentora</strong>
+            <OwnerPlanBadge enabled={administrator} />
           </button>
           <button
             className="mobile-icon"
@@ -644,6 +669,31 @@ export function MobileExperience({
           </div>
         )}
         <main className="mobile-app-content">
+          {["billing", "credits", "services", "payouts"].includes(screen) && (
+            <>
+              <button className="mobile-back" onClick={back}>
+                <ChevronLeft size={18} />
+                Retour
+              </button>
+              {administrator &&
+              (!["services", "payouts"].includes(screen) ||
+                profile?.role === "mentor") ? (
+                <AdminMonetization
+                  key={screen}
+                  dedicated
+                  initialTab={
+                    screen === "billing"
+                      ? "plans"
+                      : screen === "credits"
+                        ? "wallet"
+                        : screen
+                  }
+                />
+              ) : (
+                <p>Accès réservé au compte administrateur principal.</p>
+              )}
+            </>
+          )}
           {screen === "home" && (
             <>
               <h1>
@@ -768,6 +818,7 @@ export function MobileExperience({
                   </button>
                 </div>
                 <h1>{name}</h1>
+                <OwnerPlanBadge enabled={administrator} />
                 <span className="mobile-role">
                   {profile?.role === "mentor" ? "Parrain" : "Débutant"}
                 </span>

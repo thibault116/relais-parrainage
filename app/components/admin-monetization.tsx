@@ -55,9 +55,15 @@ const status: Record<string, string> = {
   declined: "Refusée",
   refunded: "Crédits restitués",
 };
-export function AdminMonetization() {
+export function AdminMonetization({
+  initialTab = "plans",
+  dedicated = false,
+}: {
+  initialTab?: string;
+  dedicated?: boolean;
+}) {
   const [data, setData] = useState<Data | null>(null),
-    [tab, setTab] = useState("plans"),
+    [tab, setTab] = useState(initialTab),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
     [error, setError] = useState(""),
@@ -66,12 +72,15 @@ export function AdminMonetization() {
     [selected, setSelected] = useState<string | null>(null),
     [notes, setNotes] = useState(""),
     [slot, setSlot] = useState("");
+  const [billing, setBilling] = useState<any>(null);
+  useEffect(() => setTab(initialTab), [initialTab]);
   const load = useCallback(async () => {
     try {
       const r = await fetch("/api/admin/monetization", { cache: "no-store" }),
         d = await r.json();
       if (!r.ok) throw Error(d.error);
       setData(d);
+      window.dispatchEvent(new Event("mentora-billing-updated"));
     } catch (e) {
       setError((e as Error).message);
     }
@@ -82,6 +91,25 @@ export function AdminMonetization() {
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [load]);
+  const loadBilling = useCallback(async () => {
+    try {
+      const r = await fetch("/api/admin/monetization/billing", {
+        cache: "no-store",
+      });
+      const d = await r.json();
+      if (!r.ok) throw Error(d.error);
+      setBilling(d);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }, []);
+  useEffect(() => {
+    if (tab !== "plans") return;
+    void loadBilling();
+    const refresh = () => void loadBilling();
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+  }, [tab, loadBilling]);
   async function send(body: Record<string, unknown>) {
     if (busy) return false;
     setBusy(true);
@@ -91,7 +119,14 @@ export function AdminMonetization() {
       const r = await fetch("/api/admin/monetization", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
+          body: JSON.stringify({
+            ...body,
+            returnTo: dedicated
+              ? tab === "wallet"
+                ? "credits"
+                : "billing"
+              : "admin",
+          }),
         }),
         d = await r.json();
       if (!r.ok) throw Error(d.error);
@@ -101,6 +136,7 @@ export function AdminMonetization() {
       }
       setMessage(d.message || "Enregistré dans ton espace de test.");
       await load();
+      if (tab === "plans") await loadBilling();
       return true;
     } catch (e) {
       setError((e as Error).message);
@@ -120,30 +156,38 @@ export function AdminMonetization() {
         <strong>Monétisation · TEST · toi uniquement</strong>
         <span>Aucun encaissement ni versement réel</span>
       </div>
-      <p>
-        Tu joues les deux rôles dans cet espace isolé : parrain pour proposer et
-        gérer, débutant pour acheter des crédits et réserver.
-      </p>
+      {!dedicated && (
+        <p>
+          Tu joues les deux rôles dans cet espace isolé : parrain pour proposer
+          et gérer, débutant pour acheter des crédits et réserver.
+        </p>
+      )}
       {!data.configured && (
         <p role="status">
           Stripe test ou son webhook n’est pas encore configuré. Les paiements
           restent bloqués.
         </p>
       )}
-      <nav className="pricing-switch" aria-label="Monétisation privée">
-        {[
-          ["plans", "Abonnements"],
-          ["wallet", "Portefeuille"],
-          ["services", "Prestations · parrain"],
-          ["discover", "Réserver · débutant"],
-          ["bookings", "Réservations"],
-          ["payouts", "Rémunérations"],
-        ].map(([id, label]) => (
-          <button key={id} aria-pressed={tab === id} onClick={() => setTab(id)}>
-            {label}
-          </button>
-        ))}
-      </nav>
+      {!dedicated && (
+        <nav className="pricing-switch" aria-label="Monétisation privée">
+          {[
+            ["plans", "Abonnements"],
+            ["wallet", "Portefeuille"],
+            ["services", "Prestations · parrain"],
+            ["discover", "Réserver · débutant"],
+            ["bookings", "Réservations"],
+            ["payouts", "Rémunérations"],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              aria-pressed={tab === id}
+              onClick={() => setTab(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+      )}
       <div className="money-summary">
         <strong>{data.balance} crédits disponibles</strong>
         <span>
@@ -166,6 +210,63 @@ export function AdminMonetization() {
       {message && <p role="status">{message}</p>}
       {tab === "plans" && (
         <>
+          <h2>
+            Mon abonnement ·{" "}
+            {data.plans.find((p) => p.id === data.account.plan)?.name || "Free"}
+          </h2>
+          <section className="money-billing-details">
+            <p>
+              Moyen de paiement :{" "}
+              {billing?.card
+                ? `${billing.card.brand} •••• ${billing.card.last4} · ${billing.card.month}/${billing.card.year}`
+                : "Aucune carte enregistrée"}
+            </p>
+            {billing?.renewal && (
+              <p>
+                {data.account.cancel_at_end
+                  ? "Fin de l’abonnement"
+                  : "Prochain renouvellement"}{" "}
+                : {new Date(billing.renewal * 1000).toLocaleDateString("fr-FR")}
+              </p>
+            )}
+            {billing?.pendingPlan && (
+              <p>
+                Prochaine formule : {billing.pendingPlan}, au renouvellement.
+              </p>
+            )}
+            <button
+              className="btn secondary"
+              disabled={busy || !data.configured}
+              onClick={() => void send({ action: "portal" })}
+            >
+              Changer de carte · portail Stripe test
+            </button>
+            {["active", "trialing"].includes(data.account.status) && (
+              <button
+                className="btn secondary"
+                disabled={busy}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      data.account.cancel_at_end
+                        ? "Reprendre le renouvellement de cet abonnement test ?"
+                        : "Résilier à la fin de la période et annuler tout changement d’offre programmé ?",
+                    )
+                  )
+                    void send({
+                      action: data.account.cancel_at_end
+                        ? "resume-subscription"
+                        : "cancel-subscription",
+                    });
+                }}
+              >
+                {data.account.cancel_at_end
+                  ? "Reprendre mon abonnement"
+                  : "Résilier mon abonnement"}
+              </button>
+            )}
+          </section>
+
           <div className="pricing-cards">
             {data.plans.map((p, i) => (
               <article className="pricing-card" key={p.id}>
@@ -185,7 +286,29 @@ export function AdminMonetization() {
                     </li>
                   ))}
                 </ul>
-                {p.cents > 0 ? (
+                {p.cents > 0 &&
+                ["active", "trialing"].includes(data.account.status) ? (
+                  <button
+                    className="btn"
+                    disabled={
+                      busy ||
+                      !!data.account.cancel_at_end ||
+                      data.account.plan === p.id
+                    }
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Passer à ${p.name} (${euro(p.cents)}/mois, ${p.credits} crédits/mois) au prochain renouvellement ?`,
+                        )
+                      )
+                        void send({ action: "change-plan", plan: p.id });
+                    }}
+                  >
+                    {data.account.plan === p.id
+                      ? "Offre actuelle"
+                      : `Passer à ${p.name} au renouvellement`}
+                  </button>
+                ) : p.cents > 0 ? (
                   <button
                     className="btn"
                     disabled={
@@ -221,9 +344,40 @@ export function AdminMonetization() {
           <p className="pricing-detail">
             Crédits ajoutés uniquement après confirmation Stripe de chaque
             facture payée. Dans cet essai, les crédits se cumulent sans
-            expiration. Changement d’offre : résilier puis attendre la fin de
-            période avant de souscrire une nouvelle formule. Les droits actuels
-            de Mentora ne sont pas modifiés.
+            expiration. Le changement d’offre prend effet au prochain
+            renouvellement, sans débit ni crédit supplémentaire immédiat. Les
+            droits actuels des membres restent inchangés.
+          </p>
+          <h3>Historique des factures</h3>
+          {billing?.invoices?.length ? (
+            billing.invoices.map((i: any) => (
+              <div className="money-row" key={i.id}>
+                <span>
+                  {i.number || "Facture"}
+                  <small>
+                    {new Date(i.date * 1000).toLocaleDateString("fr-FR")} ·{" "}
+                    {i.status}
+                  </small>
+                </span>
+                <strong>{euro(i.amount)}</strong>
+                {i.url && (
+                  <a href={i.url} target="_blank" rel="noreferrer">
+                    Consulter
+                  </a>
+                )}
+                {i.pdf && (
+                  <a href={i.pdf} target="_blank" rel="noreferrer">
+                    PDF
+                  </a>
+                )}
+              </div>
+            ))
+          ) : (
+            <p>Aucune facture pour le moment.</p>
+          )}
+          <p>
+            Les vingt dernières factures sont affichées. Retrouve l’historique
+            complet dans le portail Stripe.
           </p>
         </>
       )}

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { CommunityBadge } from "./community";
 import { t as translateUi } from "@/app/components/language";
+import { OwnerPlanBadge } from "./owner-billing";
 import { BrandLogo } from "./brand-logo";
 import {
   Search,
@@ -91,8 +92,20 @@ memberItems.push({
   view: "community",
 });
 const adminItems: Item[] = [
-  {id:"monetization",label:"Monétisation · test privé",icon:ChartNoAxesCombined,view:"moderation",tab:"monetization"},
-  {id:"pricing", label:"Tarifs · étude privée", icon:ChartNoAxesCombined,view:"moderation",tab:"pricing"},
+  {
+    id: "monetization",
+    label: "Monétisation · test privé",
+    icon: ChartNoAxesCombined,
+    view: "moderation",
+    tab: "monetization",
+  },
+  {
+    id: "pricing",
+    label: "Tarifs · étude privée",
+    icon: ChartNoAxesCombined,
+    view: "moderation",
+    tab: "pricing",
+  },
   {
     id: "crm",
     label: "Mon CRM Vinted",
@@ -234,6 +247,7 @@ export function WorkspaceNav({
             {translateUi("mentora")}
             <span className="brand-dot">.</span>
           </a>
+          <OwnerPlanBadge enabled={crmOwner} />
         </div>
         <nav
           className="workspace-links"
@@ -255,7 +269,13 @@ export function WorkspaceNav({
                 {translateUi("Administration")}
               </p>
               {adminItems
-                .filter((i) => crmOwner || !["crm", "extension", "pricing", "monetization"].includes(i.id))
+                .filter(
+                  (i) =>
+                    crmOwner ||
+                    !["crm", "extension", "pricing", "monetization"].includes(
+                      i.id,
+                    ),
+                )
                 .map(itemButton)}
             </>
           )}
@@ -364,7 +384,8 @@ export function WorkspaceMenuPage({
   const visibleAdmins = moderator
     ? adminItems.filter(
         (i) =>
-          (crmOwner || !["crm", "extension", "pricing", "monetization"].includes(i.id)) &&
+          (crmOwner ||
+            !["crm", "extension", "pricing", "monetization"].includes(i.id)) &&
           matches(i.label),
       )
     : [];
