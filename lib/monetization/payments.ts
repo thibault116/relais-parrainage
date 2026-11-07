@@ -60,10 +60,19 @@ export async function checkout(owner: string, code: string, key: string) {
         status: "open",
         limit: 100,
       });
-      if (open.data.some((x) => x.mode === "subscription"))
-        throw Error(
-          "Un paiement d’abonnement est déjà ouvert. Termine-le ou attends son expiration (30 min).",
-        );
+      for (const pending of open.data.filter(
+        (x) => x.mode === "subscription",
+      )) {
+        try {
+          await s.checkout.sessions.expire(pending.id);
+        } catch {
+          const current = await s.checkout.sessions.retrieve(pending.id);
+          if (current.status !== "expired")
+            throw Error(
+              "Le paiement précédent est en cours de confirmation. Actualise ton portefeuille avant de recommencer.",
+            );
+        }
+      }
     }
     const session = await s.checkout.sessions.create(
       {

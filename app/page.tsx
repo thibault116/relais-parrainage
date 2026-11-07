@@ -187,6 +187,12 @@ export default function App() {
   }, []);
   const [focusMember, setFocusMember] = useState<PublicProfile | null>(null);
   const [role, setRole] = useState<"mentor" | "beginner">("beginner");
+  const [settingsSection, setSettingsSection] = useState(() =>
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("settingsSection") ||
+        "general"
+      : "general",
+  );
   const [profileTab, setProfileTab] = useState("accompaniments");
   const [adminTab, setAdminTab] = useState("overview");
   useEffect(() => {
@@ -1064,16 +1070,13 @@ export default function App() {
                 }
                 mentor={profile?.role === "mentor"}
                 onVerificationChange={refreshProfile}
+                key={`settings-${profileTab}-${settingsSection}`}
                 initialSection={
-                  (typeof window !== "undefined" &&
-                    new URLSearchParams(window.location.search).get(
-                      "settingsSection",
-                    )) ||
-                  (profileTab === "verification"
+                  profileTab === "verification"
                     ? "verification"
                     : profileTab === "emails"
                       ? "notifications"
-                      : "general")
+                      : settingsSection
                 }
               />
             ) : profileError ? (
@@ -1428,7 +1431,9 @@ export default function App() {
       userId={session.user.id}
       view={view}
       profileTab={selectedProfileTab}
-      onNavigate={(next, tab) => {
+      onNavigate={(next, tab, section) => {
+        if (next === "profile" && tab === "appearance")
+          setSettingsSection(section || "general");
         setView(next as View);
         if (next === "directory") setFocusMember(null);
         if (tab && next === "moderation") setAdminTab(tab);

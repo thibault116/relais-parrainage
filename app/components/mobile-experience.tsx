@@ -181,7 +181,7 @@ export function MobileExperience({
   userId: string;
   view: string;
   profileTab: string;
-  onNavigate: (view: string, tab?: string) => void;
+  onNavigate: (view: string, tab?: string, section?: string) => void;
   onOpenProfile: (id: string, role: string) => void;
 }) {
   const completionNeeded = useMentorCompletion(profile?.role === "mentor");
@@ -328,11 +328,12 @@ export function MobileExperience({
     return () => clearInterval(timer);
   }, []);
   const go = useCallback(
-    (next: string, params: Record<string,string> = {}) => {
+    (next: string, params: Record<string, string> = {}) => {
       setScreen(next);
       setError("");
       setChannel(null);
-      if (routes[next]) onNavigate(...routes[next]);
+      if (routes[next])
+        onNavigate(routes[next][0], routes[next][1], params.settingsSection);
       else onNavigate(next === "community" ? "community" : "profile");
       const url = new URL(window.location.href);
       url.searchParams.set("mobile", next);
@@ -343,7 +344,9 @@ export function MobileExperience({
       if (routes[next]?.[1])
         url.searchParams.set("profileTab", routes[next][1]!);
       else url.searchParams.delete("profileTab");
-      Object.entries(params).forEach(([key,value])=>url.searchParams.set(key,value));
+      Object.entries(params).forEach(([key, value]) =>
+        url.searchParams.set(key, value),
+      );
       window.history.pushState(
         { mentoraDepth: (window.history.state?.mentoraDepth || 0) + 1 },
         "",
@@ -358,8 +361,8 @@ export function MobileExperience({
     else go("menu");
   }
   function openAdmin(tab: string) {
-    go("admin",{adminTab:tab});
-    onNavigate("moderation",tab);
+    go("admin", { adminTab: tab });
+    onNavigate("moderation", tab);
   }
   useEffect(() => {
     const open = (e: Event) => {
@@ -403,7 +406,12 @@ export function MobileExperience({
       setChat(params.get("chat") || "");
       if (next === "admin")
         onNavigate("moderation", params.get("adminTab") || "overview");
-      else if (routes[next]) onNavigate(...routes[next]);
+      else if (routes[next])
+        onNavigate(
+          routes[next][0],
+          routes[next][1],
+          params.get("settingsSection") || undefined,
+        );
     };
     window.addEventListener("popstate", restore);
     return () => window.removeEventListener("popstate", restore);
@@ -435,12 +443,13 @@ export function MobileExperience({
   }
   const [menuSearch, setMenuSearch] = useState("");
   function openSettings(section: string) {
-    go("settings",{settingsSection:section});
-    window.dispatchEvent(new CustomEvent("mentora-settings-section",{detail:section}));
+    go("settings", { settingsSection: section });
   }
   function openNetwork(type: string) {
-    go("following",{network:type});
-    window.dispatchEvent(new CustomEvent("mentora-network-section",{detail:type}));
+    go("following", { network: type });
+    window.dispatchEvent(
+      new CustomEvent("mentora-network-section", { detail: type }),
+    );
   }
   const menuGroups: {
     title: string;

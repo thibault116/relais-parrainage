@@ -1,10 +1,8 @@
 export const memberRelease = {
-  id: "2026-11-07-dedicated-navigation",
-  title: "Une navigation plus simple",
+  id: "2026-11-07-settings-switch",
+  title: "Les réglages s’ouvrent correctement",
   notes: [
-    "Les flèches reviennent à la page précédente.",
-    "Chaque rubrique du menu affiche uniquement son propre contenu.",
-    "Abonnés et abonnements disposent de leur espace dédié.",
+    "Le changement entre Général, Sécurité, Notifications et Finaliser mon profil affiche désormais la bonne rubrique.",
   ],
   guideUrl: "/?mobile=community#community",
   guideLabel: "Ouvrir la communauté",
