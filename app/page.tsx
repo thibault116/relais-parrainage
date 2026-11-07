@@ -190,11 +190,25 @@ export default function App() {
   const [profileTab, setProfileTab] = useState("accompaniments");
   const [adminTab, setAdminTab] = useState("overview");
   useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("adminTab");
     if (
-      new URLSearchParams(window.location.search).get("adminTab") ===
-      "monetization"
+      tab &&
+      [
+        "overview",
+        "accounts",
+        "verification",
+        "reports",
+        "ratings",
+        "suggestions",
+        "emails",
+        "settings",
+        "crm",
+        "extension",
+        "pricing",
+        "monetization",
+      ].includes(tab)
     )
-      setAdminTab("monetization");
+      setAdminTab(tab);
   }, []);
   const selectedProfileTab =
     profileTab === "verification" || profileTab === "emails"
@@ -528,6 +542,7 @@ export default function App() {
 
         {!isPending && session && showAdmin && view === "moderation" && (
           <AdminDashboard
+            dedicated={phoneLayout}
             crmOwner={
               session.user.email.toLowerCase() ===
               "thibault.cordiez@hotmail.com"
@@ -1003,6 +1018,7 @@ export default function App() {
               </div>
             ) : selectedProfileTab === "appearance" ? (
               <MemberSettings
+                dedicated={phoneLayout}
                 renderMenus={(query) => (
                   <WorkspaceMenuPage
                     externalQuery={query}
@@ -1099,30 +1115,31 @@ export default function App() {
                     </button>
                   </div>
                 )}
-                {["accompaniments", "following"].includes(
-                  selectedProfileTab,
-                ) && (
-                  <nav
-                    className="follow-section-tabs"
-                    aria-label={translateUi("Suivi")}
-                  >
-                    {[
-                      ["accompaniments", "Mes accompagnements"],
-                      ["tasks", "Gérer les tâches"],
-                      ["following", "Abonnés et abonnements"],
-                    ].map(([id, label]) => (
-                      <button
-                        key={id}
-                        className={
-                          selectedProfileTab === id ? "btn" : "btn secondary"
-                        }
-                        onClick={() => setProfileTab(id)}
-                      >
-                        {translateUi(label)}
-                      </button>
-                    ))}
-                  </nav>
-                )}
+                {!phoneLayout &&
+                  ["accompaniments", "following"].includes(
+                    selectedProfileTab,
+                  ) && (
+                    <nav
+                      className="follow-section-tabs"
+                      aria-label={translateUi("Suivi")}
+                    >
+                      {[
+                        ["accompaniments", "Mes accompagnements"],
+                        ["tasks", "Gérer les tâches"],
+                        ["following", "Abonnés et abonnements"],
+                      ].map(([id, label]) => (
+                        <button
+                          key={id}
+                          className={
+                            selectedProfileTab === id ? "btn" : "btn secondary"
+                          }
+                          onClick={() => setProfileTab(id)}
+                        >
+                          {translateUi(label)}
+                        </button>
+                      ))}
+                    </nav>
+                  )}
                 {selectedProfileTab === "edit" && (
                   <div className="profile-toolbar">
                     <span className={`badge ${profile.visible ? "green" : ""}`}>
@@ -1150,31 +1167,33 @@ export default function App() {
                     </button>
                   </div>
                 )}
-                <nav
-                  className="profile-tabs"
-                  aria-label={translateUi("Rubriques de mon profil")}
-                >
-                  {[
-                    ["following", "Suivi"],
-                    ["edit", "Modifier mon profil"],
-                    ["accompaniments", "Mes accompagnements"],
-                    ["requests", "Demandes"],
-                    ["appearance", "Paramètres"],
-                    ["tasks", "To-do list"],
-                  ].map(([id, label]) => (
-                    <button
-                      key={id}
-                      aria-current={
-                        selectedProfileTab === id ? "page" : undefined
-                      }
-                      onClick={() => {
-                        setProfileTab(id);
-                      }}
-                    >
-                      {translateUi(label)}
-                    </button>
-                  ))}
-                </nav>
+                {!phoneLayout && (
+                  <nav
+                    className="profile-tabs"
+                    aria-label={translateUi("Rubriques de mon profil")}
+                  >
+                    {[
+                      ["following", "Suivi"],
+                      ["edit", "Modifier mon profil"],
+                      ["accompaniments", "Mes accompagnements"],
+                      ["requests", "Demandes"],
+                      ["appearance", "Paramètres"],
+                      ["tasks", "To-do list"],
+                    ].map(([id, label]) => (
+                      <button
+                        key={id}
+                        aria-current={
+                          selectedProfileTab === id ? "page" : undefined
+                        }
+                        onClick={() => {
+                          setProfileTab(id);
+                        }}
+                      >
+                        {translateUi(label)}
+                      </button>
+                    ))}
+                  </nav>
+                )}
                 <div className="profile-tab-content">
                   {selectedProfileTab === "tasks" && <TodoLists />}
                   {selectedProfileTab === "edit" && (
@@ -1399,7 +1418,10 @@ export default function App() {
     );
   return phoneLayout && inWorkspace && session ? (
     <MobileExperience
-      administrator={showAdmin}
+      administrator={
+        showAdmin &&
+        session.user.email.toLowerCase() === "thibault.cordiez@hotmail.com"
+      }
       legacy={legacy}
       profile={profile}
       name={session.user.name}
@@ -1409,7 +1431,8 @@ export default function App() {
       onNavigate={(next, tab) => {
         setView(next as View);
         if (next === "directory") setFocusMember(null);
-        if (tab) setProfileTab(tab);
+        if (tab && next === "moderation") setAdminTab(tab);
+        else if (tab) setProfileTab(tab);
       }}
       onOpenProfile={async (id, role) => {
         try {
@@ -1419,7 +1442,7 @@ export default function App() {
           url.searchParams.set("mobile", "discover");
           url.searchParams.delete("profileTab");
           url.hash = "directory";
-          window.history.pushState(null, "", url);
+          window.history.replaceState(window.history.state, "", url);
           setFocusMember(d.profile);
         } catch (e) {
           notify((e as Error).message);

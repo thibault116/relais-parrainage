@@ -9,12 +9,14 @@ import { InstallMentora } from "./pwa";
 import { EmailPreferences } from "./emails";
 import { useLanguage, t } from "./language";
 export function MemberSettings({
+  dedicated = false,
   initialSection = "general",
   mentor = false,
   onVerificationChange,
   renderMenus,
   administration,
 }: {
+  dedicated?: boolean;
   renderMenus?: (query: string) => ReactNode;
   administration?: ReactNode;
   initialSection?: string;
@@ -37,65 +39,80 @@ export function MemberSettings({
   }, []);
   return (
     <div className="member-settings">
-      <h1 className="compact-page-title">{t("Paramètres")}</h1>
-      <label className="menu-search">
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={t("Rechercher un menu ou un paramètre")}
-          aria-label={t("Rechercher un menu ou un paramètre")}
-        />
-      </label>
-      <nav
-        className="settings-sections"
-        aria-label={t("Sections des paramètres")}
-      >
-        {[
-          ["general", "Général"],
-          ["security", "Sécurité"],
-          ["notifications", "Notifications"],
-          ["menus", "Menus et aide"],
-          ...(administration ? [["administration", "Administration"]] : []),
-          ...(mentor ? [["verification", "Finaliser mon profil"]] : []),
-        ]
-          .filter(
-            ([id, label]) =>
-              !normalized ||
-              (
-                label +
-                " " +
-                ({
-                  general:
-                    "langue anglais français apparence sombre clair néon bêta installer application",
-                  security: "mot de passe password sécurité",
-                  notifications: "email push notification",
-                  verification:
-                    "finaliser profil parrain biographie images photos confiance",
-                }[id] || "")
-              )
-                .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "")
-                .toLowerCase()
-                .includes(normalized),
-          )
-          .map(([id, label]) => (
-            <button
-              key={id}
-              className={section === id ? "selected" : ""}
-              aria-pressed={section === id}
-              onClick={() => {
-                setSection(id);
-                setSearch("");
-              }}
-            >
-              {t(label)}
-            </button>
-          ))}
-      </nav>
-      {normalized && renderMenus?.(search)}
+      <h1 className="compact-page-title">
+        {t(
+          dedicated
+            ? {
+                general: "Général",
+                security: "Sécurité",
+                notifications: "Notifications",
+                verification: "Finaliser mon profil",
+              }[section] || "Paramètres"
+            : "Paramètres",
+        )}
+      </h1>
+      {!dedicated && (
+        <label className="menu-search">
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t("Rechercher un menu ou un paramètre")}
+            aria-label={t("Rechercher un menu ou un paramètre")}
+          />
+        </label>
+      )}
+      {!dedicated && (
+        <nav
+          className="settings-sections"
+          aria-label={t("Sections des paramètres")}
+        >
+          {[
+            ["general", "Général"],
+            ["security", "Sécurité"],
+            ["notifications", "Notifications"],
+            ["menus", "Menus et aide"],
+            ...(administration ? [["administration", "Administration"]] : []),
+            ...(mentor ? [["verification", "Finaliser mon profil"]] : []),
+          ]
+            .filter(
+              ([id, label]) =>
+                !normalized ||
+                (
+                  label +
+                  " " +
+                  ({
+                    general:
+                      "langue anglais français apparence sombre clair néon bêta installer application",
+                    security: "mot de passe password sécurité",
+                    notifications: "email push notification",
+                    verification:
+                      "finaliser profil parrain biographie images photos confiance",
+                  }[id] || "")
+                )
+                  .normalize("NFD")
+                  .replace(/[\u0300-\u036f]/g, "")
+                  .toLowerCase()
+                  .includes(normalized),
+            )
+            .map(([id, label]) => (
+              <button
+                key={id}
+                className={section === id ? "selected" : ""}
+                aria-pressed={section === id}
+                onClick={() => {
+                  setSection(id);
+                  setSearch("");
+                }}
+              >
+                {t(label)}
+              </button>
+            ))}
+        </nav>
+      )}
+      {!dedicated && normalized && renderMenus?.(search)}
       {!normalized && section === "administration" && administration}
-      {!normalized && section === "menus" && renderMenus?.("")}
+      {!dedicated && !normalized && section === "menus" && renderMenus?.("")}
       {!normalized && section === "general" && (
         <>
           <section className="verification-panel">

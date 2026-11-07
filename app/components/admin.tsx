@@ -57,11 +57,13 @@ type Data = {
 const date = (v: string) => new Date(v).toLocaleDateString(locale());
 export function AdminDashboard({
   tab,
+  dedicated = false,
   setTab,
   onPreview,
   crmOwner = false,
 }: {
   tab: string;
+  dedicated?: boolean;
   crmOwner?: boolean;
   setTab: (tab: string) => void;
   onPreview: (role: "mentor" | "beginner") => void;
@@ -103,7 +105,24 @@ export function AdminDashboard({
       <div className="page-heading">
         <span className="eyebrow">{translateUi("ESPACE PRIV\u00C9")}</span>
         <h1>
-          {translateUi("Administration")}
+          {translateUi(
+            dedicated
+              ? {
+                  overview: "Vue d’ensemble",
+                  accounts: "Comptes",
+                  verification: "Dossiers parrains",
+                  reports: "Signalements",
+                  ratings: "Avis",
+                  suggestions: "Suggestions",
+                  emails: "E-mails",
+                  settings: "Paramètres plateforme",
+                  crm: "Mon CRM Vinted",
+                  extension: "Extension Vinted",
+                  pricing: "Tarifs · étude privée",
+                  monetization: "Monétisation · test privé",
+                }[tab] || "Administration"
+              : "Administration",
+          )}
           <span>.</span>
         </h1>
         <p>
@@ -112,37 +131,39 @@ export function AdminDashboard({
           )}
         </p>
       </div>
-      <nav
-        className="admin-tabs"
-        aria-label={translateUi("Rubriques administrateur")}
-      >
-        {[
-          ["overview", "Vue d’ensemble"],
-          ...(crmOwner
-            ? [
-                ["pricing", "Tarifs · étude privée"],
-                ["monetization", "Monétisation · test privé"],
-                ["crm", "Mon CRM Vinted"],
-                ["extension", "Extension Vinted"],
-              ]
-            : []),
-          ["suggestions", "Suggestions"],
-          ["emails", "E-mails"],
-          ["settings", "Paramètres"],
-          ["accounts", "Comptes"],
-          ["reports", "Signalements"],
-          ["ratings", "Avis"],
-          ["verification", "Vérification des parrains"],
-        ].map(([id, label]) => (
-          <button
-            className={tab === id ? "active" : ""}
-            key={id}
-            onClick={() => setTab(id)}
-          >
-            {translateUi(label)}
-          </button>
-        ))}
-      </nav>
+      {!dedicated && (
+        <nav
+          className="admin-tabs"
+          aria-label={translateUi("Rubriques administrateur")}
+        >
+          {[
+            ["overview", "Vue d’ensemble"],
+            ...(crmOwner
+              ? [
+                  ["pricing", "Tarifs · étude privée"],
+                  ["monetization", "Monétisation · test privé"],
+                  ["crm", "Mon CRM Vinted"],
+                  ["extension", "Extension Vinted"],
+                ]
+              : []),
+            ["suggestions", "Suggestions"],
+            ["emails", "E-mails"],
+            ["settings", "Paramètres"],
+            ["accounts", "Comptes"],
+            ["reports", "Signalements"],
+            ["ratings", "Avis"],
+            ["verification", "Vérification des parrains"],
+          ].map(([id, label]) => (
+            <button
+              className={tab === id ? "active" : ""}
+              key={id}
+              onClick={() => setTab(id)}
+            >
+              {translateUi(label)}
+            </button>
+          ))}
+        </nav>
+      )}
       <button className="text-btn" onClick={() => void load()}>
         {translateUi("Actualiser les donn\u00E9es")}
       </button>
@@ -153,7 +174,11 @@ export function AdminDashboard({
           </p>
         ),
       )}
-      {tab === "monetization" && crmOwner ? <AdminMonetization /> : tab === "pricing" && crmOwner ? <AdminPricing /> : (tab === "crm" || tab === "extension") && crmOwner ? (
+      {tab === "monetization" && crmOwner ? (
+        <AdminMonetization />
+      ) : tab === "pricing" && crmOwner ? (
+        <AdminPricing />
+      ) : (tab === "crm" || tab === "extension") && crmOwner ? (
         <AdminCrm extension={tab === "extension"} />
       ) : tab === "settings" ? (
         <AdminSettings />

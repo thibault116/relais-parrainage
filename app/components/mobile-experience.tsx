@@ -328,7 +328,7 @@ export function MobileExperience({
     return () => clearInterval(timer);
   }, []);
   const go = useCallback(
-    (next: string) => {
+    (next: string, params: Record<string,string> = {}) => {
       setScreen(next);
       setError("");
       setChannel(null);
@@ -343,11 +343,24 @@ export function MobileExperience({
       if (routes[next]?.[1])
         url.searchParams.set("profileTab", routes[next][1]!);
       else url.searchParams.delete("profileTab");
-      window.history.pushState(null, "", url);
+      Object.entries(params).forEach(([key,value])=>url.searchParams.set(key,value));
+      window.history.pushState(
+        { mentoraDepth: (window.history.state?.mentoraDepth || 0) + 1 },
+        "",
+        url,
+      );
       window.scrollTo({ top: 0, behavior: "instant" });
     },
     [onNavigate],
   );
+  function back() {
+    if (window.history.state?.mentoraDepth > 0) window.history.back();
+    else go("menu");
+  }
+  function openAdmin(tab: string) {
+    go("admin",{adminTab:tab});
+    onNavigate("moderation",tab);
+  }
   useEffect(() => {
     const open = (e: Event) => {
       const d = (e as CustomEvent).detail;
@@ -388,7 +401,9 @@ export function MobileExperience({
       setScreen(next);
       setChannel(null);
       setChat(params.get("chat") || "");
-      if (routes[next]) onNavigate(...routes[next]);
+      if (next === "admin")
+        onNavigate("moderation", params.get("adminTab") || "overview");
+      else if (routes[next]) onNavigate(...routes[next]);
     };
     window.addEventListener("popstate", restore);
     return () => window.removeEventListener("popstate", restore);
@@ -420,22 +435,12 @@ export function MobileExperience({
   }
   const [menuSearch, setMenuSearch] = useState("");
   function openSettings(section: string) {
-    go("settings");
-    const url = new URL(window.location.href);
-    url.searchParams.set("settingsSection", section);
-    window.history.replaceState(null, "", url);
-    window.dispatchEvent(
-      new CustomEvent("mentora-settings-section", { detail: section }),
-    );
+    go("settings",{settingsSection:section});
+    window.dispatchEvent(new CustomEvent("mentora-settings-section",{detail:section}));
   }
   function openNetwork(type: string) {
-    go("following");
-    const url = new URL(window.location.href);
-    url.searchParams.set("network", type);
-    window.history.replaceState(null, "", url);
-    window.dispatchEvent(
-      new CustomEvent("mentora-network-section", { detail: type }),
-    );
+    go("following",{network:type});
+    window.dispatchEvent(new CustomEvent("mentora-network-section",{detail:type}));
   }
   const menuGroups: {
     title: string;
@@ -461,15 +466,6 @@ export function MobileExperience({
         ["Général", Settings, () => openSettings("general")],
         ["Sécurité", Shield, () => openSettings("security")],
         ["Notifications", Bell, () => openSettings("notifications")],
-        ...(administrator
-          ? [
-              [
-                "Administration",
-                Layers,
-                () => openSettings("administration"),
-              ] as [string, typeof Home, () => void],
-            ]
-          : []),
         ...(profile?.role === "mentor"
           ? [
               [
@@ -481,6 +477,31 @@ export function MobileExperience({
           : []),
       ],
     },
+    ...(administrator
+      ? [
+          {
+            title: "Administration",
+            items: [
+              ["Vue d’ensemble", Layers, () => openAdmin("overview")],
+              ["Comptes", Users, () => openAdmin("accounts")],
+              ["Dossiers parrains", Shield, () => openAdmin("verification")],
+              ["Signalements", Flag, () => openAdmin("reports")],
+              ["Avis", CheckCircle2, () => openAdmin("ratings")],
+              ["Suggestions", Plus, () => openAdmin("suggestions")],
+              ["E-mails", Inbox, () => openAdmin("emails")],
+              ["Paramètres plateforme", Settings, () => openAdmin("settings")],
+              ["Mon CRM Vinted", TrendingUp, () => openAdmin("crm")],
+              ["Extension Vinted", Layers, () => openAdmin("extension")],
+              ["Tarifs · étude privée", Layers, () => openAdmin("pricing")],
+              [
+                "Monétisation · test privé",
+                Layers,
+                () => openAdmin("monetization"),
+              ],
+            ] as [string, typeof Home, () => void][],
+          },
+        ]
+      : []),
     {
       title: "Aide et à propos",
       items: [
@@ -719,6 +740,10 @@ export function MobileExperience({
           )}
           {screen === "profile" && (
             <>
+              <button className="mobile-back" onClick={back}>
+                <ChevronLeft size={18} />
+                Retour
+              </button>
               <div className="mobile-profile-hero">
                 <div className="mobile-avatar">
                   {profile?.photo ? (
@@ -829,7 +854,7 @@ export function MobileExperience({
                   <button
                     className="mobile-icon"
                     aria-label="Retour"
-                    onClick={() => go("home")}
+                    onClick={back}
                   >
                     <ChevronLeft />
                   </button>
@@ -890,6 +915,10 @@ export function MobileExperience({
           {screen === "saved" &&
             (extras ? (
               <>
+                <button className="mobile-back" onClick={back}>
+                  <ChevronLeft size={18} />
+                  Retour
+                </button>
                 <h1>Profils enregistrés</h1>
                 {!bookmarks.length && (
                   <p>
@@ -960,7 +989,7 @@ export function MobileExperience({
                   key={channel}
                   channel={channels ? channel : undefined}
                   onOpenProfile={(id, role) => {
-                    setScreen("discover");
+                    go("discover");
                     onOpenProfile(id, role);
                   }}
                 />
@@ -974,7 +1003,7 @@ export function MobileExperience({
                 setChatId={setChat}
                 pairs={active}
                 onProfile={(id, role) => {
-                  setScreen("discover");
+                  go("discover");
                   onOpenProfile(id, role);
                 }}
               />
@@ -983,24 +1012,9 @@ export function MobileExperience({
             ))}
           {legacyMode && (
             <>
-              <button
-                className="mobile-back"
-                onClick={() =>
-                  go(
-                    ["edit", "settings", "help", "following", "admin"].includes(
-                      screen,
-                    )
-                      ? "profile"
-                      : "home",
-                  )
-                }
-              >
+              <button className="mobile-back" onClick={back}>
                 <ChevronLeft size={18} />
-                {["edit", "settings", "help", "following", "admin"].includes(
-                  screen,
-                )
-                  ? "Mon profil"
-                  : "Accueil"}
+                Retour
               </button>
               {screen === "pairs" && (
                 <>
