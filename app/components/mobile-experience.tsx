@@ -538,24 +538,33 @@ export function MobileExperience({
               </p>
               <button
                 className="mobile-progress-card"
-                onClick={() => go("tasks")}
+                onClick={() => go(total ? "tasks" : active.length ? "pairs" : "discover")}
               >
                 <Target size={42} />
                 <span>
                   <strong>
-                    {profile?.role === "mentor"
-                      ? "La progression de tes binômes"
-                      : "Ma progression"}
+                    {!total ? (active.length ? "Reprendre mon accompagnement" : "Trouver mon prochain binôme") : profile?.role === "mentor" ? "La progression de tes binômes" : "Ma progression"}
                   </strong>
                   <small>
-                    {done}/{total} objectifs complétés
+                    {total ? `${done}/${total} objectifs complétés` : "Une prochaine étape à construire ensemble"}
                   </small>
-                  <progress max={100} value={percent} />
+                  {total > 0 && <progress max={100} value={percent} />}
                 </span>
                 <ChevronRight size={20} />
               </button>
-              <h2>Mes actions</h2>
-              {tile(
+              {active.length > 0 && <h2>En cours</h2>}
+              {active.map((pair) => {
+                const list = lists.find((l) => l.id === pair.id);
+                return <button key={pair.id} className="refonte-pair-card" onClick={() => go("pairs")}>
+                  <span className="refonte-pair-top"><span className="mobile-role">Accompagnement actif</span><ChevronRight size={18}/></span>
+                  <strong>{pair.partner_name}</strong>
+                  <span>{profile?.role === "mentor" ? "Accompagner sa progression" : "Reprendre mon accompagnement"}</span>
+                  <span className="refonte-pair-bottom">{list?.total ? `${list.completed}/${list.total} tâches terminées` : "Voir les prochaines étapes"}<span>{list?.total ? `${list.progress}%` : "→"}</span></span>
+                  {Boolean(list?.total) && <progress max={100} value={list?.progress ?? 0}/>}
+                </button>;
+              })}
+              <h2>À retrouver</h2>
+              {!active.length && tile(
                 profile?.role === "mentor"
                   ? "Mes accompagnements"
                   : "Mon accompagnement",

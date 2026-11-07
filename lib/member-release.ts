@@ -1,11 +1,10 @@
 export const memberRelease = {
-  id: "2026-11-05-chat-comfort",
-  title: "Des conversations plus confortables",
+  id: "2026-11-07-interface-refonte",
+  title: "Un espace plus clair, à ton rythme",
   notes: [
-    "Une saisie compacte pour garder la conversation visible avec le clavier.",
-    "Des bulles violettes, les photos de profil et des compteurs de messages non lus.",
-    "Une alerte discrète dans l’application à l’arrivée d’un message privé.",
-    "L’écran des tâches est simplifié pour aller à l’essentiel.",
+    "Un accueil mobile centré sur tes prochaines actions et tes accompagnements.",
+    "Des profils et des conversations plus faciles à parcourir.",
+    "Un aperçu de Mentora en quatre étapes sur la page d’accueil.",
   ],
   guideUrl: "/?mobile=community#community",
   guideLabel: "Ouvrir la communauté",

@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
+  devIndicators: false,
   env: {
     NEXT_PUBLIC_RELAIS_VERSION:
       process.env.VERCEL_DEPLOYMENT_ID ||

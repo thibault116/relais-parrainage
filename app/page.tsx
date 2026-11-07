@@ -1,4 +1,5 @@
 "use client";
+import { ProductStory } from "./components/product-story";
 import {
   MobileExperience,
   MobileProfileActions,
@@ -691,6 +692,7 @@ export default function App() {
                 </span>
               </div>
             </section>
+            <ProductStory onJoin={() => join("beginner")} />
             <section className="wrap concrete-help">
               <span className="eyebrow">
                 {translateUi(
