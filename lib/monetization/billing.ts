@@ -48,7 +48,7 @@ export async function billingDetails(owner: string) {
           year: payment.card.exp_year,
         }
       : null,
-    renewal: sub?.items.data[0]?.current_period_end || null,
+    renewal: sub && ["active", "trialing"].includes(sub.status) ? sub.items.data[0]?.current_period_end || null : null,
     pendingPlan,
     invoices: invoices.data.map((i) => ({
       id: i.id,
