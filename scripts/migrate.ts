@@ -1,3 +1,4 @@
+import { migrateMonetization } from "../lib/monetization/store";
 import { migrateMobileSpace } from "../lib/mobile-space";
 import { migrateOnboarding } from "../lib/onboarding";
 import { migrateBeta } from "../lib/beta";
@@ -37,5 +38,6 @@ await migrateProfileTiming();
 await migratePlatformSettings();
 await migrateCrm();
 await migrateMobileSpace();
+await migrateMonetization();
 console.log("Base Relais initialisée.");
 process.exit(0);

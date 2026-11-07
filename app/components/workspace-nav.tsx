@@ -91,6 +91,7 @@ memberItems.push({
   view: "community",
 });
 const adminItems: Item[] = [
+  {id:"monetization",label:"Monétisation · test privé",icon:ChartNoAxesCombined,view:"moderation",tab:"monetization"},
   {id:"pricing", label:"Tarifs · étude privée", icon:ChartNoAxesCombined,view:"moderation",tab:"pricing"},
   {
     id: "crm",
@@ -254,7 +255,7 @@ export function WorkspaceNav({
                 {translateUi("Administration")}
               </p>
               {adminItems
-                .filter((i) => crmOwner || !["crm", "extension", "pricing"].includes(i.id))
+                .filter((i) => crmOwner || !["crm", "extension", "pricing", "monetization"].includes(i.id))
                 .map(itemButton)}
             </>
           )}
@@ -363,7 +364,7 @@ export function WorkspaceMenuPage({
   const visibleAdmins = moderator
     ? adminItems.filter(
         (i) =>
-          (crmOwner || !["crm", "extension", "pricing"].includes(i.id)) &&
+          (crmOwner || !["crm", "extension", "pricing", "monetization"].includes(i.id)) &&
           matches(i.label),
       )
     : [];

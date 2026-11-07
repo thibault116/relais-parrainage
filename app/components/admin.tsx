@@ -1,5 +1,6 @@
 "use client";
 import { t as translateUi, locale } from "@/app/components/language";
+import { AdminMonetization } from "./admin-monetization";
 import { AdminPricing } from "./admin-pricing";
 import { AdminCrm } from "./admin-crm";
 import { AdminRetention } from "./admin-retention";
@@ -120,6 +121,7 @@ export function AdminDashboard({
           ...(crmOwner
             ? [
                 ["pricing", "Tarifs · étude privée"],
+                ["monetization", "Monétisation · test privé"],
                 ["crm", "Mon CRM Vinted"],
                 ["extension", "Extension Vinted"],
               ]
@@ -151,7 +153,7 @@ export function AdminDashboard({
           </p>
         ),
       )}
-      {tab === "pricing" && crmOwner ? <AdminPricing /> : (tab === "crm" || tab === "extension") && crmOwner ? (
+      {tab === "monetization" && crmOwner ? <AdminMonetization /> : tab === "pricing" && crmOwner ? <AdminPricing /> : (tab === "crm" || tab === "extension") && crmOwner ? (
         <AdminCrm extension={tab === "extension"} />
       ) : tab === "settings" ? (
         <AdminSettings />

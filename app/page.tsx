@@ -191,6 +191,7 @@ export default function App() {
   const [role, setRole] = useState<"mentor" | "beginner">("beginner");
   const [profileTab, setProfileTab] = useState("accompaniments");
   const [adminTab, setAdminTab] = useState("overview");
+  useEffect(() => { if (new URLSearchParams(window.location.search).get("adminTab") === "monetization") setAdminTab("monetization"); }, []);
   const selectedProfileTab =
     profileTab === "verification" || profileTab === "emails"
       ? "appearance"
