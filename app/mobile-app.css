@@ -17,9 +17,9 @@
     isolation: isolate;
   }
   :root[data-theme="dark"] .mobile-app {
-    --m-surface: #0c0b10;
-    --m-card: linear-gradient(115deg, #201928, #141219);
-    background: #08070c;
+    --m-surface: #0e0b10;
+    --m-card: linear-gradient(115deg, #211928, #161219);
+    background: #0a070c;
     color: #faf7ff;
   }
   .mobile-app button,
@@ -77,7 +77,7 @@
   .mobile-icon i {
     width: 7px;
     height: 7px;
-    background: #cb30ff;
+    background: #883af5;
     position: absolute;
     right: 5px;
     top: 5px;

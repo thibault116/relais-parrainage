@@ -9,6 +9,7 @@ import "./globals.css";
 import "./mobile-refinements.css";
 import "./mobile-app.css";
 import "./refonte-kit.css";
+import "./brand-violet.css";
 import { SuggestionWidget } from "./components/suggestions";
 import { ReleaseNotes } from "./components/release-notes";
 import { UpdateBanner } from "./components/update-banner";

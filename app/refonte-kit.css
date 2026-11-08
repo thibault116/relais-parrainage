@@ -1,9 +1,9 @@
 /* Kit éditorial Mentora : changements visuels, comportements existants. */
 @media (max-width: 900px) {
   :root[data-theme="dark"] .mobile-app {
-    --m-surface: #171221;
-    --m-card: #171221;
-    background: #0b0911;
+    --m-surface: #1a1221;
+    --m-card: #1a1221;
+    background: #0e0911;
     color: #f5f2fa;
   }
   .mobile-app .mobile-app-header {
@@ -252,10 +252,10 @@
 .refonte-phone {
   position: relative;
   width: 290px;
-  border: 7px solid #29232f;
+  border: 7px solid #2a232f;
   border-radius: 43px;
   overflow: hidden;
-  background: #0b0911;
+  background: #0e0911;
   box-shadow: 0 35px 90px #0005;
   aspect-ratio: 390/844;
 }
@@ -273,7 +273,7 @@
   width: 30%;
   height: 15px;
   border-radius: 15px;
-  background: #08070c;
+  background: #0a070c;
 }
 .refonte-chapter {
   min-height: 480px;
@@ -327,7 +327,7 @@
   .refonte-chapter .refonte-inline-shot {
     display: block;
     width: 230px;
-    border: 6px solid #29232f;
+    border: 6px solid #2a232f;
     border-radius: 34px;
     margin: 24px auto;
     aspect-ratio: 390/844;

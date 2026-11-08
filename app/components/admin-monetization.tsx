@@ -1,4 +1,21 @@
 "use client";
+import {
+  Crown,
+  Coins,
+  Wallet,
+  BarChart3,
+  ClipboardList,
+  Plus,
+  ChevronRight,
+  CreditCard,
+  FileText,
+  CircleX,
+  ArrowDownToLine,
+  Check,
+  MoreHorizontal,
+  Rocket,
+  ArrowLeft,
+} from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import type { serviceSchema } from "@/lib/monetization/store";
 import type { z } from "zod";
@@ -74,6 +91,9 @@ export function AdminMonetization({
     [slot, setSlot] = useState("");
   const [billing, setBilling] = useState<any>(null);
   useEffect(() => setTab(initialTab), [initialTab]);
+  const [panel, setPanel] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [serviceMenu, setServiceMenu] = useState<string | null>(null);
   const load = useCallback(async () => {
     try {
       const r = await fetch("/api/admin/monetization", { cache: "no-store" }),
@@ -150,8 +170,541 @@ export function AdminMonetization({
   }
   if (!data)
     return <p role="status">{error || "Chargement du système privé…"}</p>;
+  if (
+    dedicated &&
+    !editing &&
+    ["plans", "wallet", "payouts", "services"].includes(tab)
+  ) {
+    const current =
+      data.plans.find((p) => p.id === data.account.plan) || data.plans[0];
+    const completed = data.bookings.filter((b) => b.status === "completed");
+    const due = completed.reduce((n, b) => n + b.payout_cents, 0);
+    const toggle = (name: string) => setPanel(panel === name ? "" : name);
+    const row = (
+      label: string,
+      Icon: typeof Crown,
+      action: () => void,
+      danger = false,
+    ) => (
+      <button
+        type="button"
+        className={`commerce-row ${danger ? "danger" : ""}`}
+        onClick={action}
+        disabled={busy}
+      >
+        <Icon size={21} />
+        <span>{label}</span>
+        <ChevronRight size={17} />
+      </button>
+    );
+    const portal = () => void send({ action: "portal" });
+    const invoices = (
+      <div className="commerce-history">
+        {billing?.invoices?.length ? (
+          billing.invoices.map((i: any) => (
+            <article key={i.id}>
+              <span>
+                {i.number || "Facture"}
+                <small>
+                  {new Date(i.date * 1000).toLocaleDateString("fr-FR")}
+                </small>
+              </span>
+              <strong>{euro(i.amount)}</strong>
+              {i.url && (
+                <a href={i.url} target="_blank" rel="noreferrer">
+                  Voir
+                </a>
+              )}
+              {i.pdf && (
+                <a href={i.pdf} target="_blank" rel="noreferrer">
+                  PDF
+                </a>
+              )}
+            </article>
+          ))
+        ) : (
+          <p>Aucune facture disponible.</p>
+        )}
+        {row("Historique complet sur Stripe", FileText, portal)}
+      </div>
+    );
+    return (
+      <section className="commerce-page">
+        <header className="commerce-heading">
+          <h1>
+            {
+              {
+                plans: "Mon abonnement",
+                wallet: "Mes crédits",
+                payouts: "Ma rémunération",
+                services: "Mes prestations",
+              }[tab]
+            }
+          </h1>
+          <p>
+            {
+              {
+                plans: "Gère ton offre et ta facturation.",
+                wallet:
+                  "Utilise tes crédits pour réserver des prestations et des accompagnements.",
+                payouts:
+                  "Suis tes prestations réalisées et tes rémunérations dues.",
+                services: "Gère les prestations que tu proposes aux membres.",
+              }[tab]
+            }
+          </p>
+        </header>
+        <span className="commerce-test">TEST PRIVÉ · Aucun paiement réel</span>
+        {error && (
+          <p role="alert" className="error">
+            {error}
+          </p>
+        )}
+        {message && <p role="status">{message}</p>}
+        {tab === "plans" && (
+          <>
+            <article className="commerce-card commerce-plan">
+              <div className="commerce-plan-top">
+                <Crown />
+                <div>
+                  <h2>Offre {current.name}</h2>
+                  <p>{euro(current.cents)} / mois</p>
+                </div>
+                <span className="commerce-pill">
+                  {data.account.cancel_at_end
+                    ? "Fin programmée"
+                    : data.account.status === "active"
+                      ? "Actif"
+                      : current.id === "free"
+                        ? "Gratuit"
+                        : "À vérifier"}
+                </span>
+              </div>
+              <ul className="commerce-benefits">
+                <li>
+                  <Check />
+                  {current.credits} crédits par mois
+                </li>
+                {data.comparison
+                  .filter((r) =>
+                    [
+                      "Accès à la communauté",
+                      "Messagerie",
+                      "Espaces d’accompagnement simultanés",
+                    ].includes(r.label),
+                  )
+                  .map((r) => (
+                    <li key={r.label}>
+                      <Check />
+                      {r.label} ·{" "}
+                      {
+                        r.values[
+                          data.plans.findIndex((p) => p.id === current.id)
+                        ]
+                      }
+                    </li>
+                  ))}
+              </ul>
+              {billing?.renewal && (
+                <small>
+                  {data.account.cancel_at_end
+                    ? "Fin le "
+                    : "Renouvellement le "}
+                  {new Date(billing.renewal * 1000).toLocaleDateString("fr-FR")}
+                </small>
+              )}
+              {billing?.pendingPlan && (
+                <p className="commerce-upcoming">
+                  Prochaine offre : {billing.pendingPlan}
+                </p>
+              )}
+            </article>
+            <button
+              className="commerce-primary"
+              disabled={busy}
+              onClick={() => toggle("offers")}
+            >
+              <Crown size={19} />
+              Changer d’offre
+            </button>
+            {panel === "offers" && (
+              <section className="commerce-offers">
+                <h2>Choisis ton prochain cap</h2>
+                <p>
+                  Formules mensuelles · changement au prochain renouvellement.
+                </p>
+                {data.plans.map((p) => (
+                  <article
+                    className={`commerce-card ${current.id === p.id ? "chosen" : ""}`}
+                    key={p.id}
+                  >
+                    <div className="commerce-plan-top">
+                      <Crown />
+                      <h3>{p.name}</h3>
+                      <strong>
+                        {euro(p.cents)}
+                        <small>/mois</small>
+                      </strong>
+                    </div>
+                    <p>{p.credits} crédits par mois</p>
+                    <details>
+                      <summary>Fonctionnalités incluses</summary>
+                      <ul>
+                        {data.comparison.map((r) => (
+                          <li key={r.label}>
+                            {r.label} :{" "}
+                            {
+                              r.values[
+                                data.plans.findIndex((x) => x.id === p.id)
+                              ]
+                            }
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                    {p.id === current.id ? (
+                      <span className="commerce-pill">Offre actuelle</span>
+                    ) : p.cents > 0 ? (
+                      <button
+                        className="commerce-primary"
+                        disabled={
+                          busy ||
+                          !data.configured ||
+                          !!data.account.cancel_at_end
+                        }
+                        onClick={() => {
+                          const active = ["active", "trialing"].includes(
+                            data.account.status,
+                          );
+                          if (
+                            !active ||
+                            window.confirm(
+                              `Passer à ${p.name} au prochain renouvellement pour ${euro(p.cents)}/mois ?`,
+                            )
+                          )
+                            void send(
+                              active
+                                ? { action: "change-plan", plan: p.id }
+                                : {
+                                    action: "checkout",
+                                    offer: p.id,
+                                    key: crypto.randomUUID(),
+                                  },
+                            );
+                        }}
+                      >
+                        Choisir {p.name}
+                      </button>
+                    ) : (
+                      <p>
+                        Le retour à Free se fait en résiliant ton abonnement.
+                      </p>
+                    )}
+                  </article>
+                ))}
+              </section>
+            )}
+            <div className="commerce-links">
+              {row("Gérer ma carte", CreditCard, portal)}
+              {billing?.card && (
+                <small className="commerce-card-hint">
+                  {billing.card.brand} •••• {billing.card.last4} ·{" "}
+                  {billing.card.month}/{billing.card.year}
+                </small>
+              )}
+              {row("Voir mes factures", FileText, () => toggle("invoices"))}
+              {["active", "trialing"].includes(data.account.status) &&
+                row(
+                  data.account.cancel_at_end
+                    ? "Reprendre mon abonnement"
+                    : "Résilier mon abonnement",
+                  CircleX,
+                  () => {
+                    if (
+                      window.confirm(
+                        data.account.cancel_at_end
+                          ? "Reprendre le renouvellement test ?"
+                          : "Résilier à la fin de la période et annuler tout changement programmé ?",
+                      )
+                    )
+                      void send({
+                        action: data.account.cancel_at_end
+                          ? "resume-subscription"
+                          : "cancel-subscription",
+                      });
+                  },
+                  !data.account.cancel_at_end,
+                )}
+            </div>
+            {panel === "invoices" && invoices}
+          </>
+        )}
+        {tab === "wallet" && (
+          <>
+            <article className="commerce-card commerce-balance">
+              <Coins size={38} />
+              <strong>{data.balance} crédits</strong>
+              <span>Solde disponible</span>
+            </article>
+            <button
+              className="commerce-primary"
+              onClick={() =>
+                document
+                  .getElementById("commerce-packs")
+                  ?.scrollIntoView({
+                    behavior: window.matchMedia(
+                      "(prefers-reduced-motion: reduce)",
+                    ).matches
+                      ? "auto"
+                      : "smooth",
+                    block: "center",
+                  })
+              }
+            >
+              <Plus />
+              Acheter des crédits
+            </button>
+            {row("Historique des crédits", FileText, () => toggle("credits"))}
+            {panel === "credits" && (
+              <div className="commerce-history">
+                {data.ledger.length ? (
+                  data.ledger.map((l, i) => (
+                    <article key={i}>
+                      <span>
+                        {l.kind}
+                        <small>
+                          {new Date(l.created_at).toLocaleDateString("fr-FR")}
+                        </small>
+                      </span>
+                      <strong>
+                        {l.delta > 0 ? "+" : ""}
+                        {l.delta}
+                      </strong>
+                    </article>
+                  ))
+                ) : (
+                  <p>Aucun mouvement.</p>
+                )}
+              </div>
+            )}
+            <h2 className="commerce-section-title" id="commerce-packs">
+              Packs de crédits
+            </h2>
+            <div className="commerce-packs">
+              {data.packs.map((p) => (
+                <button
+                  key={p.id}
+                  className="commerce-card commerce-pack"
+                  disabled={busy || !data.configured}
+                  onClick={() =>
+                    void send({
+                      action: "checkout",
+                      offer: p.id,
+                      key: crypto.randomUUID(),
+                    })
+                  }
+                >
+                  <Coins />
+                  <strong>{p.credits} crédits</strong>
+                  <span>{euro(p.cents)}</span>
+                  <ChevronRight size={16} />
+                </button>
+              ))}
+            </div>
+            <small className="commerce-footnote">
+              Les crédits restent personnels, sans transfert ni conversion en
+              argent.
+            </small>
+          </>
+        )}
+        {tab === "payouts" && (
+          <>
+            <article className="commerce-card commerce-balance">
+              <div className="commerce-plan-top">
+                <Wallet />
+                <span>Rémunération due</span>
+              </div>
+              <strong>{euro(due)}</strong>
+              <button className="commerce-primary" disabled>
+                <ArrowDownToLine />
+                Retraits non activés
+              </button>
+              <small>Simulation · aucun versement réel</small>
+            </article>
+            <div className="commerce-stat-grid">
+              <article className="commerce-card">
+                <Coins />
+                <strong>{completed.reduce((n, b) => n + b.credits, 0)}</strong>
+                <span>Crédits des prestations</span>
+              </article>
+              <article className="commerce-card">
+                <Check />
+                <strong>{completed.length}</strong>
+                <span>Prestations réalisées</span>
+              </article>
+            </div>
+            {row("Historique des rémunérations", BarChart3, () =>
+              toggle("earnings"),
+            )}
+            {panel === "earnings" && (
+              <div className="commerce-history">
+                {completed.length ? (
+                  completed.map((b) => (
+                    <article key={b.id}>
+                      <span>{b.snapshot.title}</span>
+                      <strong>{euro(b.payout_cents)}</strong>
+                    </article>
+                  ))
+                ) : (
+                  <p>Aucune prestation terminée.</p>
+                )}
+              </div>
+            )}
+            {row("Historique des réservations", ClipboardList, () =>
+              toggle("bookings"),
+            )}
+            {panel === "bookings" && (
+              <div className="commerce-history">
+                {data.bookings.length ? (
+                  data.bookings.map((b) => (
+                    <article key={b.id}>
+                      <span>
+                        {b.snapshot.title}
+                        <small>{status[b.status] || b.status}</small>
+                      </span>
+                      <strong>{b.credits} crédits</strong>
+                    </article>
+                  ))
+                ) : (
+                  <p>Aucune réservation.</p>
+                )}
+              </div>
+            )}
+            {row("Mes retraits", Wallet, () => toggle("withdrawals"))}
+            {panel === "withdrawals" && (
+              <div className="commerce-card">
+                <p>
+                  Aucun retrait. Les virements seront proposés dans une étape
+                  distincte après activation et validation du système de
+                  rémunération.
+                </p>
+              </div>
+            )}
+          </>
+        )}
+        {tab === "services" && (
+          <>
+            <button
+              className="commerce-primary"
+              onClick={() => {
+                setForm(blank);
+                setEditId(undefined);
+                setEditing(true);
+              }}
+            >
+              <Plus />
+              Ajouter une prestation
+            </button>
+            <div className="commerce-services">
+              {data.services.length ? (
+                data.services.map((s) => (
+                  <article className="commerce-card" key={s.id}>
+                    <div className="commerce-plan-top">
+                      <Rocket />
+                      <div>
+                        <h2>{s.data.title}</h2>
+                        <p>
+                          {s.data.category} · {s.data.duration} min
+                        </p>
+                      </div>
+                      <button
+                        className="commerce-icon"
+                        aria-label={`Options de ${s.data.title}`}
+                        onClick={() =>
+                          setServiceMenu(serviceMenu === s.id ? null : s.id)
+                        }
+                      >
+                        <MoreHorizontal />
+                      </button>
+                    </div>
+                    <div className="commerce-service-bottom">
+                      <strong>{s.data.credits} crédits</strong>
+                      <button
+                        role="switch"
+                        aria-checked={s.data.published}
+                        aria-label={`Publier ${s.data.title}`}
+                        className={`commerce-switch ${s.data.published ? "on" : ""}`}
+                        disabled={busy}
+                        onClick={() =>
+                          void send({
+                            action: "save",
+                            id: s.id,
+                            service: {
+                              ...s.data,
+                              published: !s.data.published,
+                            },
+                          })
+                        }
+                      >
+                        <span />
+                      </button>
+                    </div>
+                    {serviceMenu === s.id && (
+                      <div className="commerce-service-menu">
+                        <p>{s.data.description}</p>
+                        <p>
+                          Rémunération prévue :{" "}
+                          {euro(s.data.credits * data.payoutRate)}
+                        </p>
+                        <button
+                          className="commerce-row"
+                          onClick={() => {
+                            setForm(s.data);
+                            setEditId(s.id);
+                            setEditing(true);
+                          }}
+                        >
+                          Modifier la prestation
+                          <ChevronRight />
+                        </button>
+                        <button
+                          className="commerce-row danger"
+                          disabled={busy}
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                "Supprimer cette prestation du catalogue ?",
+                              )
+                            )
+                              void send({ action: "delete", id: s.id });
+                          }}
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    )}
+                  </article>
+                ))
+              ) : (
+                <article className="commerce-card">
+                  <ClipboardList />
+                  <p>Partage ton expérience : crée ta première prestation.</p>
+                </article>
+              )}
+            </div>
+          </>
+        )}
+      </section>
+    );
+  }
   return (
     <section className="pricing-lab money-lab">
+      {dedicated && editing && (
+        <button className="commerce-row" onClick={() => setEditing(false)}>
+          <ArrowLeft />
+          Mes prestations
+        </button>
+      )}
       <div className="pricing-private">
         <strong>Monétisation · TEST · toi uniquement</strong>
         <span>Aucun encaissement ni versement réel</span>
@@ -469,6 +1022,7 @@ export function AdminMonetization({
               if (await send({ action: "save", id: editId, service: form })) {
                 setForm(blank);
                 setEditId(undefined);
+                setEditing(false);
               }
             }}
           >
