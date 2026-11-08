@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   Home,
+  Rocket,
   Menu,
   AlertCircle,
   Shield,
@@ -41,6 +42,7 @@ import {
   NotebookPen,
 } from "lucide-react";
 import { AdminMonetization } from "./admin-monetization";
+import { JoinOffers } from "./join-offers";
 import { OwnerPlanBadge } from "./owner-billing";
 import { BrandLogo } from "./brand-logo";
 import { useFeature } from "./beta";
@@ -186,6 +188,7 @@ export function MobileExperience({
   onNavigate: (view: string, tab?: string, section?: string) => void;
   onOpenProfile: (id: string, role: string) => void;
 }) {
+  const offersEnabled = useFeature("joinOffers");
   const completionNeeded = useMentorCompletion(profile?.role === "mentor");
   const extras = useFeature("mobileExtras"),
     dm = useFeature("privateMessaging"),
@@ -486,6 +489,15 @@ export function MobileExperience({
         ["Général", Settings, () => openSettings("general")],
         ["Sécurité", Shield, () => openSettings("security")],
         ["Notifications", Bell, () => openSettings("notifications")],
+        ...(profile?.role === "beginner" && offersEnabled
+          ? [
+              ["Nous rejoindre", Rocket, () => go("joinOffers")] as [
+                string,
+                typeof Home,
+                () => void,
+              ],
+            ]
+          : []),
         ...(administrator
           ? ([
               ["Abonnement", Layers, () => go("billing")],
@@ -577,6 +589,7 @@ export function MobileExperience({
         : screen === "community"
           ? "community"
           : [
+                "joinOffers",
                 "billing",
                 "credits",
                 "services",
@@ -669,6 +682,19 @@ export function MobileExperience({
           </div>
         )}
         <main className="mobile-app-content">
+          {screen === "joinOffers" && (
+            <>
+              <button className="mobile-back" onClick={back}>
+                <ChevronLeft size={18} />
+                Retour
+              </button>
+              {profile?.role === "beginner" && offersEnabled ? (
+                <JoinOffers onFree={() => go("discover")} />
+              ) : (
+                beta
+              )}
+            </>
+          )}
           {["billing", "credits", "services", "payouts"].includes(screen) && (
             <>
               <button className="mobile-back" onClick={back}>

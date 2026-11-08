@@ -479,3 +479,283 @@
     transition: none !important;
   }
 }
+.join-heading {
+  text-align: center;
+  margin: 4px 0 24px;
+}
+.join-heading h1 {
+  font-size: 30px;
+  line-height: 1.2;
+  letter-spacing: -1px;
+  margin: 0 0 12px;
+}
+.join-heading h1 span,
+.join-comparison h2 span {
+  color: var(--brand-highlight);
+}
+.join-heading p,
+.join-comparison > p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.join-heading > small {
+  display: block;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 12px auto;
+  max-width: 34ch;
+}
+.join-period {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+  border-radius: 28px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  margin: 0 0 22px;
+}
+.join-period button {
+  border: 0;
+  border-radius: 23px;
+  min-height: 44px;
+  font-size: 13px;
+  line-height: 1.4;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+}
+.join-period button[aria-pressed="true"] {
+  background: var(--brand-gradient);
+  color: #fff;
+}
+.join-period button span {
+  font-size: 10px;
+  border-radius: 10px;
+  padding: 3px 6px;
+  margin-left: 5px;
+  background: var(--brand-gradient);
+  color: #fff;
+}
+.join-card-title {
+  display: flex;
+  gap: 13px;
+  align-items: flex-start;
+  min-width: 0;
+}
+.join-card-title > svg {
+  width: 30px;
+  height: 32px;
+  color: var(--brand-highlight);
+  flex-shrink: 0;
+}
+.join-card-title > div {
+  flex: 1;
+  min-width: 0;
+}
+.join-card-title h2 {
+  font-size: 21px;
+  line-height: 1.3;
+}
+.join-card-title strong {
+  font-size: 15px;
+}
+.join-card-title strong small {
+  font-size: 11px;
+  font-weight: 400;
+}
+.join-plan ul {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 9px;
+}
+.join-plan li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.join-plan li svg {
+  width: 15px;
+  height: 18px;
+  color: #42d467;
+  flex-shrink: 0;
+}
+.join-plan li:has(.join-soon) svg {
+  color: var(--brand-highlight);
+}
+.join-plan .free-icon {
+  color: #42d467;
+}
+.join-label {
+  font-size: 10px;
+  background: var(--line);
+  padding: 5px 9px;
+  border-radius: 14px;
+  margin-left: auto;
+}
+.join-plan.featured {
+  border-color: var(--brand-highlight);
+  box-shadow: 0 0 16px #883af530;
+}
+.join-plan .commerce-pill {
+  font-size: 9px;
+  white-space: normal;
+  max-width: 80px;
+  text-align: center;
+}
+.join-plan .join-annual-total {
+  font-size: 11px;
+  margin-top: 12px;
+  line-height: 1.5;
+}
+.join-plan-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  margin: 12px 0 -5px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  padding: 12px 0 0;
+  background: none;
+  color: var(--ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+.join-soon {
+  display: inline-block !important;
+  font-size: 8px !important;
+  line-height: 1.4 !important;
+  border-radius: 7px;
+  padding: 2px 5px;
+  background: var(--brand-gradient);
+  color: #fff !important;
+  margin: 2px 0 2px 4px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.join-comparison {
+  padding-top: 22px;
+  margin-top: 10px;
+}
+.join-comparison h2 {
+  text-align: center;
+  font-size: 25px;
+  line-height: 1.3;
+  letter-spacing: -0.5px;
+}
+.join-comparison > p {
+  text-align: center;
+  margin-bottom: 22px;
+}
+.join-table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  max-width: 100%;
+  scroll-margin-top: 100px;
+}
+.join-table-scroll:focus-visible {
+  outline: 2px solid var(--brand-highlight);
+  outline-offset: 4px;
+}
+.join-table-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 340px;
+  font-size: 10px;
+  table-layout: fixed;
+}
+.join-table-scroll th,
+.join-table-scroll td {
+  border: 1px solid var(--line);
+  padding: 11px 5px;
+  line-height: 1.45;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.join-table-scroll th:first-child {
+  width: 43%;
+  text-align: left;
+  padding-left: 10px;
+}
+.join-table-scroll thead th {
+  background: var(--surface);
+  font-size: 11px;
+}
+.join-table-scroll th svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+  margin: 0 auto 6px;
+  color: var(--brand-highlight);
+}
+.join-table-scroll tbody th {
+  font-weight: 450;
+}
+.join-table-scroll td svg {
+  width: 19px;
+  height: 19px;
+  vertical-align: middle;
+}
+.join-table-scroll .included {
+  color: #42d467;
+}
+.join-table-scroll .excluded {
+  color: #ee4756;
+}
+.join-table-scroll .highlight {
+  background: color-mix(in srgb, var(--purple) 12%, transparent);
+  border-inline-color: var(--brand-highlight);
+}
+.join-summary {
+  scroll-margin-top: 110px;
+}
+.join-summary p {
+  line-height: 1.65;
+}
+.join-offers button:focus-visible {
+  outline: 2px solid var(--brand-highlight);
+  outline-offset: 4px;
+}
+@media (min-width: 700px) {
+  .join-offers {
+    max-width: 850px;
+  }
+  .join-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .join-table-scroll table {
+    font-size: 13px;
+  }
+  .join-table-scroll th,
+  .join-table-scroll td {
+    padding: 15px;
+  }
+}
+@media (max-width: 900px) {
+  .mobile-app:has(.commerce-page) .mobile-app-header {
+    background: color-mix(in srgb, var(--bg) 96%, transparent);
+    backdrop-filter: blur(12px);
+  }
+}
+.join-table-scroll th:first-child {
+  width: 40%;
+}
+.join-table-scroll td {
+  padding-inline: 3px;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.join-table-scroll abbr {
+  text-decoration: none;
+}
