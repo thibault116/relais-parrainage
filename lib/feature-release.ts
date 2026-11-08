@@ -9,7 +9,6 @@ export const featureReleases: Record<string, "beta" | "stable"> = {
   communityEditing: "beta",
   onboardingV2: "stable",
   betaFeedback: "beta",
-  joinOffers: "beta",
 };
 export function featureAvailable(feature: string, betaTester: boolean) {
   return featureReleases[feature] === "stable" || betaTester;

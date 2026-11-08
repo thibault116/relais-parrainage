@@ -188,7 +188,6 @@ export function MobileExperience({
   onNavigate: (view: string, tab?: string, section?: string) => void;
   onOpenProfile: (id: string, role: string) => void;
 }) {
-  const offersEnabled = useFeature("joinOffers");
   const completionNeeded = useMentorCompletion(profile?.role === "mentor");
   const extras = useFeature("mobileExtras"),
     dm = useFeature("privateMessaging"),
@@ -489,7 +488,7 @@ export function MobileExperience({
         ["Général", Settings, () => openSettings("general")],
         ["Sécurité", Shield, () => openSettings("security")],
         ["Notifications", Bell, () => openSettings("notifications")],
-        ...(profile?.role === "beginner" && offersEnabled
+        ...(administrator
           ? [
               ["Nous rejoindre", Rocket, () => go("joinOffers")] as [
                 string,
@@ -688,10 +687,10 @@ export function MobileExperience({
                 <ChevronLeft size={18} />
                 Retour
               </button>
-              {profile?.role === "beginner" && offersEnabled ? (
+              {administrator ? (
                 <JoinOffers onFree={() => go("discover")} />
               ) : (
-                beta
+                <p>Accès réservé au compte administrateur principal.</p>
               )}
             </>
           )}

@@ -75,8 +75,7 @@ export function JoinOffers({ onFree }: { onFree: () => void }) {
           Mentora.
         </p>
         <small>
-          Présentation en bêta · Les abonnements ne sont pas encore ouverts aux
-          membres.
+          Présentation privée · Les abonnements ne sont pas ouverts aux membres.
         </small>
       </header>
       <div

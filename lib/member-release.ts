@@ -1,9 +1,11 @@
 export const memberRelease = {
-  id: "2026-11-08-join-offers-beta",
-  title: "Découvrir les offres Mentora",
+  id: "2026-11-08-new-violet",
+  title: "Le nouveau violet de Mentora",
   notes: [
-    "Les débutants bêta-testeurs peuvent découvrir les formules mensuelles et annuelles et leur comparatif dans Menu → Nous rejoindre. Aucun paiement n’est ouvert aux membres.",
+    "Une nouvelle palette violette harmonise les boutons, les icônes et les accents de Mentora.",
   ],
   guideUrl: "/#home",
   guideLabel: "Voir Mentora",
 };
+
+export const retiredMemberReleaseIds = ["2026-11-08-join-offers-beta"];
