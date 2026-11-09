@@ -1,11 +1,12 @@
 export const memberRelease = {
-  id: "2026-11-08-new-violet",
-  title: "Le nouveau violet de Mentora",
+  id: "2026-11-09-desktop-menu",
+  title: "Retrouve tes onglets sur ordinateur",
   notes: [
-    "Une nouvelle palette violette harmonise les boutons, les icônes et les accents de Mentora.",
+    "La barre de gauche reprend les onglets du téléphone, classés par catégorie.",
+    "Utilise la recherche du menu pour retrouver rapidement un onglet ou un réglage.",
   ],
-  guideUrl: "/#home",
-  guideLabel: "Voir Mentora",
+  guideUrl: "/#menu",
+  guideLabel: "Voir le menu",
 };
 
-export const retiredMemberReleaseIds = ["2026-11-08-join-offers-beta"];
+export const retiredMemberReleaseIds = [] as string[];

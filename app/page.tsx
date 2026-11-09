@@ -8,7 +8,6 @@ import {
 import { useFeature, BetaSettings } from "./components/beta";
 import { OnboardingSummary } from "./components/onboarding-summary";
 import { ProfileForm as NewProfileForm } from "./components/onboarding";
-import { Community } from "./components/community";
 import { t as translateUi } from "@/app/components/language";
 import { BrandLogo } from "./components/brand-logo";
 import {
@@ -88,8 +87,10 @@ type View =
   | "moderation"
   | "help"
   | "menu"
-  | "community";
+  | "community"
+  | "workspace";
 const views: Record<View, string> = {
+  workspace: "Mon espace",
   community: "Communauté",
   menu: "Menu",
   help: "Aide",
@@ -128,7 +129,10 @@ async function api(path: string, options: RequestInit = {}) {
   return data;
 }
 import { TodoLists } from "./components/todo-lists";
-import { WorkspaceNav, WorkspaceMenuPage } from "./components/workspace-nav";
+import { WorkspaceNav } from "./components/workspace-nav";
+import {
+  desktopExperienceScreens, workspaceRoutes, type WorkspaceTarget,
+} from "./components/workspace-destinations";
 export default function App() {
   const { discordUrl: DISCORD_GROUP } = usePlatformSettings();
   const [requestedView, setView] = useState<View>("home");
@@ -148,6 +152,8 @@ export default function App() {
   );
   const preview = moderator ? previewRole : null;
   const showAdmin = moderator && !preview;
+  const owner = showAdmin &&
+    session?.user.email.toLowerCase() === "thibault.cordiez@hotmail.com";
   const [moderationBlock, setModerationBlock] = useState<string | null>(null);
   const publicView = ["home", "guide", "faq", "help"].includes(requestedView);
   const view: View = publicView
@@ -163,6 +169,8 @@ export default function App() {
       "directory",
       "profile",
       "moderation",
+      "workspace",
+      "faq",
       "help",
       "menu",
       "community",
@@ -196,26 +204,46 @@ export default function App() {
   );
   const [profileTab, setProfileTab] = useState("accompaniments");
   const [adminTab, setAdminTab] = useState("overview");
-  useEffect(() => {
-    const tab = new URLSearchParams(window.location.search).get("adminTab");
-    if (
-      tab &&
-      [
-        "overview",
-        "accounts",
-        "verification",
-        "reports",
-        "ratings",
-        "suggestions",
-        "emails",
-        "settings",
-        "crm",
-        "extension",
-        "pricing",
-        "monetization",
-      ].includes(tab)
-    )
-      setAdminTab(tab);
+  const [desktopScreen, setDesktopScreen] = useState("home");
+  const [desktopChat, setDesktopChat] = useState("");
+  const activeDesktopScreen =
+    view === "workspace" ? desktopScreen :
+    view === "directory" ? "discover" :
+    view === "moderation" ? "admin" :
+    view === "profile" ?
+      ({ appearance: "settings", verification: "settings", emails: "settings",
+         accompaniments: "pairs" }[profileTab] || profileTab) :
+    view;
+  const openDesktop = useCallback((item: WorkspaceTarget, params: Record<string, string> = {}) => {
+    const screen = item.screen;
+    const route = workspaceRoutes[screen];
+    const next = (route?.[0] || (screen === "community" || screen === "menu" ? screen : "workspace")) as View;
+    const url = new URL(window.location.href);
+    for (const key of ["mobile", "chat", "profileTab", "settingsSection", "adminTab", "network", "member"]) url.searchParams.delete(key);
+    url.searchParams.set("mobile", screen);
+    if (route?.[1]) url.searchParams.set("profileTab", route[1]);
+    if (item.settingsSection) url.searchParams.set("settingsSection", item.settingsSection);
+    if (item.adminTab) url.searchParams.set("adminTab", item.adminTab);
+    Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+    url.hash = next;
+    if (url.href !== window.location.href)
+      window.history.pushState({ mentoraDepth: (window.history.state?.mentoraDepth || 0) + 1 }, "", url);
+    setDesktopScreen(screen);
+    setDesktopChat(params.chat || "");
+    if (route?.[1]) setProfileTab(route[1]);
+    if (item.settingsSection) setSettingsSection(item.settingsSection);
+    if (item.adminTab) setAdminTab(item.adminTab);
+    if (next === "directory") setFocusMember(null);
+    setView(next);
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, []);
+  const navigateMobile = useCallback((next: string, tab?: string, section?: string) => {
+    if (next === "profile" && tab === "appearance")
+      setSettingsSection(section || "general");
+    setView(next as View);
+    if (next === "directory") setFocusMember(null);
+    if (tab && next === "moderation") setAdminTab(tab);
+    else if (tab) setProfileTab(tab);
   }, []);
   const selectedProfileTab =
     profileTab === "verification" || profileTab === "emails"
@@ -243,7 +271,16 @@ export default function App() {
     if (next === "directory") setFocusMember(null);
     setView(next);
     setMobile(false);
-    window.location.hash = next;
+    const url = new URL(window.location.href);
+    if (!phoneLayout) {
+      for (const key of ["mobile", "chat", "profileTab", "settingsSection", "adminTab", "network", "member"])
+        url.searchParams.delete(key);
+      url.hash = next;
+      if (url.href !== window.location.href)
+        window.history.pushState({ mentoraDepth: (window.history.state?.mentoraDepth || 0) + 1 }, "", url);
+    } else {
+      window.location.hash = next;
+    }
     window.scrollTo({
       top: 0,
       behavior:
@@ -255,28 +292,45 @@ export default function App() {
   };
   useEffect(() => {
     const read = () => {
-      const v = window.location.hash.slice(1);
-      setView(v in views ? (v as View) : "home");
+      const hash = window.location.hash.slice(1);
+      const params = new URLSearchParams(window.location.search);
+      const screen = params.get("mobile") || "";
+      const desktop = !window.matchMedia("(max-width: 900px)").matches;
+      const auxiliary = desktop && desktopExperienceScreens.has(screen) &&
+        (hash === "workspace" || hash === "profile" || (screen === "community" && hash === "community"));
+      setView(auxiliary && screen !== "community" ? "workspace" :
+        Object.hasOwn(views, hash) ? (hash as View) : "home");
+      setDesktopScreen(auxiliary ? screen : "home");
+      setDesktopChat(params.get("chat") || "");
+      const tab = params.get("profileTab");
+      if (tab && ["verification", "following", "edit", "accompaniments", "requests", "emails", "appearance", "tasks"].includes(tab))
+        setProfileTab(tab);
+      else if (desktop && hash === "profile" && !auxiliary) setProfileTab("accompaniments");
+      const section = params.get("settingsSection") || "general";
+      setSettingsSection(["general", "security", "notifications", "verification"].includes(section) ? section : "general");
+      const admin = params.get("adminTab");
+      if (admin && ["overview", "accounts", "verification", "reports", "ratings", "suggestions", "emails", "settings", "crm", "extension", "pricing", "monetization"].includes(admin))
+        setAdminTab(admin);
+      else if (desktop && hash === "moderation") setAdminTab("overview");
     };
-    const tab = new URLSearchParams(window.location.search).get("profileTab");
-    if (
-      tab &&
-      [
-        "verification",
-        "following",
-        "edit",
-        "accompaniments",
-        "requests",
-        "emails",
-        "appearance",
-        "tasks",
-      ].includes(tab)
-    )
-      setProfileTab(tab);
     read();
     window.addEventListener("hashchange", read);
-    return () => window.removeEventListener("hashchange", read);
+    window.addEventListener("popstate", read);
+    return () => {
+      window.removeEventListener("hashchange", read);
+      window.removeEventListener("popstate", read);
+    };
   }, []);
+  useEffect(() => {
+    if (phoneLayout || !session) return;
+    const open = (event: Event) => {
+      const { screen, chat } = (event as CustomEvent<{ screen: string; chat?: string }>).detail;
+      if (screen === "messages")
+        openDesktop({ screen }, chat ? { chat } : {});
+    };
+    window.addEventListener("mentora-mobile", open);
+    return () => window.removeEventListener("mentora-mobile", open);
+  }, [phoneLayout, session, openDesktop]);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (isPending) return;
@@ -284,7 +338,7 @@ export default function App() {
       !session &&
       (params.has("profileTab") ||
         params.has("member") ||
-        window.location.hash === "#community")
+        ["#community", "#workspace"].includes(window.location.hash))
     ) {
       setAuthMode("login");
       return;
@@ -366,23 +420,18 @@ export default function App() {
     <div className={inWorkspace ? "workspace-shell" : "public-shell"}>
       <ActivityTracker userId={session?.user.id} />
       {inWorkspace && session ? (
-        <WorkspaceNav
-          view={view}
-          profileTab={selectedProfileTab}
+        !phoneLayout && <WorkspaceNav
+          screen={activeDesktopScreen}
+          settingsSection={profileTab === "verification" ? "verification" : profileTab === "emails" ? "notifications" : settingsSection}
           adminTab={adminTab}
           mentor={profile?.role === "mentor"}
           moderator={showAdmin}
-          crmOwner={
-            showAdmin &&
-            session.user.email.toLowerCase() === "thibault.cordiez@hotmail.com"
-          }
+          owner={owner}
           name={session.user.name}
+          photo={profile?.photo}
           discordUrl={DISCORD_GROUP}
-          onNavigate={(next, tab) => {
-            go(next);
-            if (tab && next === "profile") setProfileTab(tab);
-            if (tab && next === "moderation") setAdminTab(tab);
-          }}
+          onNavigate={openDesktop}
+          onPublicHome={() => go("home")}
           onSignOut={() => {
             void detachPush()
               .then(() => authClient.signOut())
@@ -494,27 +543,30 @@ export default function App() {
         </header>
       )}
       <main id="workspace-content">
-        {!isPending && session && view === "menu" && (
-          <WorkspaceMenuPage
-            mentor={profile?.role === "mentor"}
-            moderator={showAdmin}
-            crmOwner={
-              showAdmin &&
-              session.user.email.toLowerCase() ===
-                "thibault.cordiez@hotmail.com"
-            }
-            discordUrl={DISCORD_GROUP}
-            onNavigate={(next, tab) => {
-              go(next);
-              if (tab && next === "profile") setProfileTab(tab);
-              if (tab && next === "moderation") setAdminTab(tab);
-            }}
-            onSignOut={() => {
-              void detachPush()
-                .then(() => authClient.signOut())
-                .then(() => go("home"));
-            }}
-          />
+        {!phoneLayout && session && ["workspace", "menu", "community"].includes(view) && (
+          <section className="wrap desktop-workspace-content" inert={!!preview}>
+            <MobileExperience
+              desktopScreen={activeDesktopScreen}
+              desktopChat={desktopChat}
+              onDesktopNavigate={openDesktop}
+              administrator={owner}
+              moderator={showAdmin}
+              discordUrl={DISCORD_GROUP}
+              profile={profile}
+              name={session.user.name}
+              userId={session.user.id}
+              view={view}
+              profileTab={selectedProfileTab}
+              onOpenProfile={async (id, memberRole) => {
+                try {
+                  const data = await api(`/api/profiles?role=${memberRole}&profile=${encodeURIComponent(id)}`);
+                  setFocusMember(data.profile);
+                } catch (error) {
+                  notify((error as Error).message);
+                }
+              }}
+            />
+          </section>
         )}
 
         {preview && (
@@ -557,7 +609,7 @@ export default function App() {
 
         {!isPending && session && showAdmin && view === "moderation" && (
           <AdminDashboard
-            dedicated={phoneLayout}
+            dedicated
             crmOwner={
               session.user.email.toLowerCase() ===
               "thibault.cordiez@hotmail.com"
@@ -956,9 +1008,6 @@ export default function App() {
           />
         )}
         {!isPending && view === "help" && <Help />}
-        {!isPending && session && view === "community" && (
-          <Community key={session.user.id} />
-        )}
         {!isPending && view === "guide" && (
           <Guide onJoin={() => join("beginner")} />
         )}
@@ -994,6 +1043,14 @@ export default function App() {
                 )}
               </p>
             </div>
+            {!phoneLayout && ["accompaniments", "requests", "tasks", "following"].includes(selectedProfileTab) && (
+              <h1 className="compact-page-title">{translateUi(
+                selectedProfileTab === "accompaniments" ? "Accompagnements en cours" :
+                selectedProfileTab === "requests" ? "Demandes de parrainage" :
+                selectedProfileTab === "following" ? "Abonnés et abonnements" :
+                profile?.role === "mentor" ? "Objectifs à atteindre" : "Mes objectifs",
+              )}</h1>
+            )}
             {translateUi(
               moderationBlock && (
                 <p className="error" role="alert">
@@ -1033,50 +1090,7 @@ export default function App() {
               </div>
             ) : selectedProfileTab === "appearance" ? (
               <MemberSettings
-                dedicated={phoneLayout}
-                renderMenus={(query) => (
-                  <WorkspaceMenuPage
-                    externalQuery={query}
-                    mentor={profile?.role === "mentor"}
-                    moderator={showAdmin}
-                    crmOwner={
-                      showAdmin &&
-                      session.user.email.toLowerCase() ===
-                        "thibault.cordiez@hotmail.com"
-                    }
-                    discordUrl={DISCORD_GROUP}
-                    onNavigate={(next, tab) => {
-                      go(next);
-                      if (tab && next === "profile") setProfileTab(tab);
-                      if (tab && next === "moderation") setAdminTab(tab);
-                    }}
-                    onSignOut={() => {
-                      void detachPush()
-                        .then(() => authClient.signOut())
-                        .then(() => go("home"));
-                    }}
-                  />
-                )}
-                administration={
-                  showAdmin ? (
-                    <WorkspaceMenuPage
-                      adminOnly
-                      externalQuery=""
-                      mentor={profile?.role === "mentor"}
-                      moderator={showAdmin}
-                      crmOwner={
-                        session.user.email.toLowerCase() ===
-                        "thibault.cordiez@hotmail.com"
-                      }
-                      discordUrl={DISCORD_GROUP}
-                      onNavigate={(next, tab) => {
-                        go(next);
-                        if (tab) setAdminTab(tab);
-                      }}
-                      onSignOut={() => {}}
-                    />
-                  ) : undefined
-                }
+                dedicated
                 mentor={profile?.role === "mentor"}
                 onVerificationChange={refreshProfile}
                 key={`settings-${profileTab}-${settingsSection}`}
@@ -1128,37 +1142,16 @@ export default function App() {
                     <button
                       className="btn secondary"
                       aria-label={translateUi("Paramètres")}
-                      onClick={() => setProfileTab("appearance")}
+                      onClick={() => {
+                        if (phoneLayout) setProfileTab("appearance");
+                        else openDesktop({ screen: "settings", settingsSection: "general" });
+                      }}
                     >
                       <Settings size={22} />
                     </button>
                   </div>
                 )}
-                {!phoneLayout &&
-                  ["accompaniments", "following"].includes(
-                    selectedProfileTab,
-                  ) && (
-                    <nav
-                      className="follow-section-tabs"
-                      aria-label={translateUi("Suivi")}
-                    >
-                      {[
-                        ["accompaniments", "Mes accompagnements"],
-                        ["tasks", "Gérer les tâches"],
-                        ["following", "Abonnés et abonnements"],
-                      ].map(([id, label]) => (
-                        <button
-                          key={id}
-                          className={
-                            selectedProfileTab === id ? "btn" : "btn secondary"
-                          }
-                          onClick={() => setProfileTab(id)}
-                        >
-                          {translateUi(label)}
-                        </button>
-                      ))}
-                    </nav>
-                  )}
+
                 {selectedProfileTab === "edit" && (
                   <div className="profile-toolbar">
                     <span className={`badge ${profile.visible ? "green" : ""}`}>
@@ -1185,33 +1178,6 @@ export default function App() {
                       {translateUi(" Se d\u00E9connecter")}
                     </button>
                   </div>
-                )}
-                {!phoneLayout && (
-                  <nav
-                    className="profile-tabs"
-                    aria-label={translateUi("Rubriques de mon profil")}
-                  >
-                    {[
-                      ["following", "Suivi"],
-                      ["edit", "Modifier mon profil"],
-                      ["accompaniments", "Mes accompagnements"],
-                      ["requests", "Demandes"],
-                      ["appearance", "Paramètres"],
-                      ["tasks", "To-do list"],
-                    ].map(([id, label]) => (
-                      <button
-                        key={id}
-                        aria-current={
-                          selectedProfileTab === id ? "page" : undefined
-                        }
-                        onClick={() => {
-                          setProfileTab(id);
-                        }}
-                      >
-                        {translateUi(label)}
-                      </button>
-                    ))}
-                  </nav>
                 )}
                 <div className="profile-tab-content">
                   {selectedProfileTab === "tasks" && <TodoLists />}
@@ -1292,8 +1258,7 @@ export default function App() {
         )}
         {!isPending &&
           inWorkspace &&
-          view !== "menu" &&
-          view !== "community" && (
+          !["menu", "community", "workspace"].includes(view) && (
             <aside className="member-discord">
               <MessageCircle size={25} />
               <div>
@@ -1375,7 +1340,9 @@ export default function App() {
             const target =
               authMode === "signup" || params.has("profileTab")
                 ? "profile"
-                : "directory";
+                : window.location.hash === "#workspace"
+                  ? "workspace"
+                  : "directory";
             setView(target);
             window.location.hash = target;
           }}
@@ -1437,24 +1404,16 @@ export default function App() {
     );
   return phoneLayout && inWorkspace && session ? (
     <MobileExperience
-      administrator={
-        showAdmin &&
-        session.user.email.toLowerCase() === "thibault.cordiez@hotmail.com"
-      }
+      administrator={owner}
+      moderator={showAdmin}
+      discordUrl={DISCORD_GROUP}
       legacy={legacy}
       profile={profile}
       name={session.user.name}
       userId={session.user.id}
       view={view}
       profileTab={selectedProfileTab}
-      onNavigate={(next, tab, section) => {
-        if (next === "profile" && tab === "appearance")
-          setSettingsSection(section || "general");
-        setView(next as View);
-        if (next === "directory") setFocusMember(null);
-        if (tab && next === "moderation") setAdminTab(tab);
-        else if (tab) setProfileTab(tab);
-      }}
+      onNavigate={navigateMobile}
       onOpenProfile={async (id, role) => {
         try {
           const d = await api("/api/profiles?role=" + role + "&profile=" + id);

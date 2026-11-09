@@ -1,484 +1,105 @@
 "use client";
 import { useState } from "react";
+import { ArrowUpRight, LogOut, Search } from "lucide-react";
 import { CommunityBadge } from "./community";
-import { t as translateUi } from "@/app/components/language";
+import { t } from "./language";
 import { OwnerPlanBadge } from "./owner-billing";
+import { useFeature } from "./beta";
 import { BrandLogo } from "./brand-logo";
 import {
-  Search,
-  Compass,
-  ListChecks,
-  Inbox,
-  HeartHandshake,
-  UserRound,
-  Users,
-  ShieldCheck,
-  Settings,
-  Mail,
-  Lightbulb,
-  Flag,
-  Star,
-  ChartNoAxesCombined,
-  CircleHelp,
-  MessageCircle,
-  LogOut,
-  Menu,
-  ArrowUpRight,
-  type LucideIcon,
-} from "lucide-react";
-type Destination =
-  | "home"
-  | "directory"
-  | "profile"
-  | "moderation"
-  | "help"
-  | "menu"
-  | "community";
-type Item = {
-  id: string;
-  label: string;
-  icon: LucideIcon;
-  view: Destination;
-  tab?: string;
-};
-const memberItems: Item[] = [
-  {
-    id: "requests",
-    label: "Demandes",
-    icon: Inbox,
-    view: "profile",
-    tab: "requests",
-  },
-  {
-    id: "accompaniments",
-    label: "Mes accompagnements",
-    icon: HeartHandshake,
-    view: "profile",
-    tab: "accompaniments",
-  },
-  {
-    id: "following",
-    label: "Abonnés et abonnements",
-    icon: Users,
-    view: "profile",
-    tab: "following",
-  },
-  {
-    id: "edit",
-    label: "Modifier mon profil",
-    icon: UserRound,
-    view: "profile",
-    tab: "edit",
-  },
-  {
-    id: "appearance",
-    label: "Paramètres",
-    icon: Settings,
-    view: "profile",
-    tab: "appearance",
-  },
-  {
-    id: "tasks",
-    label: "To-do list",
-    icon: ListChecks,
-    view: "profile",
-    tab: "tasks",
-  },
-];
-memberItems.push({
-  id: "community",
-  label: "Communauté",
-  icon: MessageCircle,
-  view: "community",
-});
-const adminItems: Item[] = [
-  {
-    id: "monetization",
-    label: "Monétisation · test privé",
-    icon: ChartNoAxesCombined,
-    view: "moderation",
-    tab: "monetization",
-  },
-  {
-    id: "pricing",
-    label: "Tarifs · étude privée",
-    icon: ChartNoAxesCombined,
-    view: "moderation",
-    tab: "pricing",
-  },
-  {
-    id: "crm",
-    label: "Mon CRM Vinted",
-    icon: ChartNoAxesCombined,
-    view: "moderation",
-    tab: "crm",
-  },
-  {
-    id: "extension",
-    label: "Extension Vinted",
-    icon: Settings,
-    view: "moderation",
-    tab: "extension",
-  },
-  {
-    id: "overview",
-    label: "Vue d’ensemble",
-    icon: ChartNoAxesCombined,
-    view: "moderation",
-    tab: "overview",
-  },
-  {
-    id: "accounts",
-    label: "Comptes",
-    icon: Users,
-    view: "moderation",
-    tab: "accounts",
-  },
-  {
-    id: "verification",
-    label: "Dossiers parrains",
-    icon: ShieldCheck,
-    view: "moderation",
-    tab: "verification",
-  },
-  {
-    id: "reports",
-    label: "Signalements",
-    icon: Flag,
-    view: "moderation",
-    tab: "reports",
-  },
-  {
-    id: "ratings",
-    label: "Avis",
-    icon: Star,
-    view: "moderation",
-    tab: "ratings",
-  },
-  {
-    id: "suggestions",
-    label: "Suggestions",
-    icon: Lightbulb,
-    view: "moderation",
-    tab: "suggestions",
-  },
-  {
-    id: "emails",
-    label: "E-mails",
-    icon: Mail,
-    view: "moderation",
-    tab: "emails",
-  },
-  {
-    id: "settings",
-    label: "Paramètres plateforme",
-    icon: Settings,
-    view: "moderation",
-    tab: "settings",
-  },
-];
+  workspaceGroups, workspaceMain, workspaceProfile, type WorkspaceTarget,
+} from "./workspace-destinations";
+
+const normalized = (text: string) =>
+  text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
 export function WorkspaceNav({
-  view,
-  profileTab,
-  adminTab,
-  mentor,
-  moderator,
-  crmOwner = false,
-  name,
-  discordUrl,
-  onNavigate,
-  onSignOut,
+  screen, settingsSection, adminTab, mentor, moderator, owner, name, photo,
+  discordUrl, onNavigate, onPublicHome, onSignOut,
 }: {
-  view: string;
-  profileTab: string;
+  screen: string;
+  settingsSection: string;
   adminTab: string;
   mentor: boolean;
   moderator: boolean;
-  crmOwner?: boolean;
+  owner: boolean;
   name: string;
+  photo?: string;
   discordUrl: string;
-  onNavigate: (view: Destination, tab?: string) => void;
-  onSignOut: () => void;
-}) {
-  const active = (item: Item) =>
-    view === item.view &&
-    (!item.tab ||
-      (view === "profile" ? profileTab : adminTab) === item.tab ||
-      (item.id === "accompaniments" &&
-        ["tasks", "following"].includes(profileTab)) ||
-      (item.id === "edit" && profileTab === "appearance"));
-  function navigate(v: Destination, tab?: string) {
-    onNavigate(v, tab);
-  }
-  const itemButton = (item: Item) => (
-    <button
-      key={item.id}
-      className={active(item) ? "is-current" : ""}
-      aria-current={active(item) ? "page" : undefined}
-      onClick={() => navigate(item.view, item.tab)}
-    >
-      <item.icon size={19} />
-      <span>{translateUi(item.label)}</span>
-      {item.id === "community" && (
-        <>
-          <small className="community-beta-label">Bêta</small>
-          <CommunityBadge />
-        </>
-      )}
-    </button>
-  );
-  return (
-    <>
-      <aside
-        id="workspace-menu"
-        className="workspace-sidebar"
-        aria-label={translateUi("Menu de l’espace membre")}
-      >
-        <div className="workspace-brand-row">
-          <a
-            href="#home"
-            className="brand"
-            aria-label={translateUi("Mentora, accueil")}
-            onClick={() => navigate("home")}
-          >
-            <span className="brand-mark">
-              <BrandLogo />
-            </span>
-            {translateUi("mentora")}
-            <span className="brand-dot">.</span>
-          </a>
-          <OwnerPlanBadge enabled={crmOwner} />
-        </div>
-        <nav
-          className="workspace-links"
-          aria-label={translateUi("Navigation de l’espace membre")}
-        >
-          {itemButton({
-            id: "directory",
-            label: "Trouver mon binôme",
-            icon: Compass,
-            view: "directory",
-          })}
-          <p className="workspace-group-title">{translateUi("Mon espace")}</p>
-          {memberItems
-            .filter((i) => i.id !== "verification" || mentor)
-            .map(itemButton)}
-          {moderator && (
-            <>
-              <p className="workspace-group-title">
-                {translateUi("Administration")}
-              </p>
-              {adminItems
-                .filter(
-                  (i) =>
-                    crmOwner ||
-                    !["crm", "extension", "pricing", "monetization"].includes(
-                      i.id,
-                    ),
-                )
-                .map(itemButton)}
-            </>
-          )}
-          <p className="workspace-group-title">
-            {translateUi("Communaut\u00E9")}
-          </p>
-          {itemButton({
-            id: "help",
-            label: "Aide",
-            icon: CircleHelp,
-            view: "help",
-          })}
-          <a href={discordUrl} target="_blank" rel="noopener noreferrer">
-            <MessageCircle size={19} />
-            <span>{translateUi("Rejoindre Discord")}</span>
-            <ArrowUpRight size={15} />
-          </a>
-        </nav>
-        <div className="workspace-account">
-          <button onClick={() => navigate("profile", "edit")}>
-            <span className="avatar small">
-              {name.slice(0, 1).toUpperCase()}
-            </span>
-            <span>
-              <strong>{name}</strong>
-              <small>{translateUi("Mon profil")}</small>
-            </span>
-          </button>
-          <button
-            aria-label={translateUi("Se déconnecter")}
-            title={translateUi("Se déconnecter")}
-            onClick={onSignOut}
-          >
-            <LogOut size={18} />
-          </button>
-        </div>
-      </aside>
-      <nav
-        className="workspace-bottom-nav"
-        aria-label={translateUi("Navigation mobile")}
-      >
-        {[
-          {
-            id: "directory",
-            label: "Binômes",
-            icon: Compass,
-            view: "directory",
-          } as Item,
-          { ...memberItems[0], label: "Demandes" },
-          { ...memberItems[1], label: "Suivi" },
-          {
-            id: "community",
-            label: "Communauté",
-            icon: MessageCircle,
-            view: "community",
-          } as Item,
-          { ...memberItems[3], label: "Profil" },
-        ].map(itemButton)}
-      </nav>
-    </>
-  );
-}
-export function WorkspaceMenuPage({
-  mentor,
-  moderator,
-  adminOnly = false,
-  externalQuery,
-  crmOwner = false,
-  discordUrl,
-  onNavigate,
-  onSignOut,
-}: {
-  mentor: boolean;
-  moderator: boolean;
-  adminOnly?: boolean;
-  externalQuery?: string;
-  crmOwner?: boolean;
-  discordUrl: string;
-  onNavigate: (view: Destination, tab?: string) => void;
+  onNavigate: (item: WorkspaceTarget) => void;
+  onPublicHome: () => void;
   onSignOut: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const normalize = (value: string) =>
-    value
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase();
-  const matches = (label: string, keywords = "") =>
-    normalize(`${translateUi(label)} ${keywords}`).includes(
-      normalize((externalQuery ?? query).trim()),
-    );
-  const keywords: Record<string, string> = {
-    appearance:
-      "parametres settings langue language anglais francais mot de passe password securite security notifications email push verification compte sombre clair neon theme installer application",
-    edit: "profil profile photo biographie description discord",
-    following: "suivi suivre abonnes abonnements followers following",
-    tasks: "taches todo to do progression objectifs tasks",
-  };
-  const visibleMembers = adminOnly
-    ? []
-    : memberItems.filter(
-        (i) =>
-          (i.id !== "verification" || mentor) &&
-          matches(i.label, keywords[i.id]),
-      );
-  const visibleAdmins = moderator
-    ? adminItems.filter(
-        (i) =>
-          (crmOwner ||
-            !["crm", "extension", "pricing", "monetization"].includes(i.id)) &&
-          matches(i.label),
-      )
-    : [];
-  const communityItems = [
-    "Aide",
-    "Rejoindre la communauté Discord",
-    "Accueil de Mentora",
-    "Se déconnecter",
+  const search = normalized(query);
+  const extras = useFeature("mobileExtras");
+  const groups = [
+    { title: "Navigation", items: workspaceMain },
+    { title: "Mon compte", items: workspaceProfile },
+    ...workspaceGroups(mentor, moderator, owner, extras),
   ];
-  const hasCommunity =
-    !adminOnly && communityItems.some((label) => matches(label));
-  const render = (item: Item) => (
-    <button key={item.id} onClick={() => onNavigate(item.view, item.tab)}>
-      <item.icon size={22} />
-      <span>{translateUi(item.label)}</span>
-      {item.id === "community" && (
-        <>
-          <small className="community-beta-label">Bêta</small>
-          <CommunityBadge />
-        </>
-      )}
-      <ArrowUpRight size={17} />
-    </button>
-  );
   return (
-    <section className="workspace-menu-page">
-      <div className="page-heading">
-        <span className="eyebrow">{translateUi("TON ESPACE")}</span>
-        <h1>{translateUi("Menu")}</h1>
-        <p>{translateUi("Tous tes raccourcis, au m\u00EAme endroit.")}</p>
+    <aside id="workspace-menu" className="workspace-sidebar" aria-label={t("Menu de l’espace membre")}>
+      <div className="workspace-brand-row">
+        <a href="#home" className="brand" aria-label={t("Mentora, accueil")} onClick={(event) => {
+          event.preventDefault();
+          onPublicHome();
+        }}>
+          <span className="brand-mark"><BrandLogo /></span>
+          {t("mentora")}<span className="brand-dot">.</span>
+        </a>
+        <OwnerPlanBadge enabled={owner} />
       </div>
-      {externalQuery === undefined && (
-        <label className="menu-search">
-          <Search size={20} aria-hidden="true" />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label={translateUi("Rechercher un menu ou un paramètre")}
-            placeholder={translateUi("Rechercher un menu ou un paramètre")}
-          />
-        </label>
-      )}
-      {!visibleMembers.length && !visibleAdmins.length && !hasCommunity && (
-        <p role="status">
-          {translateUi("Aucun résultat. Essaie un autre mot.")}
-        </p>
-      )}
-      {visibleMembers.length > 0 && (
-        <>
-          <h2>{translateUi("Mon espace")}</h2>
-          <div className="menu-page-grid">{visibleMembers.map(render)}</div>
-        </>
-      )}
-      {visibleAdmins.length > 0 && (
-        <>
-          <h2>{translateUi("Administration")}</h2>
-          <div className="menu-page-grid">{visibleAdmins.map(render)}</div>
-        </>
-      )}
-      {hasCommunity && <h2>{translateUi("Communaut\u00E9")}</h2>}
-      {!adminOnly && (
-        <div className="menu-page-grid">
-          {matches("Aide") &&
-            render({
-              id: "help",
-              label: "Aide",
-              icon: CircleHelp,
-              view: "help",
-            })}
-          <a
-            hidden={!matches("Rejoindre la communauté Discord")}
-            href={discordUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <MessageCircle size={22} />
-            <span>{translateUi("Rejoindre la communaut\u00E9 Discord")}</span>
-            <ArrowUpRight size={17} />
-          </a>
-          <button
-            hidden={!matches("Accueil de Mentora")}
-            onClick={() => onNavigate("home")}
-          >
-            <Compass size={22} />
-            <span>{translateUi("Accueil de Mentora")}</span>
-          </button>
-          <button hidden={!matches("Se déconnecter")} onClick={onSignOut}>
-            <LogOut size={22} />
-            <span>{translateUi("Se d\u00E9connecter")}</span>
-          </button>
-        </div>
-      )}
-    </section>
+      <label className="workspace-search">
+        <Search size={16} aria-hidden="true" />
+        <input type="search" value={query} onChange={(event) => setQuery(event.target.value)}
+          placeholder={t("Rechercher dans le menu")} aria-label={t("Rechercher dans le menu")} />
+      </label>
+      <nav className="workspace-links" aria-label={t("Navigation de l’espace membre")}>
+        {groups.map(({ title, items }) => {
+          const shown = items.filter((item) => normalized(`${t(item.label)} ${item.keywords || ""}`).includes(search));
+          if (!shown.length) return null;
+          return (
+            <section key={title} aria-label={t(title)}>
+              <h2 className="workspace-group-title">{t(title)}</h2>
+              {shown.map((item) => {
+                const current = screen === item.screen &&
+                  (!item.settingsSection || settingsSection === item.settingsSection) &&
+                  (!item.adminTab || adminTab === item.adminTab);
+                const content = <><item.icon size={18} aria-hidden="true" /><span>{t(item.label)}</span></>;
+                if (item.external) return (
+                  <a key={item.label} href={discordUrl} target="_blank" rel="noopener noreferrer">
+                    {content}<ArrowUpRight size={14} aria-hidden="true" />
+                  </a>
+                );
+                return (
+                  <button key={item.label} type="button" className={current ? "is-current" : ""}
+                    aria-current={current ? "page" : undefined} onClick={() => {
+                      setQuery("");
+                      onNavigate(item);
+                    }}>
+                    {content}
+                    {item.screen === "community" && <CommunityBadge />}
+                  </button>
+                );
+              })}
+            </section>
+          );
+        })}
+        {search && !groups.some(({ items }) => items.some((item) =>
+          normalized(`${t(item.label)} ${item.keywords || ""}`).includes(search))) && (
+          <p className="workspace-search-empty" role="status">{t("Aucun résultat. Essaie un autre mot.")}</p>
+        )}
+      </nav>
+      <div className="workspace-account">
+        <button onClick={() => onNavigate({ screen: "profile" })}>
+          <span className="avatar small">{photo ? <img src={photo} alt="" /> : name.slice(0, 1).toUpperCase()}</span>
+          <span><strong>{name}</strong><small>{t("Mon profil")}</small></span>
+        </button>
+        <button aria-label={t("Se déconnecter")} title={t("Se déconnecter")} onClick={onSignOut}>
+          <LogOut size={18} />
+        </button>
+      </div>
+    </aside>
   );
 }

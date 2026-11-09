@@ -10,11 +10,8 @@ import {
 } from "react";
 import {
   Home,
-  Rocket,
   Menu,
   AlertCircle,
-  Shield,
-  Globe,
   Hand,
   Search,
   Users,
@@ -27,7 +24,6 @@ import {
   Inbox,
   CheckCircle2,
   Bookmark,
-  Settings,
   CircleHelp,
   Send,
   MoreHorizontal,
@@ -36,8 +32,6 @@ import {
   ShieldBan,
   Flag,
   Plus,
-  Layers,
-  TrendingUp,
   Megaphone,
   NotebookPen,
 } from "lucide-react";
@@ -49,6 +43,9 @@ import { useFeature } from "./beta";
 import { useMentorCompletion } from "./mentor-portfolio";
 import { Community } from "./community";
 import { t } from "./language";
+import {
+  workspaceMain, workspaceGroups, workspaceRoutes as routes, type WorkspaceItem, type WorkspaceTarget,
+} from "./workspace-destinations";
 import type { Profile } from "@/lib/profile";
 type Row = Record<string, any>;
 const BookmarkContext = createContext<{
@@ -89,11 +86,11 @@ export function MobileProfileActions({
       setSaved(bookmarks.ids.includes(profileId));
       return;
     }
-    if (enabled && window.matchMedia("(max-width:900px)").matches)
+    if (enabled && (!compact || window.matchMedia("(max-width:900px)").matches))
       mobileApi("/api/mobile")
         .then((d) => setSaved(d.bookmarks.some((p: Row) => p.id === profileId)))
         .catch(() => {});
-  }, [enabled, profileId, bookmarks]);
+  }, [enabled, profileId, bookmarks, compact]);
   async function act(kind: string) {
     setBusy(true);
     setError("");
@@ -155,49 +152,49 @@ export function MobileProfileActions({
     </div>
   );
 }
-const routes: Record<string, [string, string?]> = {
-  discover: ["directory"],
-  edit: ["profile", "edit"],
-  settings: ["profile", "appearance"],
-  help: ["help"],
-  faq: ["faq"],
-  requests: ["profile", "requests"],
-  pairs: ["profile", "accompaniments"],
-  tasks: ["profile", "tasks"],
-  following: ["profile", "following"],
-  admin: ["moderation"],
-};
+const ignoreLegacyNavigation = () => {};
 export function MobileExperience({
   legacy,
+  desktopScreen,
+  desktopChat,
+  onDesktopNavigate,
+  moderator = false,
+  discordUrl,
   administrator = false,
   profile,
   name,
   userId,
   view,
   profileTab,
-  onNavigate,
+  onNavigate = ignoreLegacyNavigation,
   onOpenProfile,
 }: {
   administrator?: boolean;
-  legacy: ReactNode;
+  legacy?: ReactNode;
+  desktopScreen?: string;
+  desktopChat?: string;
+  onDesktopNavigate?: (item: WorkspaceTarget, params?: Record<string, string>) => void;
+  moderator?: boolean;
+  discordUrl: string;
   profile: Profile | null;
   name: string;
   userId: string;
   view: string;
   profileTab: string;
-  onNavigate: (view: string, tab?: string, section?: string) => void;
+  onNavigate?: (view: string, tab?: string, section?: string) => void;
   onOpenProfile: (id: string, role: string) => void;
 }) {
   const completionNeeded = useMentorCompletion(profile?.role === "mentor");
   const extras = useFeature("mobileExtras"),
     dm = useFeature("privateMessaging"),
     channels = useFeature("communityChannels");
-  const [screen, setScreen] = useState(() =>
+  const [mobileScreen, setScreen] = useState(() =>
     typeof window !== "undefined"
       ? new URLSearchParams(window.location.search).get("mobile") ||
         (view === "community" ? "community" : "home")
       : "home",
   );
+  const screen = desktopScreen ?? mobileScreen;
   const [pairs, setPairs] = useState<Row[]>([]),
     [lists, setLists] = useState<Row[]>([]),
     [notices, setNotices] = useState<Row[]>([]),
@@ -321,6 +318,7 @@ export function MobileExperience({
     return () => clearInterval(timer);
   }, [load]);
   useEffect(() => {
+    if (desktopScreen) return;
     const refresh = () => {
       if (document.visibilityState === "visible")
         void mobileApi("/api/community?summary=1")
@@ -330,14 +328,18 @@ export function MobileExperience({
     refresh();
     const timer = setInterval(refresh, 10000);
     return () => clearInterval(timer);
-  }, []);
+  }, [desktopScreen]);
   const go = useCallback(
     (next: string, params: Record<string, string> = {}) => {
       setScreen(next);
       setError("");
       setChannel(null);
+      if (onDesktopNavigate) {
+        onDesktopNavigate({ screen: next, ...params }, params);
+        return;
+      }
       if (routes[next])
-        onNavigate(routes[next][0], routes[next][1], params.settingsSection);
+        onNavigate(routes[next][0], next === "admin" ? params.adminTab : routes[next][1], params.settingsSection);
       else onNavigate(next === "community" ? "community" : "profile");
       const url = new URL(window.location.href);
       url.searchParams.set("mobile", next);
@@ -358,26 +360,24 @@ export function MobileExperience({
       );
       window.scrollTo({ top: 0, behavior: "instant" });
     },
-    [onNavigate],
+    [onNavigate, onDesktopNavigate],
   );
   function back() {
     if (window.history.state?.mentoraDepth > 0) window.history.back();
     else go("menu");
   }
-  function openAdmin(tab: string) {
-    go("admin", { adminTab: tab });
-    onNavigate("moderation", tab);
-  }
   useEffect(() => {
+    if (desktopScreen) return;
     const open = (e: Event) => {
       const d = (e as CustomEvent).detail;
-      go(d.screen);
+      go(d.screen, d.chat ? { chat: d.chat } : {});
       if (d.chat) setChat(d.chat);
     };
     window.addEventListener("mentora-mobile", open);
     return () => window.removeEventListener("mentora-mobile", open);
-  }, [go]);
+  }, [go, desktopScreen]);
   useEffect(() => {
+    if (desktopScreen) return;
     if (initial.current) {
       initial.current = false;
       const param = new URLSearchParams(window.location.search).get(
@@ -400,8 +400,13 @@ export function MobileExperience({
     }
     if (view === "moderation") setScreen("admin");
     if (view === "help") setScreen("help");
-  }, [view, profileTab]);
+  }, [view, profileTab, desktopScreen]);
   useEffect(() => {
+    if (desktopScreen) {
+      setChannel(null);
+      setChat(desktopChat || "");
+      return;
+    }
     const restore = () => {
       const params = new URLSearchParams(window.location.search);
       const next = params.get("mobile") || "home";
@@ -419,7 +424,7 @@ export function MobileExperience({
     };
     window.addEventListener("popstate", restore);
     return () => window.removeEventListener("popstate", restore);
-  }, [onNavigate]);
+  }, [onNavigate, desktopScreen, desktopChat]);
   const pending = pairs.filter((p) => p.status === "pending"),
     active = pairs.filter((p) => p.status === "active"),
     done = lists.reduce((n, l) => n + l.completed, 0),
@@ -451,115 +456,24 @@ export function MobileExperience({
   }
   function openNetwork(type: string) {
     go("following", { network: type });
+    if (desktopScreen) return;
     window.dispatchEvent(
       new CustomEvent("mentora-network-section", { detail: type }),
     );
   }
-  const menuGroups: {
-    title: string;
-    items: [string, typeof Home, () => void][];
-  }[] = [
-    {
-      title: "Gestion des accompagnements",
-      items: [
-        ["Accompagnements en cours", Inbox, () => go("pairs")],
-        [
-          profile?.role === "mentor"
-            ? "Objectifs à atteindre"
-            : "Mes objectifs",
-          Target,
-          () => go("tasks"),
-        ],
-        ["Demandes de parrainage", Inbox, () => go("requests")],
-        ...(administrator && profile?.role === "mentor"
-          ? [
-              ["Prestations", Layers, () => go("services")] as [
-                string,
-                typeof Home,
-                () => void,
-              ],
-            ]
-          : []),
-      ],
-    },
-    {
-      title: "Paramètres",
-      items: [
-        ["Général", Settings, () => openSettings("general")],
-        ["Sécurité", Shield, () => openSettings("security")],
-        ["Notifications", Bell, () => openSettings("notifications")],
-        ...(administrator
-          ? [
-              ["Nous rejoindre", Rocket, () => go("joinOffers")] as [
-                string,
-                typeof Home,
-                () => void,
-              ],
-            ]
-          : []),
-        ...(administrator
-          ? ([
-              ["Abonnement", Layers, () => go("billing")],
-              ["Crédits", Layers, () => go("credits")],
-              ...(profile?.role === "mentor"
-                ? [["Rémunération", TrendingUp, () => go("payouts")]]
-                : []),
-            ] as [string, typeof Home, () => void][])
-          : []),
-        ...(profile?.role === "mentor"
-          ? [
-              [
-                "Finaliser mon profil",
-                UserRound,
-                () => openSettings("verification"),
-              ] as [string, typeof Home, () => void],
-            ]
-          : []),
-      ],
-    },
-    ...(administrator
-      ? [
-          {
-            title: "Administration",
-            items: [
-              ["Vue d’ensemble", Layers, () => openAdmin("overview")],
-              ["Comptes", Users, () => openAdmin("accounts")],
-              ["Dossiers parrains", Shield, () => openAdmin("verification")],
-              ["Signalements", Flag, () => openAdmin("reports")],
-              ["Avis", CheckCircle2, () => openAdmin("ratings")],
-              ["Suggestions", Plus, () => openAdmin("suggestions")],
-              ["E-mails", Inbox, () => openAdmin("emails")],
-              ["Paramètres plateforme", Settings, () => openAdmin("settings")],
-              ["Mon CRM Vinted", TrendingUp, () => openAdmin("crm")],
-              ["Extension Vinted", Layers, () => openAdmin("extension")],
-              ["Tarifs · étude privée", Layers, () => openAdmin("pricing")],
-              [
-                "Monétisation · test privé",
-                Layers,
-                () => openAdmin("monetization"),
-              ],
-            ] as [string, typeof Home, () => void][],
-          },
-        ]
-      : []),
-    {
-      title: "Aide et à propos",
-      items: [
-        ["FAQ", CircleHelp, () => go("faq")],
-        ["Tutoriels", NotebookPen, () => go("help")],
-        [
-          "Notre Discord",
-          Globe,
-          () =>
-            window.open(
-              "https://discord.gg/SRVs9Y5ze",
-              "_blank",
-              "noopener,noreferrer",
-            ),
-        ],
-      ],
-    },
-  ];
+  const menuGroups = workspaceGroups(profile?.role === "mentor", moderator, administrator, extras);
+  function openMenuItem(item: WorkspaceItem) {
+    if (item.external === "discord") {
+      window.open(discordUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+    if (item.adminTab) {
+      go("admin", { adminTab: item.adminTab });
+      return;
+    }
+    if (item.settingsSection) openSettings(item.settingsSection);
+    else go(item.screen);
+  }
   const beta = (
     <section className="mobile-empty">
       <h2>En avant-première</h2>
@@ -572,13 +486,7 @@ export function MobileExperience({
       </button>
     </section>
   );
-  const nav = [
-    ["home", "Accueil", Home],
-    ["discover", "Découvrir", Search],
-    ["community", "Communauté", Users],
-    ["messages", "Messages", MessageCircle],
-    ["menu", "Menu", Menu],
-  ] as const;
+  const Content = desktopScreen ? "div" : "main";
   const legacyMode = !!routes[screen];
   const selected =
     screen === "discover" || screen === "requests"
@@ -609,14 +517,14 @@ export function MobileExperience({
       value={{ ids: bookmarks.map((p) => p.id), refresh: () => void load() }}
     >
       <div
-        className={`mobile-app ${screen === "community" && channel !== null ? "mobile-chat-view" : ""}`}
+        className={`mobile-app ${desktopScreen ? "desktop-experience" : ""} ${screen === "community" && channel !== null ? "mobile-chat-view" : ""}`}
       >
         {toast && (
           <aside className="in-app-message" role="status">
             <button
               onClick={() => {
                 const id = String(toast.id).split(":")[1];
-                go("messages");
+                go("messages", { chat: id });
                 setChat(id);
                 setToast(null);
               }}
@@ -632,7 +540,7 @@ export function MobileExperience({
             </button>
           </aside>
         )}
-        <header className="mobile-app-header">
+        {!desktopScreen && <header className="mobile-app-header">
           <button
             className="mobile-app-brand"
             onClick={() => go("home")}
@@ -673,14 +581,14 @@ export function MobileExperience({
             </span>
             <span className="mobile-profile-name">{name}</span>
           </button>
-        </header>
+        </header>}
         {error && (
           <div role="alert" className="mobile-error">
             {error}
             <button onClick={() => void load()}>Réessayer</button>
           </div>
         )}
-        <main className="mobile-app-content">
+        <Content className="mobile-app-content">
           {screen === "joinOffers" && (
             <>
               <button className="mobile-back" onClick={back}>
@@ -914,16 +822,16 @@ export function MobileExperience({
               </label>
               {menuGroups.map((group) => {
                 const items = group.items.filter((item) =>
-                  item[0].toLowerCase().includes(menuSearch.toLowerCase()),
+                  `\${item.label} \${item.keywords || ""}`.toLowerCase().includes(menuSearch.toLowerCase()),
                 );
                 return items.length ? (
                   <section className="mobile-menu-category" key={group.title}>
                     <h2>{group.title}</h2>
                     <div className="mobile-menu-grid">
-                      {items.map(([label, Icon, action]) => (
-                        <button key={label} onClick={action}>
-                          <Icon size={23} />
-                          <span>{label}</span>
+                      {items.map((item) => (
+                        <button key={item.label} onClick={() => openMenuItem(item)}>
+                          <item.icon size={23} />
+                          <span>{t(item.label)}</span>
                         </button>
                       ))}
                     </div>
@@ -1194,9 +1102,9 @@ export function MobileExperience({
             </>
           )}
           {screen === "notes" && (extras ? <PairNotes pairs={active} /> : beta)}
-        </main>
-        <nav className="mobile-app-dock" aria-label="Navigation mobile">
-          {nav.map(([id, label, Icon]) => (
+        </Content>
+        {!desktopScreen && <nav className="mobile-app-dock" aria-label="Navigation mobile">
+          {workspaceMain.map(({ screen: id, label, icon: Icon }) => (
             <button
               key={id}
               className={selected === id ? "selected" : ""}
@@ -1213,16 +1121,17 @@ export function MobileExperience({
               {id === "community" && <small>Bêta</small>}
             </button>
           ))}
-        </nav>
+        </nav>}
       </div>
     </BookmarkContext.Provider>
   );
 }
 function PairNotes({ pairs }: { pairs: Row[] }) {
-  const [pair, setPair] = useState(pairs[0]?.id || ""),
+  const [selectedPair, setPair] = useState(""),
     [notes, setNotes] = useState<Row[]>([]),
     [body, setBody] = useState(""),
     [error, setError] = useState("");
+  const pair = pairs.some((p) => p.id === selectedPair) ? selectedPair : pairs[0]?.id || "";
   useEffect(() => {
     if (pair)
       mobileApi("/api/mobile?pair=" + pair)
