@@ -36,6 +36,7 @@ import {
   NotebookPen,
 } from "lucide-react";
 import { AdminMonetization } from "./admin-monetization";
+import { AdminLegalGuide } from "./admin-legal-guide";
 import { JoinOffers } from "./join-offers";
 import { OwnerPlanBadge } from "./owner-billing";
 import { BrandLogo } from "./brand-logo";
@@ -497,6 +498,7 @@ export function MobileExperience({
           ? "community"
           : [
                 "joinOffers",
+                "legalGuide",
                 "billing",
                 "credits",
                 "services",
@@ -589,6 +591,17 @@ export function MobileExperience({
           </div>
         )}
         <Content className="mobile-app-content">
+          {screen === "legalGuide" && (
+            <>
+              <button className="mobile-back" onClick={back}>
+                <ChevronLeft size={18} />
+                Retour
+              </button>
+              {administrator ? <AdminLegalGuide /> : (
+                <p>Accès réservé au compte administrateur principal.</p>
+              )}
+            </>
+          )}
           {screen === "joinOffers" && (
             <>
               <button className="mobile-back" onClick={back}>
@@ -596,7 +609,7 @@ export function MobileExperience({
                 Retour
               </button>
               {administrator ? (
-                <JoinOffers onFree={() => go("discover")} />
+                <JoinOffers onManage={() => go("billing")} />
               ) : (
                 <p>Accès réservé au compte administrateur principal.</p>
               )}

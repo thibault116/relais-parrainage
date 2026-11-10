@@ -19,3 +19,49 @@ export function payoutRate() {
     throw Error("Taux de rémunération test invalide");
   return n;
 }
+
+export const annualDiscount = 20;
+export const maxCustomCredits = 1000;
+export type BillingPeriod = "month" | "year";
+
+export function annualPrice(monthlyCents: number) {
+  return Math.round((monthlyCents * 12 * (100 - annualDiscount)) / 100);
+}
+
+export function customCreditsPrice(credits: number) {
+  if (!Number.isInteger(credits) || credits < 1 || credits > maxCustomCredits)
+    return null;
+
+  let previous = { credits: 0, cents: 0 };
+  for (const pack of packs) {
+    if (credits <= pack.credits) {
+      const rate = (pack.cents - previous.cents) / (pack.credits - previous.credits);
+      return previous.cents + Math.round((credits - previous.credits) * rate);
+    }
+    previous = pack;
+  }
+  return previous.cents + (credits - previous.credits) * 150;
+}
+
+export function checkoutOffer(code: string) {
+  const custom = /^custom-v1-(\d{1,4})$/.exec(code);
+  if (custom) {
+    const credits = Number(custom[1]);
+    const cents = customCreditsPrice(credits);
+    return cents === null ? null : { name: `${credits} crédits`, cents, credits };
+  }
+  const annual = code.endsWith("-annual");
+  const id = annual ? code.slice(0, -7) : code;
+  const plan = plans.find((p) => p.id === id);
+  if (plan) {
+    const period: BillingPeriod = annual ? "year" : "month";
+    return {
+      ...plan,
+      planId: plan.id,
+      period,
+      cents: annual ? annualPrice(plan.cents) : plan.cents,
+      credits: annual ? plan.credits * 12 : plan.credits,
+    };
+  }
+  return annual ? null : packs.find((p) => p.id === code);
+}

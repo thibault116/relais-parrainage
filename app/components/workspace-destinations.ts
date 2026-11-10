@@ -81,6 +81,7 @@ export function workspaceGroups(mentor: boolean, moderator: boolean, owner: bool
       { label: "FAQ", icon: CircleHelp, screen: "faq" },
       { label: "Tutoriels", icon: NotebookPen, screen: "help" },
       { label: "Notre Discord", icon: Globe, screen: "discord", external: "discord" },
+      ...(owner ? [{ label: "Mentions légales, CGU et CGV", icon: NotebookPen, screen: "legalGuide" }] : []),
     ],
   });
   return groups;
@@ -109,5 +110,5 @@ export const workspaceRoutes: Record<string, [string, string?]> = {
 
 export const desktopExperienceScreens = new Set([
   "home", "profile", "saved", "notifications", "notes", "messages",
-  "community", "joinOffers", "billing", "credits", "services", "payouts",
+  "community", "legalGuide", "joinOffers", "billing", "credits", "services", "payouts",
 ]);

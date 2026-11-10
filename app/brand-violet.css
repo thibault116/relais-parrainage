@@ -759,3 +759,38 @@
 .join-table-scroll abbr {
   text-decoration: none;
 }
+
+.commerce-dialog {
+  width: min(460px, calc(100% - 24px));
+  max-height: calc(100dvh - 32px);
+  padding: 20px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  color: var(--ink);
+  background: var(--surface);
+}
+.commerce-dialog::backdrop { background: rgb(0 0 0 / 65%); }
+.commerce-dialog h2 { margin: 0; flex: 1; }
+.commerce-dialog .commerce-packs { margin-block: 12px; }
+.commerce-dialog .commerce-pack { width: 100%; }
+.commerce-custom-credits, .commerce-simulation { display: grid; gap: 12px; }
+.commerce-custom-credits label, .commerce-simulation label { display: grid; gap: 6px; }
+.commerce-custom-credits input, .commerce-simulation input {
+  min-width: 0;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: inherit;
+  background: var(--bg);
+  font: inherit;
+}
+.commerce-simulation { margin-block: 16px; }
+.commerce-simulation :is(h2, p) { margin: 0; }
+.commerce-legal { margin-block: 12px; }
+.commerce-legal summary { cursor: pointer; font-weight: 750; }
+.commerce-legal li + li { margin-top: 6px; }
+.commerce-legal a { color: var(--purple-dark); text-decoration: underline; }
+.service-credit-fields { grid-column: 1 / -1; display: grid; gap: 10px; }
+.service-credit-fields input[type="range"] { padding-inline: 0; accent-color: var(--purple); }

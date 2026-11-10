@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import {
   Leaf,
   Zap,
@@ -12,18 +12,17 @@ import {
   ArrowRight,
 } from "lucide-react";
 import type { joinOffers } from "@/lib/join-offers";
-type Data = ReturnType<typeof joinOffers>;
+type Data = ReturnType<typeof joinOffers> & { currentPlan: string; subscriptionStatus: string };
 const euro = (c: number) =>
   (c / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
 const icons = [Leaf, Zap, Crown, Gem];
-export function JoinOffers({ onFree }: { onFree: () => void }) {
+export function JoinOffers({ onManage }: { onManage: () => void }) {
   const [data, setData] = useState<Data | null>(null),
     [error, setError] = useState(""),
     [annual, setAnnual] = useState(false),
-    [selected, setSelected] = useState("plus"),
-    [details, setDetails] = useState(false),
+    [busy, setBusy] = useState(false),
+    [checkoutError, setCheckoutError] = useState(""),
     [retry, setRetry] = useState(0);
-  const detailRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/offers", { cache: "no-store", signal: controller.signal })
@@ -38,17 +37,29 @@ export function JoinOffers({ onFree }: { onFree: () => void }) {
       });
     return () => controller.abort();
   }, [retry]);
-  function choose(id: string) {
-    setSelected(id);
-    setDetails(true);
-    requestAnimationFrame(() =>
-      detailRef.current?.scrollIntoView({
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "auto"
-          : "smooth",
-        block: "center",
-      }),
-    );
+  async function pay(id: string) {
+    if (busy) return;
+    setBusy(true);
+    setCheckoutError("");
+    try {
+      const response = await fetch("/api/admin/monetization", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "checkout",
+          offer: annual ? `${id}-annual` : id,
+          key: crypto.randomUUID(),
+          returnTo: "billing",
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.url)
+        throw Error(result.error || "Le paiement test n’a pas pu être ouvert.");
+      window.location.assign(result.url);
+    } catch (failure) {
+      setCheckoutError((failure as Error).message);
+      setBusy(false);
+    }
   }
   if (error)
     return (
@@ -63,7 +74,7 @@ export function JoinOffers({ onFree }: { onFree: () => void }) {
       </section>
     );
   if (!data) return <p role="status">Chargement des offres…</p>;
-  const plan = data.plans.find((p) => p.id === selected) || data.plans[2];
+  const hasSubscription = !["free", "canceled", "incomplete_expired"].includes(data.subscriptionStatus);
   return (
     <section className="join-offers commerce-page">
       <header className="join-heading">
@@ -75,7 +86,7 @@ export function JoinOffers({ onFree }: { onFree: () => void }) {
           Mentora.
         </p>
         <small>
-          Présentation privée · Les abonnements ne sont pas ouverts aux membres.
+          Espace privé · Paiements Stripe en mode test.
         </small>
       </header>
       <div
@@ -83,13 +94,14 @@ export function JoinOffers({ onFree }: { onFree: () => void }) {
         role="group"
         aria-label="Période de facturation"
       >
-        <button aria-pressed={!annual} onClick={() => setAnnual(false)}>
+        <button aria-pressed={!annual} disabled={busy} onClick={() => setAnnual(false)}>
           Mensuel
         </button>
-        <button aria-pressed={annual} onClick={() => setAnnual(true)}>
+        <button aria-pressed={annual} disabled={busy} onClick={() => setAnnual(true)}>
           Annuel <span>−{data.discount} %</span>
         </button>
       </div>
+      {checkoutError && <p role="alert">{checkoutError}</p>}
       <div className="join-cards">
         {data.plans.map((p, i) => {
           const Icon = icons[i];
@@ -110,15 +122,17 @@ export function JoinOffers({ onFree }: { onFree: () => void }) {
                     </small>
                   </strong>
                 </div>
-                {p.id === "free" && <span className="join-label">Gratuit</span>}
+                {p.id === data.currentPlan && (
+                  <span className="join-label">Plan actuel</span>
+                )}
                 {p.id === "plus" && (
                   <span className="commerce-pill">Pour aller plus loin</span>
                 )}
               </div>
               {annual && p.cents > 0 && (
                 <p className="join-annual-total">
-                  {euro(p.annualCents)} facturés par an · crédits indiqués par
-                  mois
+                  {euro(p.annualCents)} facturés par an · {p.credits * 12} crédits
+                  versés à chaque paiement annuel
                 </p>
               )}
               <ul>
@@ -135,7 +149,9 @@ export function JoinOffers({ onFree }: { onFree: () => void }) {
                   <li key={r.label}>
                     {r.upcoming ? <Clock3 /> : <Check />}
                     <span>
-                      {i === 0 ? r.label : r.label + " : " + r.values[i]}{" "}
+                      {annual && r === data.comparison[3]
+                        ? `${p.credits * 12} crédits par an`
+                        : i === 0 ? r.label : r.label + " : " + r.values[i]}{" "}
                       {r.upcoming && (
                         <small className="join-soon">Bientôt</small>
                       )}
@@ -143,20 +159,17 @@ export function JoinOffers({ onFree }: { onFree: () => void }) {
                   </li>
                 ))}
               </ul>
-              <button
-                className="join-plan-action"
-                onClick={() => (p.id === "free" ? onFree() : choose(p.id))}
-                aria-label={
-                  p.id === "free"
-                    ? "Continuer avec Free"
-                    : `Découvrir l’offre ${p.name}`
-                }
-              >
-                {p.id === "free"
-                  ? "Continuer gratuitement"
-                  : `Découvrir ${p.name}`}
-                <ChevronRight size={18} />
-              </button>
+              {p.id !== "free" && p.id !== data.currentPlan && (
+                <button
+                  className="join-plan-action"
+                  disabled={busy}
+                  onClick={() => hasSubscription ? onManage() : void pay(p.id)}
+                >
+                  {hasSubscription ? `Gérer mon abonnement pour passer à ${p.name}`
+                    : `Payer ${euro(annual ? p.annualCents : p.cents)} / ${annual ? "an" : "mois"} · ${p.name}`}
+                  <ChevronRight size={18} />
+                </button>
+              )}
             </article>
           );
         })}
@@ -198,7 +211,7 @@ export function JoinOffers({ onFree }: { onFree: () => void }) {
               {data.comparison.map((r) => (
                 <tr key={r.label}>
                   <th scope="row">
-                    {r.label}
+                    {annual && r === data.comparison[3] ? "Crédits par an" : r.label}
                     {r.upcoming && <small className="join-soon">Bientôt</small>}
                   </th>
                   {r.values.map((value, i) => (
@@ -214,7 +227,7 @@ export function JoinOffers({ onFree }: { onFree: () => void }) {
                       ) : value === "Avancées" ? (
                         "Avancé"
                       ) : (
-                        value
+                        annual && r === data.comparison[3] ? data.plans[i].credits * 12 : value
                       )}
                     </td>
                   ))}
@@ -223,36 +236,18 @@ export function JoinOffers({ onFree }: { onFree: () => void }) {
             </tbody>
           </table>
         </div>
-        <button className="commerce-primary" onClick={() => choose(selected)}>
-          <Crown />
-          Découvrir l’offre {plan.name}
-          <ArrowRight />
-        </button>
-      </section>
-      {details && (
-        <section
-          ref={detailRef}
-          className="commerce-card join-summary"
-          role="status"
-        >
-          <h2>
-            {plan.name} · {annual ? "Annuel" : "Mensuel"}
-          </h2>
-          <p>
-            {annual
-              ? `${euro(plan.annualCents)} par an, soit ${euro(plan.annualCents / 12)} par mois en équivalent.`
-              : `${euro(plan.cents)} par mois.`}
-          </p>
-          <p>{plan.credits} crédits par mois prévus dans cette offre.</p>
-          <p>
-            Cette page présente les formules à venir. Ton accès actuel reste
-            inchangé ; aucun abonnement ni paiement n’est créé ici.
-          </p>
-          <button className="commerce-row" onClick={() => setDetails(false)}>
-            Fermer le récapitulatif
+        {data.currentPlan !== "plus" && (
+          <button
+            className="commerce-primary"
+            disabled={busy}
+            onClick={() => hasSubscription ? onManage() : void pay("plus")}
+          >
+            <Crown />
+            {hasSubscription ? "Gérer mon abonnement" : "Payer l’offre Plus"}
+            <ArrowRight />
           </button>
-        </section>
-      )}
+        )}
+      </section>
     </section>
   );
 }

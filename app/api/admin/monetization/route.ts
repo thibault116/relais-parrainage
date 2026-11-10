@@ -2,7 +2,7 @@ import { manageSubscription } from "@/lib/monetization/billing";
 import { user, json, guard } from "@/lib/http";
 import { isCrmOwner } from "@/lib/crm";
 import { query } from "@/lib/db";
-import { plans, packs, payoutRate } from "@/lib/monetization/catalog";
+import { plans, packs, payoutRate, maxCustomCredits } from "@/lib/monetization/catalog";
 import {
   balance,
   saveService,
@@ -111,10 +111,13 @@ export async function POST(r: Request) {
     if (action === "checkout") {
       if (!process.env.STRIPE_WEBHOOK_SECRET)
         throw Error("Webhook Stripe non configuré");
+      const code = d.credits === undefined
+        ? z.string().parse(d.offer)
+        : `custom-v1-${z.number().int().min(1).max(maxCustomCredits).parse(d.credits)}`;
       return json({
         url: await checkout(
           id,
-          z.string().parse(d.offer),
+          code,
           z.string().uuid().parse(d.key),
           z
             .enum(["admin", "billing", "credits"])

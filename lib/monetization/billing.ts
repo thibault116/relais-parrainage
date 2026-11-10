@@ -1,7 +1,7 @@
 import { query } from "../db";
 import { stripeTest } from "./stripe";
 import { objectId } from "./payments";
-import { plans } from "./catalog";
+import { annualPrice, plans } from "./catalog";
 import { lock, moneyTransaction } from "./store";
 export async function billingDetails(owner: string) {
   const a = (
@@ -50,6 +50,8 @@ export async function billingDetails(owner: string) {
       : null,
     renewal: sub && ["active", "trialing"].includes(sub.status) ? sub.items.data[0]?.current_period_end || null : null,
     pendingPlan,
+    period: sub && ["active", "trialing"].includes(sub.status) &&
+      sub.items.data[0]?.price.recurring?.interval === "year" ? "year" : "month",
     invoices: invoices.data.map((i) => ({
       id: i.id,
       number: i.number,
@@ -103,14 +105,16 @@ export async function manageSubscription(
       throw Error("Reprends ton abonnement avant de changer d’offre");
     if (target.id === sub.metadata.mentora_plan)
       throw Error("Cette formule est déjà active");
+    const item = sub.items.data[0];
+    const period = item?.price.recurring?.interval === "year" ? "year" : "month";
     const price = await s.prices.create(
       {
         currency: "eur",
-        unit_amount: target.cents,
-        recurring: { interval: "month" },
+        unit_amount: period === "year" ? annualPrice(target.cents) : target.cents,
+        recurring: { interval: period },
         product_data: { name: `Mentora ${target.name} · TEST` },
       },
-      { idempotencyKey: `mentora-switch-price-v1:${target.id}` },
+      { idempotencyKey: `mentora-switch-price-v1:${target.id}:${period}` },
     );
     let schedule = sub.schedule
       ? await s.subscriptionSchedules.retrieve(objectId(sub.schedule))
@@ -124,7 +128,6 @@ export async function manageSubscription(
       });
     if (schedule.metadata?.mentora_owner !== owner)
       throw Error("Planification externe : utilise le support");
-    const item = sub.items.data[0];
     if (!item || sub.items.data.length !== 1 || !schedule.current_phase)
       throw Error("Abonnement non compatible");
     await s.subscriptionSchedules.update(schedule.id, {
@@ -140,7 +143,7 @@ export async function manageSubscription(
         },
         {
           start_date: item.current_period_end,
-          duration: { interval: "month", interval_count: 1 },
+          duration: { interval: period, interval_count: 1 },
           items: [{ price: price.id, quantity: 1 }],
           metadata: { mentora_plan: target.id },
           proration_behavior: "none",

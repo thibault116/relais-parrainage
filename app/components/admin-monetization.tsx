@@ -16,10 +16,10 @@ import {
   Rocket,
   ArrowLeft,
 } from "lucide-react";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { serviceSchema } from "@/lib/monetization/store";
 import type { z } from "zod";
-import type { plans, packs } from "@/lib/monetization/catalog";
+import { annualPrice, customCreditsPrice, maxCustomCredits, type plans, type packs } from "@/lib/monetization/catalog";
 type Service = z.infer<typeof serviceSchema>;
 type Booking = {
   id: string;
@@ -55,11 +55,11 @@ const euro = (c: number) =>
 const blank: Service = {
   title: "",
   description: "",
-  category: "Analyse Vinted",
-  duration: 30,
+  category: "Autre",
+  duration: 0,
   calls: 0,
   followup: "",
-  availability: "",
+  availability: "À convenir",
   credits: 12,
   capacity: 5,
   published: false,
@@ -92,6 +92,10 @@ export function AdminMonetization({
   const [billing, setBilling] = useState<any>(null);
   useEffect(() => setTab(initialTab), [initialTab]);
   const [panel, setPanel] = useState("");
+  const creditDialog = useRef<HTMLDialogElement>(null);
+  const [customCredits, setCustomCredits] = useState("");
+  const [simulatedCredits, setSimulatedCredits] = useState(12);
+  const [simulationStep, setSimulationStep] = useState(0);
   const [editing, setEditing] = useState(false);
   const [serviceMenu, setServiceMenu] = useState<string | null>(null);
   const load = useCallback(async () => {
@@ -170,6 +174,7 @@ export function AdminMonetization({
   }
   if (!data)
     return <p role="status">{error || "Chargement du système privé…"}</p>;
+  const annual = billing?.period === "year";
   if (
     dedicated &&
     !editing &&
@@ -178,6 +183,7 @@ export function AdminMonetization({
     const current =
       data.plans.find((p) => p.id === data.account.plan) || data.plans[0];
     const completed = data.bookings.filter((b) => b.status === "completed");
+    const customPrice = customCreditsPrice(Number(customCredits));
     const due = completed.reduce((n, b) => n + b.payout_cents, 0);
     const toggle = (name: string) => setPanel(panel === name ? "" : name);
     const row = (
@@ -268,7 +274,7 @@ export function AdminMonetization({
                 <Crown />
                 <div>
                   <h2>Offre {current.name}</h2>
-                  <p>{euro(current.cents)} / mois</p>
+                  <p>{euro(annual ? annualPrice(current.cents) : current.cents)} / {annual ? "an" : "mois"}</p>
                 </div>
                 <span className="commerce-pill">
                   {data.account.cancel_at_end
@@ -283,7 +289,7 @@ export function AdminMonetization({
               <ul className="commerce-benefits">
                 <li>
                   <Check />
-                  {current.credits} crédits par mois
+                  {annual ? current.credits * 12 : current.credits} crédits par {annual ? "an" : "mois"}
                 </li>
                 {data.comparison
                   .filter((r) =>
@@ -331,7 +337,7 @@ export function AdminMonetization({
               <section className="commerce-offers">
                 <h2>Choisis ton prochain cap</h2>
                 <p>
-                  Formules mensuelles · changement au prochain renouvellement.
+                  Formules {annual ? "annuelles" : "mensuelles"} · changement au prochain renouvellement.
                 </p>
                 {data.plans.map((p) => (
                   <article
@@ -342,11 +348,11 @@ export function AdminMonetization({
                       <Crown />
                       <h3>{p.name}</h3>
                       <strong>
-                        {euro(p.cents)}
-                        <small>/mois</small>
+                        {euro(annual ? annualPrice(p.cents) : p.cents)}
+                        <small>/{annual ? "an" : "mois"}</small>
                       </strong>
                     </div>
-                    <p>{p.credits} crédits par mois</p>
+                    <p>{annual ? p.credits * 12 : p.credits} crédits par {annual ? "an" : "mois"}</p>
                     <details>
                       <summary>Fonctionnalités incluses</summary>
                       <ul>
@@ -379,7 +385,7 @@ export function AdminMonetization({
                           if (
                             !active ||
                             window.confirm(
-                              `Passer à ${p.name} au prochain renouvellement pour ${euro(p.cents)}/mois ?`,
+                              `Passer à ${p.name} au prochain renouvellement pour ${euro(annual ? annualPrice(p.cents) : p.cents)} / ${annual ? "an" : "mois"} ?`,
                             )
                           )
                             void send(
@@ -448,18 +454,10 @@ export function AdminMonetization({
             </article>
             <button
               className="commerce-primary"
-              onClick={() =>
-                document
-                  .getElementById("commerce-packs")
-                  ?.scrollIntoView({
-                    behavior: window.matchMedia(
-                      "(prefers-reduced-motion: reduce)",
-                    ).matches
-                      ? "auto"
-                      : "smooth",
-                    block: "center",
-                  })
-              }
+              onClick={() => {
+                setError("");
+                creditDialog.current?.showModal();
+              }}
             >
               <Plus />
               Acheter des crédits
@@ -487,30 +485,46 @@ export function AdminMonetization({
                 )}
               </div>
             )}
-            <h2 className="commerce-section-title" id="commerce-packs">
-              Packs de crédits
-            </h2>
-            <div className="commerce-packs">
-              {data.packs.map((p) => (
-                <button
-                  key={p.id}
-                  className="commerce-card commerce-pack"
-                  disabled={busy || !data.configured}
-                  onClick={() =>
-                    void send({
-                      action: "checkout",
-                      offer: p.id,
-                      key: crypto.randomUUID(),
-                    })
-                  }
-                >
-                  <Coins />
-                  <strong>{p.credits} crédits</strong>
-                  <span>{euro(p.cents)}</span>
-                  <ChevronRight size={16} />
+            <dialog ref={creditDialog} className="commerce-dialog" aria-labelledby="credit-dialog-title">
+              <div className="commerce-plan-top">
+                <h2 id="credit-dialog-title">Acheter des crédits</h2>
+                <button className="commerce-icon" aria-label="Fermer" onClick={() => creditDialog.current?.close()}>
+                  <CircleX />
                 </button>
-              ))}
-            </div>
+              </div>
+              <p>Paiement Stripe en mode test</p>
+              {!data.configured && <p>Stripe test est indisponible.</p>}
+              {error && <p role="alert">{error}</p>}
+              <div className="commerce-packs">
+                {data.packs.map((p) => (
+                  <button
+                    key={p.id}
+                    className="commerce-card commerce-pack"
+                    disabled={busy || !data.configured}
+                    onClick={() => void send({ action: "checkout", offer: p.id, key: crypto.randomUUID() })}
+                  >
+                    <Coins />
+                    <strong>{p.credits} crédits</strong>
+                    <span>{euro(p.cents)}</span>
+                    <ChevronRight size={16} />
+                  </button>
+                ))}
+              </div>
+              <form className="commerce-custom-credits" onSubmit={(event) => {
+                event.preventDefault();
+                if (customPrice !== null)
+                  void send({ action: "checkout", credits: Number(customCredits), key: crypto.randomUUID() });
+              }}>
+                <label>
+                  Quantité personnalisée
+                  <input type="number" min={1} max={maxCustomCredits} step={1} required
+                    value={customCredits} onChange={(event) => setCustomCredits(event.target.value)} />
+                </label>
+                <button className="commerce-primary" disabled={busy || !data.configured || customPrice === null}>
+                  {customPrice === null ? "Choisir une quantité" : `Payer ${euro(customPrice)}`}
+                </button>
+              </form>
+            </dialog>
             <small className="commerce-footnote">
               Les crédits restent personnels, sans transfert ni conversion en
               argent.
@@ -531,6 +545,32 @@ export function AdminMonetization({
               </button>
               <small>Simulation · aucun versement réel</small>
             </article>
+            <section className="commerce-card commerce-simulation">
+              <h2>Simuler une rémunération</h2>
+              <p>Exemple séparé de ton solde. Taux test de {euro(data.payoutRate)} par crédit.</p>
+              <label>
+                Prix de la prestation en crédits
+                <input type="number" min={1} max={1000} step={1} value={simulatedCredits || ""}
+                  disabled={simulationStep !== 0}
+                  onChange={(event) => setSimulatedCredits(Number(event.target.value))} />
+              </label>
+              <p aria-live="polite">
+                {simulationStep === 0 && `Montant prévu : ${euro(simulatedCredits * data.payoutRate)}.`}
+                {simulationStep === 1 && "Prestation réservée. La rémunération sera due une fois la prestation terminée."}
+                {simulationStep === 2 && `Prestation terminée. Rémunération simulée due : ${euro(simulatedCredits * data.payoutRate)}.`}
+                {simulationStep === 3 && `Versement fictif de ${euro(simulatedCredits * data.payoutRate)} terminé.`}
+              </p>
+              {simulationStep < 3 && (
+                <button className="commerce-primary"
+                  disabled={!Number.isInteger(simulatedCredits) || simulatedCredits < 1 || simulatedCredits > 1000}
+                  onClick={() => setSimulationStep(simulationStep + 1)}>
+                  {["Simuler la réservation", "Terminer la prestation", "Simuler le versement"][simulationStep]}
+                </button>
+              )}
+              {simulationStep > 0 && (
+                <button className="commerce-row" onClick={() => setSimulationStep(0)}>Recommencer la simulation</button>
+              )}
+            </section>
             <div className="commerce-stat-grid">
               <article className="commerce-card">
                 <Coins />
@@ -613,9 +653,6 @@ export function AdminMonetization({
                       <Rocket />
                       <div>
                         <h2>{s.data.title}</h2>
-                        <p>
-                          {s.data.category} · {s.data.duration} min
-                        </p>
                       </div>
                       <button
                         className="commerce-icon"
@@ -825,10 +862,10 @@ export function AdminMonetization({
               <article className="pricing-card" key={p.id}>
                 <h3>{p.name}</h3>
                 <div className="pricing-amount">
-                  {euro(p.cents)}
-                  <small>/mois</small>
+                  {euro(annual ? annualPrice(p.cents) : p.cents)}
+                  <small>/{annual ? "an" : "mois"}</small>
                 </div>
-                <p>{p.credits} crédits par mois</p>
+                <p>{annual ? p.credits * 12 : p.credits} crédits par {annual ? "an" : "mois"}</p>
                 <ul>
                   {data.comparison.map((row) => (
                     <li key={row.label}>
@@ -851,7 +888,7 @@ export function AdminMonetization({
                     onClick={() => {
                       if (
                         window.confirm(
-                          `Passer à ${p.name} (${euro(p.cents)}/mois, ${p.credits} crédits/mois) au prochain renouvellement ?`,
+                          `Passer à ${p.name} (${euro(annual ? annualPrice(p.cents) : p.cents)} / ${annual ? "an" : "mois"}, ${annual ? p.credits * 12 : p.credits} crédits par période) au prochain renouvellement ?`,
                         )
                       )
                         void send({ action: "change-plan", plan: p.id });
@@ -1037,16 +1074,7 @@ export function AdminMonetization({
               />
             </label>
             <label>
-              Catégorie
-              <input
-                required
-                maxLength={80}
-                value={form.category}
-                onChange={(e) => field("category", e.target.value)}
-              />
-            </label>
-            <label>
-              Description et livrable
+              Description
               <textarea
                 required
                 minLength={20}
@@ -1055,92 +1083,36 @@ export function AdminMonetization({
                 onChange={(e) => field("description", e.target.value)}
               />
             </label>
-            <label>
-              Durée totale (minutes)
-              <input
-                type="number"
-                min={0}
-                max={10080}
-                required
-                value={form.duration}
-                onChange={(e) => field("duration", Number(e.target.value))}
-              />
-            </label>
-            <label>
-              Nombre d’appels inclus
-              <input
-                type="number"
-                min={0}
-                max={50}
-                required
-                value={form.calls}
-                onChange={(e) => field("calls", Number(e.target.value))}
-              />
-            </label>
-            <label>
-              Suivi inclus
-              <textarea
-                maxLength={2000}
-                value={form.followup}
-                onChange={(e) => field("followup", e.target.value)}
-              />
-            </label>
-            <label>
-              Disponibilités et délai
-              <input
-                minLength={3}
-                maxLength={2000}
-                required
-                value={form.availability}
-                onChange={(e) => field("availability", e.target.value)}
-              />
-            </label>
-            <label>
-              Réservations simultanées
-              <input
-                type="number"
-                min={1}
-                max={100}
-                required
-                value={form.capacity}
-                onChange={(e) => field("capacity", Number(e.target.value))}
-              />
-            </label>
-            <label>
-              Prix : {form.credits} crédits
-              <input
-                aria-label="Prix en crédits"
-                type="range"
-                min={1}
-                max={1000}
-                value={form.credits}
-                onChange={(e) => field("credits", Number(e.target.value))}
-              />
-              <input
-                aria-label="Prix précis en crédits"
-                type="number"
-                min={1}
-                max={1000}
-                required
-                value={form.credits}
-                onChange={(e) => field("credits", Number(e.target.value))}
-              />
-              <strong aria-live="polite">
-                Rémunération prévue : {euro(form.credits * data.payoutRate)}
-              </strong>
-              <small>
-                Hypothèse test : {euro(data.payoutRate)} par crédit, avant tes
-                éventuels prélèvements. Aucun versement automatique.
-              </small>
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={form.published}
-                onChange={(e) => field("published", e.target.checked)}
-              />
-              Visible dans le catalogue privé de test
-            </label>
+            <div className="service-credit-fields">
+              <label>
+                Nombre de crédits
+                <input
+                  type="number"
+                  min={1}
+                  max={1000}
+                  step={1}
+                  required
+                  value={form.credits || ""}
+                  onChange={(e) => field("credits", Number(e.target.value))}
+                />
+              </label>
+              <label>
+                Jauge du prix
+                <input
+                  type="range"
+                  min={1}
+                  max={200}
+                  step={1}
+                  value={form.credits <= 100 ? form.credits : 100 + Math.round((form.credits - 100) / 9)}
+                  aria-valuetext={`${form.credits} crédits`}
+                  onChange={(e) => {
+                    const position = Number(e.target.value);
+                    field("credits", position <= 100 ? position : 100 + (position - 100) * 9);
+                  }}
+                />
+              </label>
+              <small>Un crédit par cran jusqu’à 100. Saisis un montant exact jusqu’à 1 000.</small>
+            </div>
             <button className="btn" disabled={busy}>
               Enregistrer
             </button>
@@ -1157,6 +1129,7 @@ export function AdminMonetization({
               </button>
             )}
           </form>
+          {!dedicated && <>
           <h3>Mes prestations</h3>
           {data.services.map((s) => (
             <article className="money-row" key={s.id}>
@@ -1180,6 +1153,17 @@ export function AdminMonetization({
               <button
                 className="btn secondary"
                 disabled={busy}
+                onClick={() => void send({
+                  action: "save",
+                  id: s.id,
+                  service: { ...s.data, published: !s.data.published },
+                })}
+              >
+                {s.data.published ? "Retirer du catalogue" : "Publier dans le catalogue test"}
+              </button>
+              <button
+                className="btn secondary"
+                disabled={busy}
                 onClick={() => {
                   if (
                     window.confirm(
@@ -1193,6 +1177,7 @@ export function AdminMonetization({
               </button>
             </article>
           ))}
+          </>}
         </>
       )}
       {tab === "discover" && (

@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import { query } from "../db";
 import { isCrmOwner } from "../crm";
-import { offer, plans } from "./catalog";
+import { checkoutOffer, offer, plans } from "./catalog";
 import { lock, entry, moneyTransaction } from "./store";
 import { stripeTest, returnUrl } from "./stripe";
 export const objectId = (v: unknown): string =>
@@ -32,11 +32,11 @@ export async function checkout(
   key: string,
   destination: "admin" | "billing" | "credits" = "admin",
 ) {
-  const item = offer(code);
+  const item = checkoutOffer(code);
   if (!item || !item.cents) throw Error("Offre inconnue");
   const s = stripeTest(),
     cid = await customer(owner),
-    subscription = plans.some((p) => p.id === code);
+    subscription = "planId" in item ? item : null;
   // Keep one pending/active subscription per owner, including concurrent tabs.
   return moneyTransaction(async (q) => {
     await lock(q, owner);
@@ -94,13 +94,13 @@ export async function checkout(
               unit_amount: item.cents,
               product_data: { name: `Mentora ${item.name} · TEST` },
               ...(subscription
-                ? { recurring: { interval: "month" as const } }
+                ? { recurring: { interval: subscription.period } }
                 : {}),
             },
           },
         ],
         ...(subscription
-          ? { subscription_data: { metadata: { mentora_plan: code } } }
+          ? { subscription_data: { metadata: { mentora_plan: subscription.planId } } }
           : { invoice_creation: { enabled: true } }),
         success_url: returnUrl(destination),
         cancel_url: returnUrl(destination),
@@ -259,9 +259,10 @@ export async function handleEvent(event: Stripe.Event) {
           await s.subscriptions.retrieve(objectId(session.subscription)),
         );
       if (session.mode === "payment" && session.payment_status === "paid") {
-        const item = offer(String(order.offer));
+        const item = checkoutOffer(String(order.offer));
         if (
           !item ||
+          "planId" in item ||
           session.currency !== "eur" ||
           session.amount_total !== item.cents
         )
@@ -290,15 +291,25 @@ export async function handleEvent(event: Stripe.Event) {
     if (owner && subId) {
       const sub = await s.subscriptions.retrieve(subId);
       await syncSubscription(owner, sub);
-      const item = offer(sub.metadata.mentora_plan);
       if (
         event.type === "invoice.paid" &&
         invoice.status === "paid" &&
-        item &&
         ["subscription_create", "subscription_cycle"].includes(
           String(invoice.billing_reason),
         )
       ) {
+        const billedPlan = invoice.parent?.subscription_details?.metadata?.mentora_plan ||
+          sub.metadata.mentora_plan;
+        const recurringLine = invoice.lines.data.find(
+          (line) => line.parent?.type === "subscription_item_details" &&
+            !line.parent.subscription_item_details?.proration,
+        );
+        const priceId = recurringLine?.pricing?.price_details?.price;
+        const billedPrice = priceId ? await s.prices.retrieve(objectId(priceId)) : null;
+        const interval = billedPrice?.recurring?.interval ??
+          sub.items.data[0]?.price.recurring?.interval;
+        const item = checkoutOffer(interval === "year" ? `${billedPlan}-annual` : billedPlan);
+        if (!item || !("planId" in item)) return;
         if (
           invoice.livemode ||
           invoice.currency !== "eur" ||

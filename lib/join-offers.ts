@@ -1,12 +1,11 @@
-import { plans } from "./monetization/catalog";
+import { annualDiscount, annualPrice, plans } from "./monetization/catalog";
 import { pricingProposal } from "./pricing-proposal";
-export const annualDiscount = 20;
 export function joinOffers() {
   return {
     discount: annualDiscount,
     plans: plans.map((p) => ({
       ...p,
-      annualCents: Math.round((p.cents * 12 * (100 - annualDiscount)) / 100),
+      annualCents: annualPrice(p.cents),
     })),
     comparison: pricingProposal.comparison.map((r) => ({
       ...r,
