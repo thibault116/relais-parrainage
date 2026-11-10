@@ -49,7 +49,7 @@ export function workspaceGroups(mentor: boolean, moderator: boolean, owner: bool
   if (owner && mentor) groups[0].items.push({ label: "Prestations", icon: Layers, screen: "services" });
   if (owner) {
     groups[1].items.push(
-      { label: "Nous rejoindre", icon: Rocket, screen: "joinOffers" },
+      { label: "Tarifs", icon: Rocket, screen: "joinOffers" },
       { label: "Abonnement", icon: Layers, screen: "billing" },
       { label: "Crédits", icon: Layers, screen: "credits" },
     );

@@ -79,7 +79,7 @@ export function JoinOffers({ onManage }: { onManage: () => void }) {
     <section className="join-offers commerce-page">
       <header className="join-heading">
         <h1>
-          Nous <span>rejoindre</span>
+          Tarifs <span>Mentora</span>
         </h1>
         <p>
           Choisis l’offre qui correspond à tes objectifs et à ton rythme sur
