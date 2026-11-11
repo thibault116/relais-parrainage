@@ -1,3 +1,4 @@
+import { migrateChangelog } from "../lib/changelog/store";
 import { migrateLegal } from "../lib/legal-requests";
 import { migrateMonetization } from "../lib/monetization/store";
 import { migrateMobileSpace } from "../lib/mobile-space";
@@ -41,5 +42,6 @@ await migrateCrm();
 await migrateMobileSpace();
 await migrateMonetization();
 await migrateLegal();
+await migrateChangelog();
 console.log("Base Relais initialisée.");
 process.exit(0);

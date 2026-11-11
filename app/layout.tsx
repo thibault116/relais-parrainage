@@ -1,3 +1,5 @@
+import { after } from "next/server";
+import { automaticProductionCheck } from "@/lib/changelog/service";
 import { ownerPreviewUserId } from "@/lib/owner-preview";
 import { OwnerPreviewProvider } from "./components/owner-preview";
 import { CookieBanner } from "./components/cookie-preferences";
@@ -37,8 +39,11 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
 };
+export const maxDuration = 60;
+
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const initialUserId = await ownerPreviewUserId();
+  if (process.env.VERCEL_ENV === "production") after(automaticProductionCheck);
   const ownerPreview = initialUserId !== null;
   return (
     <html lang="fr" data-theme="dark" data-neon="true" suppressHydrationWarning>

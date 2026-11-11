@@ -111,3 +111,18 @@
 .cookie-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .cookie-actions .btn { justify-content: center; flex: 1 1 auto; min-width: 0; padding: 10px 12px; font-size: .82rem; }
 .pricing-preview { padding-block: 32px 48px; }
+
+.changelog-admin > .commerce-card { margin-bottom: 24px; }
+.changelog-admin label:not(.legal-check) { display: grid; gap: 6px; margin-block: 12px; }
+.changelog-admin :is(input:not([type="checkbox"]),textarea) {
+  width: 100%; min-width: 0; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px; font: inherit;
+}
+.changelog-layout { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr); gap: 24px; }
+.changelog-layout > section { min-width: 0; }
+.changelog-admin small { display: block; color: var(--muted); }
+.discord-preview { margin-block: 18px; padding: 16px; border-left: 4px solid #883af5; border-radius: 10px; background: var(--surface); overflow-wrap: anywhere; }
+.discord-preview .discord-banner { width: 100%; height: auto; border-radius: 8px; margin-bottom: 14px; }
+.discord-preview h3 { font-size: 15px; margin-bottom: 6px; }
+.discord-preview ul { padding-left: 20px; line-height: 1.6; }
+@media(max-width:700px){.changelog-layout{grid-template-columns:minmax(0,1fr)}}

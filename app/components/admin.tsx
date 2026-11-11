@@ -1,5 +1,6 @@
 "use client";
 import { t as translateUi, locale } from "@/app/components/language";
+import { AdminChangelog } from "./admin-changelog";
 import { AdminMonetization } from "./admin-monetization";
 import { AdminPricing } from "./admin-pricing";
 import { AdminCrm } from "./admin-crm";
@@ -120,6 +121,7 @@ export function AdminDashboard({
                   extension: "Extension Vinted",
                   pricing: "Tarifs · étude privée",
                   monetization: "Monétisation · test privé",
+                  changelog: "Annonces Discord",
                 }[tab] || "Administration"
               : "Administration",
           )}
@@ -142,6 +144,7 @@ export function AdminDashboard({
               ? [
                   ["pricing", "Tarifs · étude privée"],
                   ["monetization", "Monétisation · test privé"],
+                  ["changelog", "Annonces Discord"],
                   ["crm", "Mon CRM Vinted"],
                   ["extension", "Extension Vinted"],
                 ]
@@ -174,7 +177,9 @@ export function AdminDashboard({
           </p>
         ),
       )}
-      {tab === "monetization" && crmOwner ? (
+      {tab === "changelog" && crmOwner ? (
+        <AdminChangelog />
+      ) : tab === "monetization" && crmOwner ? (
         <AdminMonetization />
       ) : tab === "pricing" && crmOwner ? (
         <AdminPricing />
