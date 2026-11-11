@@ -1,3 +1,4 @@
+import { migratePayoutTests } from "../lib/monetization/payout-tests";
 import { migrateChangelog } from "../lib/changelog/store";
 import { migrateLegal } from "../lib/legal-requests";
 import { migrateMonetization } from "../lib/monetization/store";
@@ -43,5 +44,6 @@ await migrateMobileSpace();
 await migrateMonetization();
 await migrateLegal();
 await migrateChangelog();
+  await migratePayoutTests();
 console.log("Base Relais initialisée.");
 process.exit(0);

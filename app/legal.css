@@ -126,3 +126,7 @@
 .discord-preview h3 { font-size: 15px; margin-bottom: 6px; }
 .discord-preview ul { padding-left: 20px; line-height: 1.6; }
 @media(max-width:700px){.changelog-layout{grid-template-columns:minmax(0,1fr)}}
+
+.payout-test-panel label {display:grid;gap:8px;margin-block:12px;}
+.payout-test-panel select {width:100%;max-width:100%;min-width:0;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;}
+.payout-test-panel :is(small,a) {overflow-wrap:anywhere;}

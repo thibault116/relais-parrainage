@@ -1,4 +1,5 @@
 "use client";
+import { PayoutTestPanel } from "./payout-test";
 import {
   Crown,
   Coins,
@@ -555,10 +556,11 @@ export function AdminMonetization({
               <strong>{euro(due)}</strong>
               <button className="commerce-primary" disabled>
                 <ArrowDownToLine />
-                Retraits non activés
+                Versements réels non activés
               </button>
               <small>Simulation · aucun versement réel</small>
             </article>
+            <PayoutTestPanel />
             <section className="commerce-card commerce-simulation">
               <h2>Simuler une rémunération</h2>
               <p>Exemple séparé de ton solde. Taux test de {euro(data.payoutRate)} par crédit.</p>
@@ -638,9 +640,7 @@ export function AdminMonetization({
             {panel === "withdrawals" && (
               <div className="commerce-card">
                 <p>
-                  Aucun retrait. Les virements seront proposés dans une étape
-                  distincte après activation et validation du système de
-                  rémunération.
+                  Les essais à 0 € et 0,01 € sont disponibles ci-dessus dans « Tester un retrait ». Les versements réels restent désactivés.
                 </p>
               </div>
             )}
@@ -1332,6 +1332,7 @@ export function AdminMonetization({
       )}
       {tab === "payouts" && (
         <>
+          <PayoutTestPanel />
           <h3>Rémunérations dues · simulation</h3>
           <div className="pricing-results">
             <div>

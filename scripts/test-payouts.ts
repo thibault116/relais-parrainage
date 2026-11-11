@@ -1,0 +1,51 @@
+import assert from "node:assert/strict";
+import { mkdtemp,rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type Stripe from "stripe";
+import { createPayoutTest,listPayoutTests,migratePayoutTests,refreshPayoutTests } from "../lib/monetization/payout-tests";
+import { stripeTest } from "../lib/monetization/stripe";
+import { database } from "../lib/db";
+if(process.env.DATABASE_URL || process.env.VERCEL) throw Error("Base temporaire locale uniquement");
+const cwd=process.cwd(),folder=await mkdtemp(join(tmpdir(),"mentora-payout-test-"));
+process.chdir(folder);
+const previous=process.env.STRIPE_SECRET_KEY;
+try {
+ await migratePayoutTests();
+ const noStripe=()=>{throw Error("Ne doit pas appeler Stripe à 0 €")};
+ const zeroKey=crypto.randomUUID();
+ const zero=await createPayoutTest("owner",0,zeroKey,noStripe);
+ assert.equal(zero.status,"simulated");assert.equal(zero.stripe_id,null);
+ assert.equal((await createPayoutTest("owner",0,zeroKey,noStripe)).id,zero.id);
+ await assert.rejects(()=>createPayoutTest("another",0,zeroKey,noStripe));
+ for(const amount of [2,-1,100,0.01,"1"]) await assert.rejects(()=>createPayoutTest("owner",amount,crypto.randomUUID(),noStripe));
+ process.env.STRIPE_SECRET_KEY="sk_live_forbidden";assert.throws(stripeTest,/live/);
+ process.env.STRIPE_SECRET_KEY="rk_live_forbidden";assert.throws(stripeTest,/live/);
+ let count=0;const requests=new Map<string,Stripe.Payout>();
+ const fake={payouts:{create:async(params:any,options:any)=>{
+   assert.equal(params.amount,1);assert.equal(params.currency,"eur");assert.equal(params.method,"standard");
+   if(!requests.has(options.idempotencyKey)) {count++;requests.set(options.idempotencyKey,{id:`po_test_${count}`,livemode:false,status:"pending",...params} as Stripe.Payout);}
+   return requests.get(options.idempotencyKey)!;
+ },retrieve:async(id:string)=>({...Array.from(requests.values()).find(p=>p.id===id)!,status:"paid"})}} as unknown as Stripe;
+ const key=crypto.randomUUID();
+ const [one,two]=await Promise.all([createPayoutTest("owner",1,key,()=>fake),createPayoutTest("owner",1,key,()=>fake)]);
+ assert.equal(one.stripe_id,two.stripe_id);assert.equal(count,1);assert.equal(one.status,"pending");
+ const refreshed=await refreshPayoutTests("owner",()=>fake);assert.equal(refreshed.find(r=>r.id===one.id)?.status,"paid");
+ assert.equal((await listPayoutTests("another")).length,0);
+ const forbidden={payouts:{create:async()=>{throw {statusCode:403,type:"StripePermissionError"}}}} as unknown as Stripe;
+ const failure=await createPayoutTest("owner",1,crypto.randomUUID(),()=>forbidden);
+ assert.equal(failure.status,"failed");assert.match(failure.error,/permissions/);
+ const timeoutKey=crypto.randomUUID();
+ const timeout={payouts:{create:async()=>{throw Error("timeout")}}} as unknown as Stripe;
+ assert.equal((await createPayoutTest("owner",1,timeoutKey,()=>timeout)).status,"uncertain");
+ assert.equal((await createPayoutTest("owner",1,timeoutKey,()=>fake)).status,"pending");assert.equal(count,2);
+ const live={payouts:{create:async(params:any)=>({id:"po_forbidden",livemode:true,status:"paid",...params})}} as unknown as Stripe;
+ await assert.rejects(()=>createPayoutTest("owner",1,crypto.randomUUID(),()=>live),/incompatible/);
+ assert(!(await listPayoutTests("owner")).some(row=>row.stripe_id==="po_forbidden"));
+ console.log("PASS retrait 0 €, essai Stripe 0,01 €, historique et actualisation des statuts");
+ console.log("PASS doubles clics, isolation des comptes, erreurs et reprise idempotente");
+ console.log("PASS autres montants et clés live refusés, aucun portefeuille ni rémunération modifié");
+} finally {
+ if(previous===undefined)delete process.env.STRIPE_SECRET_KEY;else process.env.STRIPE_SECRET_KEY=previous;
+ const db=database();if("close" in db)db.close();process.chdir(cwd);await rm(folder,{recursive:true,force:true});
+}
