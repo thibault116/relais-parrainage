@@ -38,7 +38,8 @@ export function discordPayload(id: string, title: string, sections: Sections, da
   return {
     username: "Mentora",
     avatar_url: `${applicationUrl}/icons/icon-192.png`,
-    allowed_mentions: { parse: [] as string[] },
+    content: "@everyone",
+    allowed_mentions: { parse: ["everyone"], users: [], roles: [] },
     embeds: [{
       title,
       description: description(sections),

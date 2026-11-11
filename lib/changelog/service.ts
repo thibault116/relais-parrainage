@@ -57,6 +57,9 @@ export async function publish(id: string, revision: number, automatic = false) {
   const draft = await getDraft(id);
   if (!draft || draft.target_sha !== target)
     throw new Error("Le brouillon doit correspondre à la production actuellement active.");
+  const publicChanges = await analyzeChanges(draft.base_sha, target);
+  if (!Object.values(publicChanges.sections).flat().length)
+    throw new Error("Aucun changement visible par tous à annoncer. Les modifications admin, bêta et preview sont exclues.");
   return deliverDraft(id, revision, automatic);
 }
 

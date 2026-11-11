@@ -116,7 +116,7 @@ export function AdminChangelog() {
               }} />
             Publier automatiquement les prochaines versions destinées aux membres
           </label>
-          <p>Désactivé par défaut. L’analyse démarre après l’ouverture d’une production, avec un contrôle de secours quotidien. Les notes privées et les changements sans nouvelle note membre sont exclus.</p>
+          <p>Désactivé par défaut. L’analyse démarre après l’ouverture d’une production, avec un contrôle de secours quotidien. Les changements admin, bêta, preview et techniques sont exclus. Chaque annonce mentionne @everyone.</p>
           <p>Webhook {data.webhookConfigured ? "configuré" : "à configurer"} · {data.production ? "Production" : "Environnement de test, envoi bloqué"}</p>
           {data.settings?.last_error && <p role="alert">{data.settings.last_error}</p>}
           <p>Point de suivi <code>{(data.settings?.last_published_sha || data.settings?.baseline_sha || current || "").slice(0, 10)}</code></p>
@@ -160,6 +160,7 @@ export function AdminChangelog() {
               <button className="btn secondary" disabled={busy || !editable || !valid} onClick={() => void act({ action: "edit", id: selected.id, revision: selected.revision, title, sections })}>Enregistrer le brouillon</button>
               <button className="btn secondary" disabled={busy || !valid || !!dirty} onClick={() => void act({ action: "preview", id: selected.id })}>Tester sans envoyer</button>
             </div>
+            <p>L’annonce mentionnera <strong>@everyone</strong> dans Discord.</p>
             <article className="discord-preview" aria-label="Prévisualisation Discord">
               <img className="discord-banner" src="/changelog-banner.png" alt="Mentora · Les nouveautés de la communauté" />
               <a href={applicationUrl} target="_blank" rel="noreferrer"><strong>{title || "Les nouveautés de Mentora"}</strong></a>
@@ -174,7 +175,7 @@ export function AdminChangelog() {
             {editable && <>
               <label className="legal-check">
                 <input type="checkbox" checked={confirm} onChange={(event) => setConfirm(event.target.checked)} />
-                J’ai vérifié que chaque point concerne les membres et je confirme la publication dans le salon Discord.
+                J’ai vérifié que chaque point est visible par tous et je confirme la publication dans le salon Discord.
               </label>
               <button className="btn" disabled={busy || !publishable || !confirm} onClick={() => void act({ action: "publish", id: selected.id, revision: selected.revision, confirm: true })}>Publier sur Discord</button>
             </>}

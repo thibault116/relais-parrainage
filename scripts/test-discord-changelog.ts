@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import { migrateChangelog, initialize, settings, putDraft, getDraft, editDraft } from "../lib/changelog/store";
-import { automaticProductionCheck, generateDraft, preview, validateProduction, toggleAutomatic } from "../lib/changelog/service";
+import { automaticProductionCheck, generateDraft, preview, validateProduction, toggleAutomatic, publish } from "../lib/changelog/service";
 import { deliverDraft, reconcileMessage } from "../lib/changelog/discord";
 import { description, announcementSchema, applicationUrl, repository } from "../lib/changelog/shared";
 import { database } from "../lib/db";
@@ -23,7 +23,7 @@ process.env.DISCORD_CHANGELOG_WEBHOOK_URL = "https://discord.com/api/webhooks/12
 process.env.VERCEL_ENV = "production";
 process.env.VERCEL_GIT_COMMIT_SHA = b;
 process.env.VERCEL_DEPLOYMENT_ID = "dpl_fake_local_test";
-let mode: "members" | "technical" = "technical";
+let mode: "members" | "technical" | "beta" = "technical";
 let sent = 0;
 let localMessages: Record<string, any>[] = [];
 const server = createServer(async (request, response) => {
@@ -31,7 +31,8 @@ const server = createServer(async (request, response) => {
   let body = "";
   for await (const part of request) body += part.toString();
   const payload = JSON.parse(body);
-  assert.deepEqual(payload.allowed_mentions.parse, []);
+  assert.equal(payload.content, "@everyone");
+  assert.deepEqual(payload.allowed_mentions, { parse: ["everyone"], users: [], roles: [] });
   assert.equal(payload.embeds[0].color, 0x883af5);
   assert(payload.embeds[0].description.length <= 2000);
   assert.match(payload.embeds[0].description, /actualiser Mentora/);
@@ -47,8 +48,8 @@ const localDelivery: typeof fetch = async (_input, options) => {
   sent++;
   return originalFetch(`http://127.0.0.1:${port}`, options);
 };
-function release(id: string, notes: string[]) {
-  return `export const memberRelease = { id: ${JSON.stringify(id)}, notes: ${JSON.stringify(notes)} };`;
+function release(id: string, notes: string[], audience = "public") {
+  return `export const memberRelease = { id: ${JSON.stringify(id)}, discordAudience: ${JSON.stringify(audience)}, notes: ${JSON.stringify(notes)} };`;
 }
 globalThis.fetch = async (input, options) => {
   const url = new URL(String(input));
@@ -64,7 +65,7 @@ globalThis.fetch = async (input, options) => {
     const target = process.env.VERCEL_GIT_COMMIT_SHA;
     return Response.json({
       status: "ahead", total_commits: 1, commits: [{ sha: target }],
-      files: [{ filename: mode === "members" ? "lib/member-release.ts" : "lib/db.ts" }],
+      files: [{ filename: mode !== "technical" ? "lib/member-release.ts" : "lib/db.ts" }],
     });
   }
   const sha = url.searchParams.get("ref");
@@ -72,7 +73,7 @@ globalThis.fetch = async (input, options) => {
     : sha === b ? release("members-1", ["La navigation est plus fluide sur téléphone.", "Un bug d’affichage a été corrigé."])
       : sha === c ? release("members-1", ["La navigation est plus fluide sur téléphone.", "Un bug d’affichage a été corrigé."])
         : release("members-2", ["Tu peux retrouver tes profils enregistrés."]);
-  return new Response(note);
+  return new Response(mode === "beta" ? release("beta-release", ["Une nouveauté pour les bêta-testeurs."], "beta") : note);
 };
 try {
   await migrateChangelog();
@@ -80,6 +81,9 @@ try {
   assert.equal(config.auto_enabled, 0);
   assert.equal(parseRelease(release("escaped", ['Une phrase avec "des guillemets".'])).notes[0], 'Une phrase avec "des guillemets".');
   assert.equal((await generateDraft()).draft, null);
+  mode = "beta";
+  assert.equal((await generateDraft()).draft, null);
+  assert.equal(parseRelease('export const memberRelease = {id:"unclassified",notes:["Une nouveauté."]}').publicAnnouncement, false);
   mode = "members";
   const { draft } = await generateDraft();
   assert(draft);
@@ -107,6 +111,7 @@ try {
   assert.equal((await generateDraft()).draft, null);
   const manual = await putDraft(b, c);
   await editDraft(manual.id, 1, { title: "Évolution du profil", sections: { nouveautés: ["Un exemple de nouveauté membre."], améliorations: [], corrections: [] } });
+  await assert.rejects(() => publish(manual.id, 2), /Aucun changement visible par tous/);
   const fail: typeof fetch = async () => { throw new Error("timeout simulé"); };
   await assert.rejects(() => deliverDraft(manual.id, 2, false, fail));
   assert.equal((await getDraft(manual.id))?.status, "uncertain");

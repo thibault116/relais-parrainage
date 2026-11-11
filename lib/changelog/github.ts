@@ -1,6 +1,6 @@
 import { repository, shaSchema, emptySections, type Sections, description } from "./shared";
 
-type Release = { id: string; notes: string[] };
+type Release = { id: string; notes: string[]; publicAnnouncement: boolean };
 type Commit = { sha: string };
 type Comparison = { status: string; total_commits: number; commits: Commit[]; files?: { filename: string }[] };
 
@@ -30,7 +30,9 @@ export function parseRelease(source: string): Release {
   const releaseId = JSON.parse(id[1]);
   if (typeof releaseId !== "string" || notes.some((note) => typeof note !== "string"))
     throw new Error("Notes membres invalides.");
-  return { id: releaseId, notes };
+  // Fail closed: beta, private and unclassified releases never reach Discord.
+  const audience = /\bdiscordAudience:\s*("(?:[^"\\]|\\.)*")/.exec(source);
+  return { id: releaseId, notes, publicAnnouncement: !!audience && JSON.parse(audience[1]) === "public" };
 }
 
 async function releaseAt(sha: string) {
@@ -75,6 +77,7 @@ export async function analyzeChanges(base: string, target: string) {
   for (const { sha, release } of revisions) {
     if (release.id === previous) continue;
     previous = release.id;
+    if (!release.publicAnnouncement) continue;
     const notes = release.notes.filter((note) => !known.has(note));
     evidence.push({ sha, release: release.id, notes });
     for (const raw of notes) {

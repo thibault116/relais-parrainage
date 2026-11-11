@@ -6,12 +6,12 @@ L’accès est réservé au compte administrateur principal, avec contrôle de s
 
 1. Dans Menu → Administration → **Annonces Discord**, clique sur **Analyser GitHub**.
 2. Au premier lancement, le suivi démarre sur la production active pour éviter une annonce historique inattendue. Tu peux définir le SHA complet d’un commit de départ antérieur avant la première publication.
-3. Le générateur compare ce point au commit de la production active. Il reprend les notes françaises des nouvelles versions de `lib/member-release.ts`, les déduplique et les classe en Nouveautés, Améliorations et Corrections. Ce fichier doit continuer à ne contenir que des évolutions visibles des membres. Les changements admin et techniques n’en modifient pas l’identifiant.
+3. Le générateur compare ce point au commit de la production active. Il reprend les notes françaises des nouvelles versions de `lib/member-release.ts`, les déduplique et les classe en Nouveautés, Améliorations et Corrections. Seules les versions explicitement marquées `discordAudience: "public"` sont retenues. Ne mettre ce marqueur que si tous les points sont accessibles à tous les membres en production. Les versions bêta, privées ou sans classification sont exclues. Les changements admin et techniques n’en modifient pas l’identifiant.
 4. Relis et, si nécessaire, modifie le brouillon. Chaque ligne d’un champ correspond à un point. Le rappel d’actualisation est compris dans la limite de 2 000 caractères.
 5. **Tester sans envoyer** valide le payload et sa longueur. Ce bouton ne contacte jamais Discord.
 6. Pour publier réellement, confirme que le contenu concerne les membres, puis clique sur **Publier sur Discord**. L’historique conserve le commit, le contenu, l’heure et l’identifiant du message.
 
-Un brouillon manuel permet de rédiger une annonce même lorsque le générateur ne trouve aucune nouvelle note membre. La publication exige toujours que le brouillon corresponde à la production actuellement active.
+Un brouillon manuel permet de rédiger une annonce même lorsque le générateur ne trouve aucune nouvelle note membre. La publication exige toujours que le brouillon corresponde à la production actuellement active et que sa plage GitHub contienne des changements explicitement publics. Un brouillon manuel ne permet pas de contourner cette règle.
 
 ## Automatique
 
@@ -24,7 +24,7 @@ L’analyse est limitée à 30 commits par comparaison pour tenir dans le temps 
 ## Sécurité et doublons
 
 - La variable serveur **DISCORD_CHANGELOG_WEBHOOK_URL** contient le webhook sensible. Elle n’est jamais envoyée au navigateur et seul le domaine Discord autorisé peut être utilisé.
-- `allowed_mentions.parse=[]` interdit les notifications de masse involontaires. L’embed utilise la bannière Mentora et une bordure violette.
+- Chaque annonce contient `@everyone` dans le texte du message. `allowed_mentions` autorise cette mention et interdit les mentions directes d’utilisateurs ou de rôles. L’embed utilise la bannière Mentora et une bordure violette.
 - Le commit cible est unique. Un verrou en base protège les publications concurrentes et le suivi ne progresse qu’après confirmation de Discord.
 - En cas de timeout, d’arrêt du serveur ou de réponse ambiguë, l’envoi reste bloqué pour éviter un doublon. Si le message existe dans le salon, son identifiant peut être fourni pour vérifier sa référence et l’ajouter à l’historique sans republier.
 - Si aucun message ne peut être retrouvé après un envoi incertain, l’état doit être examiné avant toute remise en file. Le système ne retente pas aveuglément un envoi ambigu.
