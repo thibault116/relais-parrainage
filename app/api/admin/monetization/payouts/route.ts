@@ -1,3 +1,4 @@
+import { diagnosePayoutTest } from "@/lib/monetization/payout-diagnostics";
 import { user, json, guard } from "@/lib/http";
 import { isCrmOwner } from "@/lib/crm";
 import { createPayoutTest, listPayoutTests, refreshPayoutTests } from "@/lib/monetization/payout-tests";
@@ -15,6 +16,7 @@ export async function POST(request: Request) {
   if (blocked) return blocked;
   try {
     const data = await request.json();
+    if (data.action === "diagnose") return json({ diagnostic: await diagnosePayoutTest() });
     if (data.action === "refresh") return json({ tests: await refreshPayoutTests(account!.id) });
     if (data.action !== "create") return json({ error: "Action inconnue." },400);
     const result = await createPayoutTest(account!.id,data.amount,data.key);

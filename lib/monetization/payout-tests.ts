@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import { z } from "zod";
 import { query } from "../db";
 import { stripeTest } from "./stripe";
+import { diagnosePayoutTest, safeStripeFailure } from "./payout-diagnostics";
 
 export type PayoutTest = {
   id: string; owner_id: string; request_key: string; amount: number;
@@ -59,16 +60,23 @@ export async function createPayoutTest(owner: string, amount: unknown, key: unkn
   // Stripe idempotency keys are retained at least 24h. Never recreate an old ambiguous request.
   if (Date.now() - new Date(row.created_at).getTime() > 23 * 3600000)
     throw new Error("Ancien test non confirmé : vérifie son identifiant Mentora dans Stripe avant tout nouvel essai.");
+  const diagnostic = await diagnosePayoutTest(client);
+  if (!diagnostic.ready || !diagnostic.destination) {
+    await query("UPDATE money_payout_tests SET status='failed',error=$1,updated_at=$2 WHERE id=$3 AND stripe_id IS NULL",
+      [diagnostic.checks.join(" ") + (diagnostic.code ? ` [${diagnostic.code}]` : ""),new Date().toISOString(),row.id]);
+    return (await query<PayoutTest>("SELECT * FROM money_payout_tests WHERE id=$1 AND owner_id=$2",[row.id,owner]))[0];
+  }
   const stripe = client();
   let payout: Stripe.Payout;
   try {
     payout = await stripe.payouts.create({
-      amount: 1,currency: "eur",method: "standard",
+      amount: 1,currency: "eur",method: "standard",destination: diagnostic.destination.id,
       description: "Mentora — retrait administrateur TEST 0,01 EUR",
       metadata: { mentora_payout_test: row.id,mentora_owner: owner },
     }, { idempotencyKey: `mentora-payout-test:${row.id}` });
   } catch (failure) {
     const error = failure as { statusCode?: number; code?: string; type?: string };
+    const detail = safeStripeFailure(failure);
     const definitive = !!error.statusCode && error.statusCode >= 400 && error.statusCode < 500 && error.statusCode !== 409;
     const message = error.type === "StripePermissionError"
       ? "La clé Stripe test doit autoriser les versements (Payouts). Vérifie ses permissions dans Stripe."
@@ -76,7 +84,7 @@ export async function createPayoutTest(owner: string, amount: unknown, key: unkn
         ? "Stripe a refusé le test. Vérifie le solde EUR, le compte bancaire de test et les autorisations de versement dans le Dashboard Stripe."
         : "Résultat non confirmé. Réessaie ce même test : sa référence évite un double envoi.");
     await query("UPDATE money_payout_tests SET status=$1,error=$2,updated_at=$3 WHERE id=$4 AND stripe_id IS NULL",
-      [definitive ? "failed" : "uncertain",message,new Date().toISOString(),row.id]);
+      [definitive ? "failed" : "uncertain",`${message} Stripe : ${detail.message} [${detail.code}]${detail.requestId ? ` · ${detail.requestId}` : ""}`,new Date().toISOString(),row.id]);
     return (await query<PayoutTest>("SELECT * FROM money_payout_tests WHERE id=$1 AND owner_id=$2",[row.id,owner]))[0];
   }
   await recordPayout(row,payout);
