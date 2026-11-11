@@ -42,6 +42,7 @@ try {
  const noBalance={...fake,balance:{retrieve:async()=>({livemode:false,available:[]})}} as unknown as Stripe;
  assert.equal((await diagnosePayoutTest(()=>noBalance)).ready,false);
  assert(!safeStripeFailure({message:"Clé sk_test_secret123 refusée"}).message.includes("secret123"));
+ assert(!safeStripeFailure({message:"Clé sk_test_*****suffix refusée"}).message.includes("suffix"));
  const key=crypto.randomUUID();
  const [one,two]=await Promise.all([createPayoutTest("owner",100,key,()=>fake),createPayoutTest("owner",100,key,()=>fake)]);
  assert.equal(one.stripe_id,two.stripe_id);assert.equal(count,1);assert.equal(one.status,"pending");

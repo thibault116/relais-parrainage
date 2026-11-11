@@ -12,7 +12,7 @@ export function safeStripeFailure(failure: unknown) {
     code: String(error.code || error.type || "stripe_error").slice(0,100),
     requestId: typeof error.requestId === "string" && /^req_[a-zA-Z0-9]+$/.test(error.requestId) ? error.requestId : undefined,
     message: String(error.message || "Stripe n’a pas confirmé cette opération.")
-      .replace(/(?:sk|rk|pk)_(?:test|live)_[a-zA-Z0-9]+/g,"[clé masquée]").slice(0,700),
+      .replace(/(?:sk|rk|pk)_(?:test|live)_[a-zA-Z0-9*]+/g,"[clé masquée]").slice(0,700),
     statusCode:error.statusCode,
   };
 }
