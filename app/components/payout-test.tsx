@@ -58,25 +58,26 @@ export function PayoutTestPanel() {
         {diagnostic.availableCents !== undefined && <p>Solde EUR disponible dans Stripe test : {(diagnostic.availableCents / 100).toLocaleString("fr-FR",{style:"currency",currency:"EUR"})}.</p>}
         {diagnostic.checks.map((check,index) => <p key={index}>{check}</p>)}
         {diagnostic.code && <small>Code Stripe : {diagnostic.code}{diagnostic.requestId ? ` · ${diagnostic.requestId}` : ""}</small>}
-        {diagnostic.ready && <p>Stripe confirme une destination et un solde suffisants pour tenter 0,01 €.</p>}
+        {diagnostic.ready && <p>Stripe confirme une destination et un solde suffisants pour tenter 1 €.</p>}
       </div>}
       <a href="https://dashboard.stripe.com/test/settings/payouts" target="_blank" rel="noreferrer">Configurer la banque dans Stripe test</a>
     </section>
+    <p>Stripe impose un minimum de 1 € pour les virements de test en euros. L’ancien essai à 0,01 € est conservé dans l’historique.</p>
     <label>Montant du test
       <select value={amount} disabled={busy || unresolved} onChange={event => {setAmount(Number(event.target.value));pendingKey.current=null;}}>
         <option value={0}>0 € · vérifier le parcours sans Stripe</option>
-        <option value={1}>0,01 € · virement Stripe test</option>
+        <option value={100}>1 € · virement Stripe test</option>
       </select>
     </label>
     <p>{amount === 0 ? "À 0 €, Mentora enregistre un essai sans créer de virement." : "Le compte bancaire EUR de test doit être confirmé ci-dessus. Aucun IBAN réel n’est demandé dans Mentora."}</p>
-    <button className="commerce-primary" disabled={busy} onClick={() => void send()}>{busy ? "Traitement…" : unresolved ? "Reprendre le même test de 0,01 €" : amount === 0 ? "Simuler le retrait de 0 €" : "Tester le retrait de 0,01 €"}</button>
+    <button className="commerce-primary" disabled={busy || (amount !== 0 && amount !== 100)} onClick={() => void send()}>{busy ? "Traitement…" : unresolved ? "Reprendre le même test de 1 €" : amount === 0 ? "Simuler le retrait de 0 €" : "Tester le retrait de 1 €"}</button>
     <button className="commerce-row" disabled={busy} onClick={() => void send(true)}>Actualiser les statuts Stripe</button>
     {error && <p className="error" role="alert">{error}</p>}
     {message && <p role="status">{message}</p>}
     <h3>Historique des retraits de test</h3>
     {!tests.length && <p>Aucun test effectué.</p>}
     <div className="commerce-history">{tests.map(test => <article key={test.id}>
-      <span><strong>{test.amount === 0 ? "0,00 €" : "0,01 €"} · Test</strong><small>{labels[test.status] || test.status} · {new Date(test.created_at).toLocaleString("fr-FR")}</small>
+      <span><strong>{(test.amount / 100).toLocaleString("fr-FR",{style:"currency",currency:"EUR"})} · Test</strong><small>{labels[test.status] || test.status} · {new Date(test.created_at).toLocaleString("fr-FR")}</small>
         {test.error && <small>{test.error}</small>}
         {test.stripe_id && <a href={`https://dashboard.stripe.com/test/payouts/${test.stripe_id}`} target="_blank" rel="noreferrer">Voir le test dans Stripe</a>}
       </span>

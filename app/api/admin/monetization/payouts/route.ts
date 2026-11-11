@@ -22,6 +22,6 @@ export async function POST(request: Request) {
     const result = await createPayoutTest(account!.id,data.amount,data.key);
     return json({ result,tests: await listPayoutTests(account!.id) });
   } catch {
-    return json({ error: "Test indisponible. Utilise 0 € ou 0,01 € et vérifie la configuration Stripe test. Aucun virement réel n’est autorisé." },400);
+    return json({ error: "Test indisponible. Utilise 0 € ou 1 € et vérifie la configuration Stripe test. Aucun virement réel n’est autorisé." },400);
   }
 }

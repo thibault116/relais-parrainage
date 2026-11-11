@@ -1,7 +1,8 @@
 import type Stripe from "stripe";
 import { stripeTest } from "./stripe";
+import { testPayoutCents } from "./payout-config";
 export type PayoutDiagnostic = {
-  testMode: true; ready: boolean; accountId?: string; availableCents?: number;
+  testMode: true; ready: boolean; minimumCents: number; accountId?: string; availableCents?: number;
   destination?: { id: string; bankName: string; last4: string; currency: string };
   checks: string[]; code?: string; requestId?: string;
 };
@@ -20,17 +21,18 @@ export async function diagnosePayoutTest(client: () => Stripe = stripeTest): Pro
     const stripe=client();
     const [account,balance]=await Promise.all([stripe.accounts.retrieve(null),stripe.balance.retrieve()]);
     if(balance.livemode !== false) throw Error("Mode réel refusé.");
-    const banks=account.external_accounts?.data || [];
+    // The own-account snapshot can omit external accounts. Read the actual
+    // bank endpoint instead of treating an incomplete account snapshot as empty.
+    const banks=(await stripe.accounts.listExternalAccounts(account.id,{object:"bank_account",limit:100})).data;
     const bank=banks.find(item=>item.object==="bank_account" && item.currency==="eur" && item.default_for_currency) as Stripe.BankAccount | undefined;
     const available=balance.available.find(item=>item.currency==="eur")?.amount || 0;
     const checks:string[]=[];
     if(!bank) checks.push("Aucun compte bancaire EUR par défaut n’est configuré dans ce bac à sable Stripe. Aucun destinataire ne peut recevoir le test.");
-    if(!account.payouts_enabled) checks.push("Les versements ne sont pas activés sur ce compte Stripe test.");
-    if(available<1) checks.push("Le solde EUR disponible de Stripe est inférieur à 0,01 €. Des crédits Mentora ne constituent pas un solde Stripe.");
-    return {testMode:true,ready:!!bank && !!account.payouts_enabled && available>=1,accountId:account.id,availableCents:available,
+    if(available<testPayoutCents) checks.push("Le solde EUR disponible de Stripe est inférieur au minimum Stripe de 1 €. Des crédits Mentora ne constituent pas un solde Stripe.");
+    return {testMode:true,ready:!!bank && available>=testPayoutCents,minimumCents:testPayoutCents,accountId:account.id,availableCents:available,
       ...(bank?{destination:{id:bank.id,bankName:bank.bank_name || "Banque de test",last4:bank.last4 || "",currency:bank.currency}}:{}),checks};
   } catch(failure) {
     const error=safeStripeFailure(failure);
-    return {testMode:true,ready:false,checks:[`Stripe : ${error.message}`],code:error.code,requestId:error.requestId};
+    return {testMode:true,ready:false,minimumCents:testPayoutCents,checks:[`Stripe : ${error.message}`],code:error.code,requestId:error.requestId};
   }
 }
