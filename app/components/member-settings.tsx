@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect, type ReactNode, type FormEvent } from "react";
+import { useOwnerPreview } from "./owner-preview";
+import { LegalLinks } from "./legal-links";
 import { BetaSettings } from "./beta";
 import { authClient } from "@/lib/auth-client";
 import { AppearanceSettings } from "./appearance";
@@ -23,6 +25,7 @@ export function MemberSettings({
   mentor?: boolean;
   onVerificationChange: () => Promise<void>;
 }) {
+  const ownerPreview = useOwnerPreview();
   const { language, changeLanguage } = useLanguage();
   const [search, setSearch] = useState("");
   const normalized = search
@@ -142,6 +145,10 @@ export function MemberSettings({
           <BetaSettings />
           <AppearanceSettings />
           <InstallMentora />
+          {ownerPreview && <section className="verification-panel">
+            <h2>Informations légales et droits</h2>
+            <LegalLinks />
+          </section>}
         </>
       )}
       {!normalized && section === "security" && <PasswordSettings />}

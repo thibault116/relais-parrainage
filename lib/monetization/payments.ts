@@ -31,6 +31,7 @@ export async function checkout(
   code: string,
   key: string,
   destination: "admin" | "billing" | "credits" = "admin",
+  acceptedTermsVersion?: string,
 ) {
   const item = checkoutOffer(code);
   if (!item || !item.cents) throw Error("Offre inconnue");
@@ -44,7 +45,19 @@ export async function checkout(
     const prior = (await q("SELECT * FROM money_orders WHERE id=$1", [id]))[0];
     if (prior) {
       if (prior.offer !== code) throw Error("Requête déjà utilisée");
+      if (acceptedTermsVersion) {
+        const [acceptance] = await q("SELECT version FROM legal_checkout_acceptances WHERE order_id=$1", [id]);
+        if (acceptance?.version !== acceptedTermsVersion)
+          throw Error("Cette session ne correspond pas à la version des conditions acceptée.");
+      }
       return (await s.checkout.sessions.retrieve(String(prior.session_id))).url;
+    }
+    if (acceptedTermsVersion) {
+      await q(
+        `INSERT INTO legal_checkout_acceptances(order_id,owner_id,version,offer,amount_cents,credits,period,accepted_at)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [id, owner, acceptedTermsVersion, code, item.cents, item.credits, subscription?.period ?? null, new Date().toISOString()],
+      );
     }
     if (subscription) {
       const list = await s.subscriptions.list({

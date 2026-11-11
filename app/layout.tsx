@@ -1,3 +1,7 @@
+import { ownerPreviewUserId } from "@/lib/owner-preview";
+import { OwnerPreviewProvider } from "./components/owner-preview";
+import { CookieBanner } from "./components/cookie-preferences";
+import { cookieChoiceKey, preferenceKeys } from "@/lib/cookie-preferences";
 import { BetaProvider } from "./components/beta";
 import "./community.css";
 import { LanguageProvider } from "./components/language";
@@ -11,6 +15,7 @@ import "./mobile-app.css";
 import "./refonte-kit.css";
 import "./brand-violet.css";
 import "./workspace-desktop.css";
+import "./legal.css";
 import { SuggestionWidget } from "./components/suggestions";
 import { ReleaseNotes } from "./components/release-notes";
 import { UpdateBanner } from "./components/update-banner";
@@ -32,21 +37,25 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
 };
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default async function Layout({ children }: { children: React.ReactNode }) {
+  const initialUserId = await ownerPreviewUserId();
+  const ownerPreview = initialUserId !== null;
   return (
     <html lang="fr" data-theme="dark" data-neon="true" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var a=JSON.parse(localStorage.getItem("mentora-appearance")||"{}");document.documentElement.dataset.reduceMotion=String(a?.reduceMotion===true);document.documentElement.dataset.theme=a?.dark!==false?"dark":"light";document.documentElement.dataset.neon=a?.neon!==false?"true":"false";}catch(e){}`,
+            __html: `try{var c=JSON.parse(localStorage.getItem("${cookieChoiceKey}")||"null");var a=(!${ownerPreview}||c?.version===1&&c.expiresAt>Date.now()&&c.appearance===true)?JSON.parse(localStorage.getItem("${preferenceKeys.appearance}")||"{}"):{};document.documentElement.dataset.reduceMotion=String(a?.reduceMotion===true);document.documentElement.dataset.theme=a?.dark!==false?"dark":"light";document.documentElement.dataset.neon=a?.neon!==false?"true":"false";}catch(e){}`,
           }}
         />
       </head>
       <body>
+        <OwnerPreviewProvider initialUserId={initialUserId}>
         <LanguageProvider>
           <AppearanceProvider>
             <PwaProvider />
             <UpdateBanner />
+            <CookieBanner />
             <ReleaseNotes />
             <PlatformProvider>
               <BetaProvider>
@@ -56,6 +65,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </PlatformProvider>
           </AppearanceProvider>
         </LanguageProvider>
+        </OwnerPreviewProvider>
       </body>
     </html>
   );

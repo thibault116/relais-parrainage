@@ -1,0 +1,113 @@
+.legal-page {
+  width: min(calc(100% - 32px), 840px);
+  margin-inline: auto;
+  padding-block: 32px 64px;
+  overflow-wrap: anywhere;
+}
+.legal-page h1 { margin: 18px 0 22px; font-size: clamp(28px, 5vw, 48px); }
+.legal-page h2 { margin: 28px 0 8px; font-size: 1.35rem; }
+.legal-page h3 { margin-top: 20px; }
+.legal-page :is(p, li, dd) { line-height: 1.65; }
+.legal-page dt { margin-top: 14px; font-weight: 700; }
+.legal-page dd { margin: 3px 0; }
+.legal-page a:not(.btn), .legal-links a, .legal-check a, .test-sales-acceptance a {
+  color: var(--purple-dark);
+  text-decoration: underline;
+  text-underline-offset: .2em;
+}
+.legal-page .legal-links { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 18px; }
+.legal-links { display: flex; flex-wrap: wrap; gap: 10px 16px; width: 100%; }
+.legal-links a { line-height: 1.5; font-size: 14px; }
+.footer .legal-links { flex: 1 0 100%; }
+.legal-card, .legal-note, .test-sales-acceptance {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 14px;
+  padding: clamp(14px, 4vw, 24px);
+  margin-block: 14px;
+}
+.legal-card h2:first-child { margin-top: 0; }
+.legal-note { border-color: var(--purple); }
+.legal-form { display: grid; gap: 14px; }
+.legal-form label:not(.legal-check) { display: grid; gap: 6px; }
+.legal-form :is(input:not([type="checkbox"]), textarea) {
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--bg);
+  font: inherit;
+}
+.legal-check, .modal form .legal-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.5;
+}
+.legal-check input[type="checkbox"], .modal form .legal-check input[type="checkbox"] {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 3px 0 0;
+  accent-color: var(--purple);
+}
+.legal-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.legal-receipt { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.test-sales-acceptance p { margin: 8px 0 0; font-size: .9rem; }
+
+.footer:has(.legal-links) { flex-wrap: wrap; }
+.footer:has(.legal-links) > * { min-width: 0; max-width: 100%; }
+.footer .legal-links {
+  flex: 0 0 100%;
+  min-width: 0;
+  gap: 6px 12px;
+}
+.legal-links :is(a, button) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.footer .legal-links :is(a, button) { font-size: 12px; }
+.cookie-settings-link {
+  align-self: flex-start;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--purple-dark);
+  font: inherit;
+  line-height: 1.5;
+  text-decoration: underline;
+  text-underline-offset: .2em;
+}
+.cookie-banner {
+  position: fixed;
+  z-index: 1600;
+  inset-inline-end: 16px;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  width: min(500px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 30%);
+}
+.cookie-banner h2 { margin: 0; font-size: 1.125rem; }
+.cookie-banner p { margin: 8px 0 12px; font-size: .875rem; line-height: 1.5; }
+.cookie-banner a { text-decoration: underline; }
+.cookie-banner fieldset {
+  margin: 0 0 12px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.cookie-banner fieldset label { margin-block: 4px; }
+.cookie-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cookie-actions .btn { justify-content: center; flex: 1 1 auto; min-width: 0; padding: 10px 12px; font-size: .82rem; }
+.pricing-preview { padding-block: 32px 48px; }

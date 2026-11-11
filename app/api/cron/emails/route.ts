@@ -1,3 +1,4 @@
+import { runLegalMailWorker } from "@/lib/legal-requests";
 import { runNotificationWorker } from "@/lib/notification-worker";
 import { timingSafeEqual } from "node:crypto";
 import { json } from "@/lib/http";
@@ -18,7 +19,8 @@ function authorized(request: Request) {
 export async function GET(request: Request) {
   if (!authorized(request)) return json({ error: "Non autorisé." }, 401);
   try {
-    return json(await runNotificationWorker());
+    const [notifications] = await Promise.all([runNotificationWorker(), runLegalMailWorker()]);
+    return json(notifications);
   } catch {
     return json({ error: "Traitement des e-mails indisponible." }, 503);
   }

@@ -43,6 +43,7 @@ export function AdminLegalGuide() {
       <header className="commerce-heading">
         <h1>Mentions légales, CGU et CGV</h1>
         <p>Guide privé de rédaction pour Mentora</p>
+        <a className="btn secondary" href="/administration/demandes-juridiques">Consulter les demandes juridiques</a>
       </header>
       <p>Complète les éléments entre crochets avec tes informations et fais valider les textes avant leur publication. Pour les CGV, commence par déterminer qui vend les prestations et quel rôle Mentora joue dans la transaction.</p>
       {documents.map((document) => (

@@ -1,4 +1,6 @@
 "use client";
+import { useOwnerPreview } from "./owner-preview";
+import { cookieChoiceEvent, preferenceKeys, readCookieChoice } from "@/lib/cookie-preferences";
 import { t as translateUi } from "@/app/components/language";
 import {
   createContext,
@@ -18,8 +20,9 @@ const AppearanceContext = createContext({
   appearance: defaults,
   change: (_next: Appearance) => {},
 });
-const key = "mentora-appearance";
-function read(): Appearance {
+const key = preferenceKeys.appearance;
+function read(restricted: boolean): Appearance {
+  if (restricted && !readCookieChoice()?.appearance) return defaults;
   try {
     const v = JSON.parse(localStorage.getItem(key) || "{}");
     return {
@@ -37,22 +40,33 @@ function apply(v: Appearance) {
   document.documentElement.dataset.neon = v.neon ? "true" : "false";
 }
 export function AppearanceProvider({ children }: { children: ReactNode }) {
+  const restricted = useOwnerPreview();
   const [appearance, setAppearance] = useState(defaults);
   useEffect(() => {
     const sync = () => {
-      const value = read();
+      const value = read(restricted);
       setAppearance(value);
       apply(value);
     };
     sync();
-    window.addEventListener("storage", sync);
-    return () => window.removeEventListener("storage", sync);
-  }, []);
+    const syncStorage = (event: StorageEvent) => {
+      if (event.key === key && (!restricted || readCookieChoice()?.appearance)) sync();
+    };
+    const syncChoice = () => {
+      try { if (readCookieChoice()?.appearance && localStorage.getItem(key)) sync(); } catch {}
+    };
+    window.addEventListener("storage", syncStorage);
+    window.addEventListener(cookieChoiceEvent, syncChoice);
+    return () => {
+      window.removeEventListener("storage", syncStorage);
+      window.removeEventListener(cookieChoiceEvent, syncChoice);
+    };
+  }, [restricted]);
   function change(v: Appearance) {
     setAppearance(v);
     apply(v);
     try {
-      localStorage.setItem(key, JSON.stringify(v));
+      if (!restricted || readCookieChoice()?.appearance) localStorage.setItem(key, JSON.stringify(v));
     } catch {
       /* Appearance still works when storage is unavailable. */
     }
@@ -133,7 +147,7 @@ export function AppearanceSettings() {
       </label>
       <p className="small-text">
         {translateUi(
-          "Ton choix est conserv\u00E9 dans ce navigateur, sur cet appareil. Aucun bouton d\u2019enregistrement n\u00E9cessaire.",
+          "Ton choix est conservé dans ce navigateur, sur cet appareil.",
         )}
       </p>
     </section>

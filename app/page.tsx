@@ -1,4 +1,7 @@
 "use client";
+import { useOwnerPreview } from "./components/owner-preview";
+import { PricingPreview } from "./components/pricing-preview";
+import { LegalLinks } from "./components/legal-links";
 import { OwnerPlanBadge } from "./components/owner-billing";
 import { ProductStory } from "./components/product-story";
 import {
@@ -88,9 +91,11 @@ type View =
   | "help"
   | "menu"
   | "community"
-  | "workspace";
+  | "workspace"
+  | "pricing";
 const views: Record<View, string> = {
   workspace: "Mon espace",
+  pricing: "Tarifs",
   community: "Communauté",
   menu: "Menu",
   help: "Aide",
@@ -134,6 +139,7 @@ import {
   desktopExperienceScreens, workspaceRoutes, type WorkspaceTarget,
 } from "./components/workspace-destinations";
 export default function App() {
+  const ownerPreview = useOwnerPreview();
   const { discordUrl: DISCORD_GROUP } = usePlatformSettings();
   const [requestedView, setView] = useState<View>("home");
   const [mobile, setMobile] = useState(false);
@@ -155,9 +161,10 @@ export default function App() {
   const owner = showAdmin &&
     session?.user.email.toLowerCase() === "thibault.cordiez@hotmail.com";
   const [moderationBlock, setModerationBlock] = useState<string | null>(null);
-  const publicView = ["home", "guide", "faq", "help"].includes(requestedView);
+  const pricingPreview = ownerPreview && owner;
+  const publicView = ["home", "guide", "faq", "help", "pricing"].includes(requestedView);
   const view: View = publicView
-    ? requestedView
+    ? requestedView === "pricing" && !pricingPreview ? "home" : requestedView
     : session
       ? requestedView === "moderation" && !showAdmin
         ? "directory"
@@ -180,7 +187,7 @@ export default function App() {
       ? showAdmin
         ? ["directory", "profile", "moderation", "help"]
         : ["directory", "profile", "help"]
-      : ["home", "guide", "faq", "help"];
+      : pricingPreview ? ["home", "guide", "faq", "help", "pricing"] : ["home", "guide", "faq", "help"];
   const [requiresQuestionnaire, setRequiresQuestionnaire] = useState(false);
   const [profileChecked, setProfileChecked] = useState(false);
   const [savedProfile, setProfile] = useState<Profile | null>(null);
@@ -271,15 +278,16 @@ export default function App() {
     if (next === "directory") setFocusMember(null);
     setView(next);
     setMobile(false);
+    const hash = next === "pricing" ? "tarifs" : next;
     const url = new URL(window.location.href);
     if (!phoneLayout) {
       for (const key of ["mobile", "chat", "profileTab", "settingsSection", "adminTab", "network", "member"])
         url.searchParams.delete(key);
-      url.hash = next;
+      url.hash = hash;
       if (url.href !== window.location.href)
         window.history.pushState({ mentoraDepth: (window.history.state?.mentoraDepth || 0) + 1 }, "", url);
     } else {
-      window.location.hash = next;
+      window.location.hash = hash;
     }
     window.scrollTo({
       top: 0,
@@ -292,7 +300,8 @@ export default function App() {
   };
   useEffect(() => {
     const read = () => {
-      const hash = window.location.hash.slice(1);
+      const fragment = window.location.hash.slice(1);
+      const hash = fragment === "tarifs" ? "pricing" : fragment;
       const params = new URLSearchParams(window.location.search);
       const screen = params.get("mobile") || "";
       const desktop = !window.matchMedia("(max-width: 900px)").matches;
@@ -1007,6 +1016,7 @@ export default function App() {
             notify={notify}
           />
         )}
+        {pricingPreview && view === "pricing" && <PricingPreview />}
         {!isPending && view === "help" && <Help />}
         {!isPending && view === "guide" && (
           <Guide onJoin={() => join("beginner")} />
@@ -1324,6 +1334,7 @@ export default function App() {
             <span>
               {translateUi("Une initiative ind\u00E9pendante, entre membres.")}
             </span>
+            <LegalLinks />
           </footer>
         </>
       )}

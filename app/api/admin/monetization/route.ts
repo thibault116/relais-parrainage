@@ -1,3 +1,4 @@
+import { testSalesVersion } from "@/lib/legal-versions";
 import { manageSubscription } from "@/lib/monetization/billing";
 import { user, json, guard } from "@/lib/http";
 import { isCrmOwner } from "@/lib/crm";
@@ -109,6 +110,8 @@ export async function POST(r: Request) {
       return json({ ok: true });
     }
     if (action === "checkout") {
+      if (d.acceptedTermsVersion !== testSalesVersion)
+        return json({ error: "Accepte les conditions des paiements de test avant de continuer." }, 400);
       if (!process.env.STRIPE_WEBHOOK_SECRET)
         throw Error("Webhook Stripe non configuré");
       const code = d.credits === undefined
@@ -123,6 +126,7 @@ export async function POST(r: Request) {
             .enum(["admin", "billing", "credits"])
             .default("admin")
             .parse(d.returnTo),
+          testSalesVersion,
         ),
       });
     }

@@ -179,17 +179,8 @@ export async function processEvents() {
     await query("UPDATE email_events SET processed=1 WHERE id=$1", [id]);
   }
 }
-export async function runEmailWorker() {
-  if (!emailConfigured()) return { configured: false, sent: 0 };
-  const lease = future(120000),
-    now = iso();
-  const lock = await query(
-    "UPDATE email_worker SET lease_until=$1 WHERE id='main' AND lease_until<$2 RETURNING id",
-    [lease, now],
-  );
-  if (!lock.length) return { configured: true, busy: true, sent: 0 };
-  let sent = 0;
-  const transport = nodemailer.createTransport({
+export function createMailTransport() {
+  return nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 465,
     secure: true,
@@ -201,6 +192,18 @@ export async function runEmailWorker() {
     greetingTimeout: 10000,
     socketTimeout: 15000,
   });
+}
+export async function runEmailWorker() {
+  if (!emailConfigured()) return { configured: false, sent: 0 };
+  const lease = future(120000),
+    now = iso();
+  const lock = await query(
+    "UPDATE email_worker SET lease_until=$1 WHERE id='main' AND lease_until<$2 RETURNING id",
+    [lease, now],
+  );
+  if (!lock.length) return { configured: true, busy: true, sent: 0 };
+  let sent = 0;
+  const transport = createMailTransport();
   try {
     const started = Date.now();
     await processEvents();

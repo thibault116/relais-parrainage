@@ -17,6 +17,8 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { useEffect, useState, useCallback, useRef } from "react";
+import { TestSalesAcceptance } from "./test-sales-acceptance";
+import { testSalesVersion } from "@/lib/legal-versions";
 import type { serviceSchema } from "@/lib/monetization/store";
 import type { z } from "zod";
 import { annualPrice, customCreditsPrice, maxCustomCredits, type plans, type packs } from "@/lib/monetization/catalog";
@@ -91,6 +93,7 @@ export function AdminMonetization({
     [slot, setSlot] = useState("");
   const [billing, setBilling] = useState<any>(null);
   useEffect(() => setTab(initialTab), [initialTab]);
+  const [accepted, setAccepted] = useState(false);
   const [panel, setPanel] = useState("");
   const creditDialog = useRef<HTMLDialogElement>(null);
   const [customCredits, setCustomCredits] = useState("");
@@ -136,6 +139,10 @@ export function AdminMonetization({
   }, [tab, loadBilling]);
   async function send(body: Record<string, unknown>) {
     if (busy) return false;
+    if (body.action === "checkout" && !accepted) {
+      setError("Accepte les conditions des paiements de test avant de continuer.");
+      return false;
+    }
     setBusy(true);
     setError("");
     setMessage("");
@@ -145,6 +152,7 @@ export function AdminMonetization({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...body,
+            ...(body.action === "checkout" ? { acceptedTermsVersion: testSalesVersion } : {}),
             returnTo: dedicated
               ? tab === "wallet"
                 ? "credits"
@@ -339,6 +347,7 @@ export function AdminMonetization({
                 <p>
                   Formules {annual ? "annuelles" : "mensuelles"} · changement au prochain renouvellement.
                 </p>
+                {current.id === "free" && <TestSalesAcceptance checked={accepted} onChange={setAccepted} />}
                 {data.plans.map((p) => (
                   <article
                     className={`commerce-card ${current.id === p.id ? "chosen" : ""}`}
@@ -443,6 +452,9 @@ export function AdminMonetization({
                 )}
             </div>
             {panel === "invoices" && invoices}
+            <p className="commerce-footnote">
+              <a href="/juridique/contrats">Rétractation, résiliation et remboursements</a>
+            </p>
           </>
         )}
         {tab === "wallet" && (
@@ -456,6 +468,7 @@ export function AdminMonetization({
               className="commerce-primary"
               onClick={() => {
                 setError("");
+                setAccepted(false);
                 creditDialog.current?.showModal();
               }}
             >
@@ -493,6 +506,7 @@ export function AdminMonetization({
                 </button>
               </div>
               <p>Paiement Stripe en mode test</p>
+              <TestSalesAcceptance checked={accepted} onChange={setAccepted} />
               {!data.configured && <p>Stripe test est indisponible.</p>}
               {error && <p role="alert">{error}</p>}
               <div className="commerce-packs">
@@ -500,7 +514,7 @@ export function AdminMonetization({
                   <button
                     key={p.id}
                     className="commerce-card commerce-pack"
-                    disabled={busy || !data.configured}
+                    disabled={busy || !data.configured || !accepted}
                     onClick={() => void send({ action: "checkout", offer: p.id, key: crypto.randomUUID() })}
                   >
                     <Coins />
@@ -520,7 +534,7 @@ export function AdminMonetization({
                   <input type="number" min={1} max={maxCustomCredits} step={1} required
                     value={customCredits} onChange={(event) => setCustomCredits(event.target.value)} />
                 </label>
-                <button className="commerce-primary" disabled={busy || !data.configured || customPrice === null}>
+                <button className="commerce-primary" disabled={busy || !data.configured || !accepted || customPrice === null}>
                   {customPrice === null ? "Choisir une quantité" : `Payer ${euro(customPrice)}`}
                 </button>
               </form>
@@ -857,6 +871,7 @@ export function AdminMonetization({
             )}
           </section>
 
+          {data.account.plan === "free" && <TestSalesAcceptance checked={accepted} onChange={setAccepted} />}
           <div className="pricing-cards">
             {data.plans.map((p, i) => (
               <article className="pricing-card" key={p.id}>
@@ -974,6 +989,7 @@ export function AdminMonetization({
       {tab === "wallet" && (
         <>
           <h3>Recharger avec Stripe test</h3>
+          <TestSalesAcceptance checked={accepted} onChange={setAccepted} />
           <div className="pricing-pack-grid">
             {data.packs.map((p) => (
               <article key={p.id}>

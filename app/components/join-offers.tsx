@@ -11,19 +11,27 @@ import {
   Clock3,
   ArrowRight,
 } from "lucide-react";
+import { TestSalesAcceptance } from "./test-sales-acceptance";
+import { testSalesVersion } from "@/lib/legal-versions";
 import type { joinOffers } from "@/lib/join-offers";
-type Data = ReturnType<typeof joinOffers> & { currentPlan: string; subscriptionStatus: string };
+type OfferData = ReturnType<typeof joinOffers>;
+type Data = OfferData & { currentPlan: string; subscriptionStatus: string };
+type Props =
+  | { onManage: () => void; previewOffers?: never }
+  | { previewOffers: OfferData; onManage?: never };
 const euro = (c: number) =>
   (c / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
 const icons = [Leaf, Zap, Crown, Gem];
-export function JoinOffers({ onManage }: { onManage: () => void }) {
-  const [data, setData] = useState<Data | null>(null),
+export function JoinOffers({ onManage, previewOffers }: Props) {
+  const [accountOffers, setData] = useState<Data | null>(null),
     [error, setError] = useState(""),
     [annual, setAnnual] = useState(false),
+    [accepted, setAccepted] = useState(false),
     [busy, setBusy] = useState(false),
     [checkoutError, setCheckoutError] = useState(""),
     [retry, setRetry] = useState(0);
   useEffect(() => {
+    if (previewOffers) return;
     const controller = new AbortController();
     fetch("/api/offers", { cache: "no-store", signal: controller.signal })
       .then(async (r) => {
@@ -36,9 +44,10 @@ export function JoinOffers({ onManage }: { onManage: () => void }) {
         if (e.name !== "AbortError") setError(e.message);
       });
     return () => controller.abort();
-  }, [retry]);
+  }, [retry, previewOffers]);
+  const data = previewOffers ?? accountOffers;
   async function pay(id: string) {
-    if (busy) return;
+    if (previewOffers || busy || !accepted) return;
     setBusy(true);
     setCheckoutError("");
     try {
@@ -50,6 +59,7 @@ export function JoinOffers({ onManage }: { onManage: () => void }) {
           offer: annual ? `${id}-annual` : id,
           key: crypto.randomUUID(),
           returnTo: "billing",
+          acceptedTermsVersion: testSalesVersion,
         }),
       });
       const result = await response.json();
@@ -74,7 +84,8 @@ export function JoinOffers({ onManage }: { onManage: () => void }) {
       </section>
     );
   if (!data) return <p role="status">Chargement des offres…</p>;
-  const hasSubscription = !["free", "canceled", "incomplete_expired"].includes(data.subscriptionStatus);
+  const currentPlan = accountOffers?.currentPlan;
+  const hasSubscription = accountOffers && !["free", "canceled", "incomplete_expired"].includes(accountOffers.subscriptionStatus);
   return (
     <section className="join-offers commerce-page">
       <header className="join-heading">
@@ -86,7 +97,7 @@ export function JoinOffers({ onManage }: { onManage: () => void }) {
           Mentora.
         </p>
         <small>
-          Espace privé · Paiements Stripe en mode test.
+          {previewOffers ? "Aperçu des offres" : "Espace privé · Paiements Stripe en mode test."}
         </small>
       </header>
       <div
@@ -101,6 +112,7 @@ export function JoinOffers({ onManage }: { onManage: () => void }) {
           Annuel <span>−{data.discount} %</span>
         </button>
       </div>
+      {!previewOffers && !hasSubscription && <TestSalesAcceptance checked={accepted} onChange={setAccepted} />}
       {checkoutError && <p role="alert">{checkoutError}</p>}
       <div className="join-cards">
         {data.plans.map((p, i) => {
@@ -122,8 +134,11 @@ export function JoinOffers({ onManage }: { onManage: () => void }) {
                     </small>
                   </strong>
                 </div>
-                {p.id === data.currentPlan && (
+                {p.id === currentPlan && (
                   <span className="join-label">Plan actuel</span>
+                )}
+                {previewOffers && p.id === "free" && (
+                  <span className="join-label">Gratuit</span>
                 )}
                 {p.id === "plus" && (
                   <span className="commerce-pill">Pour aller plus loin</span>
@@ -159,13 +174,13 @@ export function JoinOffers({ onManage }: { onManage: () => void }) {
                   </li>
                 ))}
               </ul>
-              {p.id !== "free" && p.id !== data.currentPlan && (
+              {p.id !== "free" && p.id !== currentPlan && (
                 <button
                   className="join-plan-action"
-                  disabled={busy}
-                  onClick={() => hasSubscription ? onManage() : void pay(p.id)}
+                  disabled={!!previewOffers || busy || (!hasSubscription && !accepted)}
+                  onClick={() => hasSubscription ? onManage?.() : void pay(p.id)}
                 >
-                  {hasSubscription ? `Gérer mon abonnement pour passer à ${p.name}`
+                  {previewOffers ? `Choisir l’offre ${p.name}` : hasSubscription ? `Gérer mon abonnement pour passer à ${p.name}`
                     : `Payer ${euro(annual ? p.annualCents : p.cents)} / ${annual ? "an" : "mois"} · ${p.name}`}
                   <ChevronRight size={18} />
                 </button>
@@ -236,14 +251,14 @@ export function JoinOffers({ onManage }: { onManage: () => void }) {
             </tbody>
           </table>
         </div>
-        {data.currentPlan !== "plus" && (
+        {currentPlan !== "plus" && (
           <button
             className="commerce-primary"
-            disabled={busy}
-            onClick={() => hasSubscription ? onManage() : void pay("plus")}
+            disabled={!!previewOffers || busy || (!hasSubscription && !accepted)}
+            onClick={() => hasSubscription ? onManage?.() : void pay("plus")}
           >
             <Crown />
-            {hasSubscription ? "Gérer mon abonnement" : "Payer l’offre Plus"}
+            {previewOffers ? "Choisir l’offre Plus" : hasSubscription ? "Gérer mon abonnement" : "Payer l’offre Plus"}
             <ArrowRight />
           </button>
         )}
