@@ -36,6 +36,8 @@ try {
    return requests.get(options.idempotencyKey)!;
  },retrieve:async(id:string)=>({...Array.from(requests.values()).find(p=>p.id===id)!,status:"paid"})}} as unknown as Stripe;
  const diagnostic=await diagnosePayoutTest(()=>fake);assert.equal(diagnostic.ready,true);assert.equal(diagnostic.destination?.last4,"6789");
+ const ownAccount={...fake,accounts:{retrieve:async()=>({id:"acct_test",external_accounts:{data:testBanks,has_more:false}}),listExternalAccounts:async()=>{throw Error("Connect endpoint must not be called for an available own-account bank")}}} as unknown as Stripe;
+ assert.equal((await diagnosePayoutTest(()=>ownAccount)).ready,true);
  const noBank={...fake,accounts:{listExternalAccounts:async()=>({data:[]}),retrieve:async()=>({id:"acct_test",payouts_enabled:true,external_accounts:{data:[]}})}} as unknown as Stripe;
  assert.equal((await diagnosePayoutTest(()=>noBank)).ready,false);
  const missing=await createPayoutTest("owner",100,crypto.randomUUID(),()=>noBank);assert.equal(missing.status,"failed");assert.match(missing.error,/Aucun compte bancaire EUR/);assert.equal(count,0);

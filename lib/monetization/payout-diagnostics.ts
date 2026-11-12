@@ -21,9 +21,13 @@ export async function diagnosePayoutTest(client: () => Stripe = stripeTest): Pro
     const stripe=client();
     const [account,balance]=await Promise.all([stripe.accounts.retrieve(null),stripe.balance.retrieve()]);
     if(balance.livemode !== false) throw Error("Mode réel refusé.");
-    // The own-account snapshot can omit external accounts. Read the actual
-    // bank endpoint instead of treating an incomplete account snapshot as empty.
-    const banks=(await stripe.accounts.listExternalAccounts(account.id,{object:"bank_account",limit:100})).data;
+    // /v1/account returns this platform's bank destinations. The separate
+    // /accounts/:id/external_accounts endpoint is intended for Connect accounts
+    // and can reject even a full-access key on the platform itself.
+    let banks=account.external_accounts?.data || [];
+    const hasEur=banks.some(item=>item.object==="bank_account" && item.currency==="eur" && item.default_for_currency);
+    if(!hasEur && (!account.external_accounts || account.external_accounts.has_more))
+      banks=(await stripe.accounts.listExternalAccounts(account.id,{object:"bank_account",limit:100})).data;
     const bank=banks.find(item=>item.object==="bank_account" && item.currency==="eur" && item.default_for_currency) as Stripe.BankAccount | undefined;
     const available=balance.available.find(item=>item.currency==="eur")?.amount || 0;
     const checks:string[]=[];
