@@ -54,11 +54,11 @@ export function PayoutTestPanel() {
       <p>Ce parcours teste un retrait du compte Stripe de Mentora. Il ne verse rien sur ton compte personnel. Aucun argent réel ne bouge.</p>
       <button className="commerce-row" disabled={busy} onClick={() => void send(false,true)}>Vérifier Stripe et la destination</button>
       {diagnostic && <div role="status">
-        {diagnostic.destination ? <p>Destination de test : {diagnostic.destination.bankName} · •••• {diagnostic.destination.last4} · EUR.</p> : <p>Aucune destination EUR confirmée.</p>}
+        {diagnostic.destination ? <p>Destination de test : {diagnostic.destination.bankName} · •••• {diagnostic.destination.last4} · EUR.</p> : <p>{diagnostic.usesDefaultDestination ? "Destination : compte bancaire EUR par défaut configuré dans Stripe test." : "Aucune destination EUR confirmée."}</p>}
         {diagnostic.availableCents !== undefined && <p>Solde EUR disponible dans Stripe test : {(diagnostic.availableCents / 100).toLocaleString("fr-FR",{style:"currency",currency:"EUR"})}.</p>}
         {diagnostic.checks.map((check,index) => <p key={index}>{check}</p>)}
         {diagnostic.code && <small>Code Stripe : {diagnostic.code}{diagnostic.requestId ? ` · ${diagnostic.requestId}` : ""}</small>}
-        {diagnostic.ready && <p>Stripe confirme une destination et un solde suffisants pour tenter 1 €.</p>}
+        {diagnostic.ready && <p>Le solde de test permet de tenter 1 €. Stripe confirmera l’acceptation du retrait.</p>}
       </div>}
       <a href="https://dashboard.stripe.com/test/settings/payouts" target="_blank" rel="noreferrer">Configurer la banque dans Stripe test</a>
     </section>

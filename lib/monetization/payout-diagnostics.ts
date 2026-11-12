@@ -4,6 +4,7 @@ import { testPayoutCents } from "./payout-config";
 export type PayoutDiagnostic = {
   testMode: true; ready: boolean; minimumCents: number; accountId?: string; availableCents?: number;
   destination?: { id: string; bankName: string; last4: string; currency: string };
+  usesDefaultDestination?: boolean;
   checks: string[]; code?: string; requestId?: string;
 };
 export function safeStripeFailure(failure: unknown) {
@@ -24,16 +25,18 @@ export async function diagnosePayoutTest(client: () => Stripe = stripeTest): Pro
     // /v1/account returns this platform's bank destinations. The separate
     // /accounts/:id/external_accounts endpoint is intended for Connect accounts
     // and can reject even a full-access key on the platform itself.
-    let banks=account.external_accounts?.data || [];
-    const hasEur=banks.some(item=>item.object==="bank_account" && item.currency==="eur" && item.default_for_currency);
-    if(!hasEur && (!account.external_accounts || account.external_accounts.has_more))
-      banks=(await stripe.accounts.listExternalAccounts(account.id,{object:"bank_account",limit:100})).data;
+    const banks=account.external_accounts?.data || [];
     const bank=banks.find(item=>item.object==="bank_account" && item.currency==="eur" && item.default_for_currency) as Stripe.BankAccount | undefined;
     const available=balance.available.find(item=>item.currency==="eur")?.amount || 0;
+    // Some own-account responses omit bank details. The documented Payout API
+    // can select the authenticated account's default EUR destination itself.
+    // Do not call a Connect endpoint or invent a destination in that case.
+    const usesDefaultDestination=!bank && (!account.external_accounts || account.external_accounts.has_more);
     const checks:string[]=[];
-    if(!bank) checks.push("Aucun compte bancaire EUR par défaut n’est configuré dans ce bac à sable Stripe. Aucun destinataire ne peut recevoir le test.");
+    if(!bank && !usesDefaultDestination) checks.push("Aucun compte bancaire EUR par défaut n’est configuré dans ce bac à sable Stripe. Aucun destinataire ne peut recevoir le test.");
+    if(usesDefaultDestination) checks.push("Les coordonnées bancaires ne sont pas exposées par cette API. Stripe sélectionnera sa destination EUR par défaut et refusera le test si aucune banque n’est configurée.");
     if(available<testPayoutCents) checks.push("Le solde EUR disponible de Stripe est inférieur au minimum Stripe de 1 €. Des crédits Mentora ne constituent pas un solde Stripe.");
-    return {testMode:true,ready:!!bank && available>=testPayoutCents,minimumCents:testPayoutCents,accountId:account.id,availableCents:available,
+    return {testMode:true,ready:(!!bank || !!usesDefaultDestination) && available>=testPayoutCents,usesDefaultDestination:!!usesDefaultDestination,minimumCents:testPayoutCents,accountId:account.id,availableCents:available,
       ...(bank?{destination:{id:bank.id,bankName:bank.bank_name || "Banque de test",last4:bank.last4 || "",currency:bank.currency}}:{}),checks};
   } catch(failure) {
     const error=safeStripeFailure(failure);

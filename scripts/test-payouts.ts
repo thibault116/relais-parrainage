@@ -28,7 +28,7 @@ try {
  process.env.STRIPE_SECRET_KEY="sk_live_forbidden";assert.throws(stripeTest,/live/);
  process.env.STRIPE_SECRET_KEY="rk_live_forbidden";assert.throws(stripeTest,/live/);
  const testBanks=[{id:"ba_test",object:"bank_account",currency:"eur",default_for_currency:true,bank_name:"TEST BANK",last4:"6789"}];
- const environment={accounts:{listExternalAccounts:async()=>({data:testBanks}),retrieve:async()=>({id:"acct_test",payouts_enabled:false})},balance:{retrieve:async()=>({livemode:false,available:[{currency:"eur",amount:200}]})}};
+ const environment={accounts:{retrieve:async()=>({id:"acct_test",payouts_enabled:false,external_accounts:{data:testBanks,has_more:false}})},balance:{retrieve:async()=>({livemode:false,available:[{currency:"eur",amount:200}]})}};
  let count=0;const requests=new Map<string,Stripe.Payout>();
  const fake={...environment,payouts:{create:async(params:any,options:any)=>{
    assert.equal(params.amount,100);assert.equal(params.currency,"eur");assert.equal(params.method,"standard");assert.equal(params.destination,"ba_test");
@@ -38,6 +38,9 @@ try {
  const diagnostic=await diagnosePayoutTest(()=>fake);assert.equal(diagnostic.ready,true);assert.equal(diagnostic.destination?.last4,"6789");
  const ownAccount={...fake,accounts:{retrieve:async()=>({id:"acct_test",external_accounts:{data:testBanks,has_more:false}}),listExternalAccounts:async()=>{throw Error("Connect endpoint must not be called for an available own-account bank")}}} as unknown as Stripe;
  assert.equal((await diagnosePayoutTest(()=>ownAccount)).ready,true);
+ const defaultAccount={...fake,accounts:{retrieve:async()=>({id:"acct_test"})},payouts:{create:async(params:any)=>{assert.equal(params.destination,undefined);return {id:"po_default_test",livemode:false,status:"paid",...params}}}} as unknown as Stripe;
+ assert.equal((await diagnosePayoutTest(()=>defaultAccount)).usesDefaultDestination,true);
+ assert.equal((await createPayoutTest("owner",100,crypto.randomUUID(),()=>defaultAccount)).status,"paid");
  const noBank={...fake,accounts:{listExternalAccounts:async()=>({data:[]}),retrieve:async()=>({id:"acct_test",payouts_enabled:true,external_accounts:{data:[]}})}} as unknown as Stripe;
  assert.equal((await diagnosePayoutTest(()=>noBank)).ready,false);
  const missing=await createPayoutTest("owner",100,crypto.randomUUID(),()=>noBank);assert.equal(missing.status,"failed");assert.match(missing.error,/Aucun compte bancaire EUR/);assert.equal(count,0);

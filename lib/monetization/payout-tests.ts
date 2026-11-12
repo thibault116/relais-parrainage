@@ -76,7 +76,7 @@ export async function createPayoutTest(owner: string, amount: unknown, key: unkn
   if (Date.now() - new Date(row.created_at).getTime() > 23 * 3600000)
     throw new Error("Ancien test non confirmé : vérifie son identifiant Mentora dans Stripe avant tout nouvel essai.");
   const diagnostic = await diagnosePayoutTest(client);
-  if (!diagnostic.ready || !diagnostic.destination) {
+  if (!diagnostic.ready || (!diagnostic.destination && !diagnostic.usesDefaultDestination)) {
     await query("UPDATE money_payout_tests SET status='failed',error=$1,updated_at=$2 WHERE id=$3 AND stripe_id IS NULL",
       [diagnostic.checks.join(" ") + (diagnostic.code ? ` [${diagnostic.code}]` : ""),new Date().toISOString(),row.id]);
     return (await readTests("SELECT * FROM money_payout_tests WHERE id=$1 AND owner_id=$2",[row.id,owner]))[0];
@@ -85,7 +85,7 @@ export async function createPayoutTest(owner: string, amount: unknown, key: unkn
   let payout: Stripe.Payout;
   try {
     payout = await stripe.payouts.create({
-      amount: cents,currency: "eur",method: "standard",destination: diagnostic.destination.id,
+      amount: cents,currency: "eur",method: "standard",...(diagnostic.destination ? {destination:diagnostic.destination.id} : {}),
       description: "Mentora — retrait administrateur TEST 1,00 EUR",
       metadata: { mentora_payout_test: row.id,mentora_owner: owner },
     }, { idempotencyKey: `mentora-payout-test:${row.id}` });
