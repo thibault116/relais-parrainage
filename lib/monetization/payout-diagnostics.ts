@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 import { stripeTest } from "./stripe";
-import { testPayoutCents } from "./payout-config";
+import { testPayoutCents, testPayoutLabel } from "./payout-config";
 export type PayoutDiagnostic = {
   testMode: true; ready: boolean; minimumCents: number; accountId?: string; availableCents?: number;
   destination?: { id: string; bankName: string; last4: string; currency: string };
@@ -35,7 +35,7 @@ export async function diagnosePayoutTest(client: () => Stripe = stripeTest): Pro
     const checks:string[]=[];
     if(!bank && !usesDefaultDestination) checks.push("Aucun compte bancaire EUR par défaut n’est configuré dans ce bac à sable Stripe. Aucun destinataire ne peut recevoir le test.");
     if(usesDefaultDestination) checks.push("Les coordonnées bancaires ne sont pas exposées par cette API. Stripe sélectionnera sa destination EUR par défaut et refusera le test si aucune banque n’est configurée.");
-    if(available<testPayoutCents) checks.push("Le solde EUR disponible de Stripe est inférieur au montant du test de 1 €. Des crédits Mentora ne constituent pas un solde Stripe.");
+    if(available<testPayoutCents) checks.push(`Le solde EUR disponible de Stripe est inférieur au montant du test de ${testPayoutLabel}. Des crédits Mentora ne constituent pas un solde Stripe.`);
     return {testMode:true,ready:(!!bank || !!usesDefaultDestination) && available>=testPayoutCents,usesDefaultDestination:!!usesDefaultDestination,minimumCents:testPayoutCents,accountId:account.id,availableCents:available,
       ...(bank?{destination:{id:bank.id,bankName:bank.bank_name || "Banque de test",last4:bank.last4 || "",currency:bank.currency}}:{}),checks};
   } catch(failure) {

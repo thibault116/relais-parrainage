@@ -87,7 +87,7 @@ export async function createPayoutTest(owner: string, amount: unknown, key: unkn
   try {
     payout = await stripe.payouts.create({
       amount: cents,currency: "eur",method: "standard",...(diagnostic.destination ? {destination:diagnostic.destination.id} : {}),
-      description: "Mentora — retrait administrateur TEST 1,00 EUR",
+      description: `Mentora — retrait administrateur TEST ${(cents / 100).toFixed(2)} EUR`,
       metadata: { mentora_payout_test: row.id,mentora_owner: owner },
     }, { idempotencyKey: `mentora-payout-test:${row.id}` });
   } catch (failure) {

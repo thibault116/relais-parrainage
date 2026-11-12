@@ -24,14 +24,14 @@ try {
  assert.equal(zero.status,"simulated");assert.equal(zero.stripe_id,null);
  assert.equal((await createPayoutTest("owner",0,zeroKey,noStripe)).id,zero.id);
  await assert.rejects(()=>createPayoutTest("another",0,zeroKey,noStripe));
- for(const amount of [1,2,-1,101,0.01,"100"]) await assert.rejects(()=>createPayoutTest("owner",amount,crypto.randomUUID(),noStripe));
+ for(const amount of [1,2,-1,100,19999,20001,0.01,"20000"]) await assert.rejects(()=>createPayoutTest("owner",amount,crypto.randomUUID(),noStripe));
  process.env.STRIPE_SECRET_KEY="sk_live_forbidden";assert.throws(stripeTest,/live/);
  process.env.STRIPE_SECRET_KEY="rk_live_forbidden";assert.throws(stripeTest,/live/);
  const testBanks=[{id:"ba_test",object:"bank_account",currency:"eur",default_for_currency:true,bank_name:"TEST BANK",last4:"6789"}];
- const environment={accounts:{retrieve:async()=>({id:"acct_test",payouts_enabled:false,external_accounts:{data:testBanks,has_more:false}})},balance:{retrieve:async()=>({livemode:false,available:[{currency:"eur",amount:200}]})}};
+ const environment={accounts:{retrieve:async()=>({id:"acct_test",payouts_enabled:false,external_accounts:{data:testBanks,has_more:false}})},balance:{retrieve:async()=>({livemode:false,available:[{currency:"eur",amount:30000}]})}};
  let count=0;const requests=new Map<string,Stripe.Payout>();
  const fake={...environment,payouts:{create:async(params:any,options:any)=>{
-   assert.equal(params.amount,100);assert.equal(params.currency,"eur");assert.equal(params.method,"standard");assert.equal(params.destination,"ba_test");
+   assert.equal(params.amount,20000);assert.equal(params.currency,"eur");assert.equal(params.method,"standard");assert.equal(params.destination,"ba_test");
    if(!requests.has(options.idempotencyKey)) {count++;requests.set(options.idempotencyKey,{id:`po_test_${count}`,livemode:false,status:"pending",...params} as Stripe.Payout);}
    return requests.get(options.idempotencyKey)!;
  },retrieve:async(id:string)=>({...Array.from(requests.values()).find(p=>p.id===id)!,status:"paid"})}} as unknown as Stripe;
@@ -40,31 +40,31 @@ try {
  assert.equal((await diagnosePayoutTest(()=>ownAccount)).ready,true);
  const defaultAccount={...fake,accounts:{retrieve:async()=>({id:"acct_test"})},payouts:{create:async(params:any)=>{assert.equal(params.destination,undefined);return {id:"po_default_test",livemode:false,status:"paid",...params}}}} as unknown as Stripe;
  assert.equal((await diagnosePayoutTest(()=>defaultAccount)).usesDefaultDestination,true);
- assert.equal((await createPayoutTest("owner",100,crypto.randomUUID(),()=>defaultAccount)).status,"paid");
+ assert.equal((await createPayoutTest("owner",20000,crypto.randomUUID(),()=>defaultAccount)).status,"paid");
  const noBank={...fake,accounts:{listExternalAccounts:async()=>({data:[]}),retrieve:async()=>({id:"acct_test",payouts_enabled:true,external_accounts:{data:[]}})}} as unknown as Stripe;
  assert.equal((await diagnosePayoutTest(()=>noBank)).ready,false);
- const missing=await createPayoutTest("owner",100,crypto.randomUUID(),()=>noBank);assert.equal(missing.status,"failed");assert.match(missing.error,/Aucun compte bancaire EUR/);assert.equal(count,0);
+ const missing=await createPayoutTest("owner",20000,crypto.randomUUID(),()=>noBank);assert.equal(missing.status,"failed");assert.match(missing.error,/Aucun compte bancaire EUR/);assert.equal(count,0);
  const noBalance={...fake,balance:{retrieve:async()=>({livemode:false,available:[]})}} as unknown as Stripe;
  assert.equal((await diagnosePayoutTest(()=>noBalance)).ready,false);
  assert(!safeStripeFailure({message:"Clé sk_test_secret123 refusée"}).message.includes("secret123"));
  assert(!safeStripeFailure({message:"Clé sk_test_*****suffix refusée"}).message.includes("suffix"));
  const key=crypto.randomUUID();
- const [one,two]=await Promise.all([createPayoutTest("owner",100,key,()=>fake),createPayoutTest("owner",100,key,()=>fake)]);
+ const [one,two]=await Promise.all([createPayoutTest("owner",20000,key,()=>fake),createPayoutTest("owner",20000,key,()=>fake)]);
  assert.equal(one.stripe_id,two.stripe_id);assert.equal(count,1);assert.equal(one.status,"pending");
  const refreshed=await refreshPayoutTests("owner",()=>fake);assert.equal(refreshed.find(r=>r.id===one.id)?.status,"paid");
  assert.equal((await listPayoutTests("another")).length,0);
  const forbidden={...environment,payouts:{create:async()=>{throw {statusCode:403,type:"StripePermissionError"}}}} as unknown as Stripe;
- const failure=await createPayoutTest("owner",100,crypto.randomUUID(),()=>forbidden);
+ const failure=await createPayoutTest("owner",20000,crypto.randomUUID(),()=>forbidden);
  assert.equal(failure.status,"failed");assert.match(failure.error,/permissions/);
  const timeoutKey=crypto.randomUUID();
  const timeout={...environment,payouts:{create:async()=>{throw Error("timeout")}}} as unknown as Stripe;
- assert.equal((await createPayoutTest("owner",100,timeoutKey,()=>timeout)).status,"uncertain");
- assert.equal((await createPayoutTest("owner",100,timeoutKey,()=>fake)).status,"pending");assert.equal(count,2);
+ assert.equal((await createPayoutTest("owner",20000,timeoutKey,()=>timeout)).status,"uncertain");
+ assert.equal((await createPayoutTest("owner",20000,timeoutKey,()=>fake)).status,"pending");assert.equal(count,2);
  const live={...environment,payouts:{create:async(params:any)=>({id:"po_forbidden",livemode:true,status:"paid",...params})}} as unknown as Stripe;
- await assert.rejects(()=>createPayoutTest("owner",100,crypto.randomUUID(),()=>live),/incompatible/);
+ await assert.rejects(()=>createPayoutTest("owner",20000,crypto.randomUUID(),()=>live),/incompatible/);
  assert(!(await listPayoutTests("owner")).some(row=>row.stripe_id==="po_forbidden"));
  console.log("PASS destination explicite, absence de banque ou solde détectée, secrets masqués");
- console.log("PASS retrait 0 €, essai Stripe 1 €, historique et actualisation des statuts");
+ console.log("PASS retrait 0 €, essai Stripe 200 €, historique et actualisation des statuts");
  console.log("PASS doubles clics, isolation des comptes, erreurs et reprise idempotente");
  console.log("PASS autres montants et clés live refusés, aucun portefeuille ni rémunération modifié");
 } finally {

@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PayoutDiagnostic } from "@/lib/monetization/payout-diagnostics";
+import { testPayoutCents, testPayoutLabel } from "@/lib/monetization/payout-config";
 import type { PayoutTest } from "@/lib/monetization/payout-tests";
 const labels: Record<string,string> = {
   simulated:"Parcours simulé · aucun virement Stripe",creating:"Création en cours",uncertain:"À vérifier",
@@ -58,19 +59,19 @@ export function PayoutTestPanel() {
         {diagnostic.availableCents !== undefined && <p>Solde EUR disponible dans Stripe test : {(diagnostic.availableCents / 100).toLocaleString("fr-FR",{style:"currency",currency:"EUR"})}.</p>}
         {diagnostic.checks.map((check,index) => <p key={index}>{check}</p>)}
         {diagnostic.code && <small>Code Stripe : {diagnostic.code}{diagnostic.requestId ? ` · ${diagnostic.requestId}` : ""}</small>}
-        {diagnostic.ready && <p>Le solde de test permet de tenter 1 €. Stripe confirmera l’acceptation du retrait.</p>}
+        {diagnostic.ready && <p>Le solde de test permet de tenter {testPayoutLabel}. Stripe confirmera l’acceptation du retrait.</p>}
       </div>}
       <a href="https://dashboard.stripe.com/test/settings/payouts" target="_blank" rel="noreferrer">Configurer la banque dans Stripe test</a>
     </section>
-    <p>Montant autorisé pour cet essai : 1 €. Stripe peut imposer un minimum supérieur selon le compte et la destination ; son refus sera affiché sans augmenter le montant.</p>
+    <p>Montant autorisé pour cet essai : {testPayoutLabel}. Stripe peut imposer un minimum supérieur selon le compte et la destination ; son refus sera affiché sans augmenter le montant.</p>
     <label>Montant du test
       <select value={amount} disabled={busy || unresolved} onChange={event => {setAmount(Number(event.target.value));pendingKey.current=null;}}>
         <option value={0}>0 € · vérifier le parcours sans Stripe</option>
-        <option value={100}>1 € · virement Stripe test</option>
+        <option value={testPayoutCents}>{testPayoutLabel} · virement Stripe test</option>
       </select>
     </label>
     <p>{amount === 0 ? "À 0 €, Mentora enregistre un essai sans créer de virement." : "Le compte bancaire EUR de test doit être confirmé ci-dessus. Aucun IBAN réel n’est demandé dans Mentora."}</p>
-    <button className="commerce-primary" disabled={busy || (amount !== 0 && amount !== 100)} onClick={() => void send()}>{busy ? "Traitement…" : unresolved ? "Reprendre le même test de 1 €" : amount === 0 ? "Simuler le retrait de 0 €" : "Tester le retrait de 1 €"}</button>
+    <button className="commerce-primary" disabled={busy || (amount !== 0 && amount !== testPayoutCents)} onClick={() => void send()}>{busy ? "Traitement…" : unresolved ? `Reprendre le même test de ${testPayoutLabel}` : amount === 0 ? "Simuler le retrait de 0 €" : `Tester le retrait de ${testPayoutLabel}`}</button>
     <button className="commerce-row" disabled={busy} onClick={() => void send(true)}>Actualiser les statuts Stripe</button>
     {error && <p className="error" role="alert">{error}</p>}
     {message && <p role="status">{message}</p>}
