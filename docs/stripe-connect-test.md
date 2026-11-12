@@ -38,6 +38,8 @@ Le bouton « Actualiser mes gains et mes retraits » fonctionne aussi sans webho
 
 L’essai réel sandbox de bout en bout doit comprendre l’onboarding d’un compte connecté, une prestation de test terminée, le transfert à ce compte puis le payout. Le test historique de 200 € vers la banque fictive de la plateforme ne valide pas ce nouveau parcours Connect. Aucun passage live n’est autorisé par ce document.
 
+Vérification en production privée le 12 novembre 2026 : UI chargée pour le propriétaire, endpoint anonyme refusé (403), largeur mobile de 390 px sans débordement horizontal. L’API Stripe du bac à sable a refusé la création d’un compte connecté car Connect n’est pas encore activé. Le guide d’activation du bac à sable a été ouvert dans Safari ; Stripe demande au titulaire d’examiner/confirmer les responsabilités relatives aux remboursements et contestations. Cette confirmation n’a pas été effectuée par l’assistant. L’essai Connect de bout en bout reste donc à terminer après activation et onboarding.
+
 Sources officielles consultées :
 - https://docs.stripe.com/connect/migrate-to-controller-properties
 - https://docs.stripe.com/connect/hosted-onboarding?accounts-namespace=v1

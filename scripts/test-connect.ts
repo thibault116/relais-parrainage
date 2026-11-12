@@ -3,6 +3,7 @@ import {mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import type Stripe from "stripe";
+import StripeSDK from "stripe";
 import {query,database} from "../lib/db";
 import {migrateMonetization,saveService,book,bookingAction,entry,balance,moneyTransaction} from "../lib/monetization/store";
 import {connectOverview,createConnectAccount,connectOnboarding,requestConnectWithdrawal,resumeConnectWithdrawal,refreshConnectWithdrawals,handleConnectEvent} from "../lib/monetization/connect";
@@ -13,7 +14,7 @@ import {getMigrations} from "better-auth/db/migration";
 
 if(process.env.DATABASE_URL || process.env.VERCEL) throw Error("Tests locaux isolés uniquement.");
 const cwd=process.cwd(),dir=await mkdtemp(join(tmpdir(),"mentora-connect-"));process.chdir(dir);
-const previousKey=process.env.STRIPE_SECRET_KEY,previousSecret=process.env.STRIPE_WEBHOOK_SECRET;
+const previousKey=process.env.STRIPE_SECRET_KEY,previousSecret=process.env.STRIPE_WEBHOOK_SECRET,previousConnectSecret=process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
 try {
   await migrateMonetization();
   const auth=getAuth();await (await getMigrations(auth.options)).runMigrations();
@@ -26,6 +27,9 @@ try {
     const req=new Request("http://localhost:3000/api/admin/monetization/connect",{method,headers:{cookie,origin:"http://localhost:3000","Content-Type":"application/json"},...(method==="POST"?{body:JSON.stringify({action:"setup",country:"FR",acknowledgeTest:true,owner_id:"owner"})}:{})});
     assert.equal((await (method==="GET"?GET(req):POST(req))).status,403);
   }
+  const memberData=await member.json();
+  await query("INSERT INTO moderators(user_id,email) VALUES($1,$2)",[memberData.user.id,memberData.user.email]);
+  assert.equal((await GET(new Request("http://localhost:3000/api/admin/monetization/connect",{headers:{cookie}}))).status,403);
   const owner="owner",other="other";
   await query('INSERT INTO "user"(id,name,email,"emailVerified","createdAt","updatedAt") VALUES($1,$1,$2,1,$3,$3)',[owner,"thibault.cordiez@hotmail.com",new Date().toISOString()]);
   await query("INSERT INTO moderators(user_id,email) VALUES($1,$2)",[owner,"thibault.cordiez@hotmail.com"]);
@@ -105,6 +109,11 @@ try {
   assert.equal((await connectOverview(owner,client)).withdrawals.filter(w=>w.status==="pending").length,0);
   process.env.STRIPE_SECRET_KEY="sk_test_fixture_connect";process.env.STRIPE_WEBHOOK_SECRET="whsec_fixture_connect";
   assert.equal((await webhook(new Request("http://localhost/api/stripe/webhook",{method:"POST",body:"{}"}))).status,400);
+  process.env.STRIPE_CONNECT_WEBHOOK_SECRET="whsec_fixture_connect_separate";
+  const event=JSON.stringify({id:"evt_connect_foreign",account:"acct_unrelated",livemode:false,type:"payout.paid",data:{object:{id:"po_foreign"}}});
+  const signature=new StripeSDK("sk_test_fixture").webhooks.generateTestHeaderString({payload:event,secret:process.env.STRIPE_CONNECT_WEBHOOK_SECRET});
+  assert.equal((await webhook(new Request("http://localhost/api/stripe/webhook",{method:"POST",headers:{"stripe-signature":signature},body:event}))).status,200);
+  delete process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
   console.log("PASS accès anonyme et membre refusés, comptes Connect isolés et mode réel rejeté");
   console.log("PASS prestations terminées uniquement, crédits inchangés, remboursement d’un gain réservé bloqué");
   console.log("PASS doubles clics et demandes concurrentes, un seul transfert et un seul payout");
@@ -113,5 +122,6 @@ try {
 } finally {
   if(previousKey===undefined)delete process.env.STRIPE_SECRET_KEY;else process.env.STRIPE_SECRET_KEY=previousKey;
   if(previousSecret===undefined)delete process.env.STRIPE_WEBHOOK_SECRET;else process.env.STRIPE_WEBHOOK_SECRET=previousSecret;
+  if(previousConnectSecret===undefined)delete process.env.STRIPE_CONNECT_WEBHOOK_SECRET;else process.env.STRIPE_CONNECT_WEBHOOK_SECRET=previousConnectSecret;
   const db=database();if("close" in db)db.close();process.chdir(cwd);await rm(dir,{recursive:true,force:true});
 }
