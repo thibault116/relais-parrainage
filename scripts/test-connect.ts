@@ -36,8 +36,10 @@ try {
   const accounts=new Map<string,Stripe.Account>();
   const transfers=new Map<string,Stripe.Transfer>(),payouts=new Map<string,Stripe.Payout>();
   let transferCalls=0,payoutCalls=0,failTransfer=false,failPayout=false,timeoutPayout=false,connectedBalance=100000,live=false;
+  let bankStatus="paid";
   const fake={accounts:{create:async(params:any)=>{
     assert.equal(params.type,undefined);assert.equal(params.settings.payouts.schedule.interval,"manual");
+    assert.equal(params.capabilities.card_payments.requested,true);assert.equal(params.capabilities.transfers.requested,true);
     const account={id:`acct_${params.metadata.mentora_owner}`,controller:{is_controller:true},metadata:params.metadata,payouts_enabled:true,details_submitted:true,settings:{payouts:{schedule:{interval:"manual"}}},capabilities:{transfers:"active"},requirements:{currently_due:[],pending_verification:[]},external_accounts:{data:[{object:"bank_account",bank_name:"TEST",last4:"2606",currency:"eur"}]}} as unknown as Stripe.Account;
     accounts.set(account.id,account);return account;
   },retrieve:async(id:string)=>accounts.get(id)!,createLoginLink:async()=>({url:"https://connect.stripe.com/test-login"})},
@@ -54,7 +56,7 @@ try {
     if(!payouts.has(options.idempotencyKey)){payoutCalls++;payouts.set(options.idempotencyKey,{id:`po_${payoutCalls}`,livemode:false,status:"pending",...params} as Stripe.Payout);}
     if(timeoutPayout)throw Error("Réponse réseau perdue après création Stripe");
     return payouts.get(options.idempotencyKey);
-  },retrieve:async(id:string,_params:any,options:any)=>{assert.equal(options.stripeAccount,"acct_owner");return {...Array.from(payouts.values()).find(p=>p.id===id),status:"paid"};}}} as unknown as Stripe;
+  },retrieve:async(id:string,_params:any,options:any)=>{assert.equal(options.stripeAccount,"acct_owner");return {...Array.from(payouts.values()).find(p=>p.id===id),status:bankStatus};}}} as unknown as Stripe;
   const client=()=>fake;
   await createConnectAccount({id:owner,email:"owner@example.test"},"FR",client);
   assert.equal((await createConnectAccount({id:owner,email:"owner@example.test"},"FR",client)).id,"acct_owner");
@@ -104,9 +106,17 @@ try {
   await assert.rejects(()=>connectOverview(owner,client),/associé/);accounts.set("acct_owner",own);
   await assert.rejects(()=>handleConnectEvent({livemode:true} as Stripe.Event,client),/réel/);
   await handleConnectEvent({id:"evt_unknown",account:"acct_unrelated",livemode:false,type:"payout.paid"} as Stripe.Event,client);
-  await handleConnectEvent({id:"evt_connect",account:"acct_owner",livemode:false,type:"payout.paid"} as Stripe.Event,client);
-  await handleConnectEvent({id:"evt_connect",account:"acct_owner",livemode:false,type:"payout.paid"} as Stripe.Event,client);
+  for(const item of (await connectOverview(owner,client)).withdrawals.filter(w=>w.payout_id && w.status==="pending")) {
+    const event={id:"evt_connect_"+item.id,account:"acct_owner",livemode:false,type:"payout.paid",data:{object:{id:item.payout_id}}} as Stripe.Event;
+    await handleConnectEvent(event,client);await handleConnectEvent(event,client);
+  }
   assert.equal((await connectOverview(owner,client)).withdrawals.filter(w=>w.status==="pending").length,0);
+  bankStatus="failed";
+  const lateFailure={id:"evt_late_failure",account:"acct_owner",livemode:false,type:"payout.failed",data:{object:{id:one.payout_id}}} as Stripe.Event;
+  await handleConnectEvent(lateFailure,client);
+  assert.equal((await connectOverview(owner,client)).withdrawals.find(w=>w.id===one.id)?.status,"payout_failed");
+  bankStatus="paid";await handleConnectEvent(lateFailure,client);
+  assert.equal((await connectOverview(owner,client)).withdrawals.find(w=>w.id===one.id)?.status,"payout_failed");
   process.env.STRIPE_SECRET_KEY="sk_test_fixture_connect";process.env.STRIPE_WEBHOOK_SECRET="whsec_fixture_connect";
   assert.equal((await webhook(new Request("http://localhost/api/stripe/webhook",{method:"POST",body:"{}"}))).status,400);
   process.env.STRIPE_CONNECT_WEBHOOK_SECRET="whsec_fixture_connect_separate";

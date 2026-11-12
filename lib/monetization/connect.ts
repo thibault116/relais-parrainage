@@ -60,7 +60,9 @@ export async function createConnectAccount(actor:Actor,country:unknown,client:Cl
   try {account=await s.accounts.create({
     country:selected,
     controller:{fees:{payer:"application"},losses:{payments:"application"},requirement_collection:"stripe",stripe_dashboard:{type:"express"}},
-    capabilities:{transfers:{requested:true}},
+    // Full-service FR accounts require both capabilities. Recipient agreements
+    // cannot use the Connect cross-border flow used by this US sandbox.
+    capabilities:{card_payments:{requested:true},transfers:{requested:true}},
     settings:{payouts:{schedule:{interval:"manual"}}},
     metadata:{mentora_owner:actor.id,mentora_connect_test:"1"},
   },{idempotencyKey:`mentora-connect-test:${row.creation_key}`});}
@@ -127,7 +129,9 @@ async function fail(row:Withdrawal,failure:unknown,phase:"transfer"|"payout") {
 async function recordPayout(row:Withdrawal,p:Stripe.Payout) {
   if(p.livemode!==false || p.amount!==row.amount_cents || p.currency!=="eur" || p.metadata?.mentora_connect_withdrawal!==row.id || p.metadata?.mentora_owner!==row.owner_id || p.metadata?.mentora_attempt!==String(row.payout_attempt)) throw Error("Réponse Stripe incompatible avec ce retrait.");
   const status=p.status==="paid"?"paid":["failed","canceled"].includes(p.status)?"payout_failed":"pending";
-  await query("UPDATE money_connect_withdrawals SET payout_id=$1,status=$2,error=$3,updated_at=$4 WHERE id=$5 AND owner_id=$6 AND payout_attempt=$7 AND status<>'paid'",[p.id,status,p.failure_message || "",new Date().toISOString(),row.id,row.owner_id,row.payout_attempt]);
+  // Stripe can report a bank failure after payout.paid. Allow that correction,
+  // but never let a stale pending/paid read overwrite a confirmed failure.
+  await query("UPDATE money_connect_withdrawals SET payout_id=$1,status=$2,error=$3,updated_at=$4 WHERE id=$5 AND owner_id=$6 AND payout_attempt=$7 AND NOT(status='paid' AND $2='pending') AND NOT(status='payout_failed' AND $2<>'payout_failed')",[p.id,status,p.failure_message || "",new Date().toISOString(),row.id,row.owner_id,row.payout_attempt]);
 }
 async function executeWithdrawal(owner:string,id:string,s:Stripe) {
   let row=await withdrawal(owner,id);
@@ -200,13 +204,13 @@ export async function resumeConnectWithdrawal(owner:string,id:string,key:unknown
 }
 export async function refreshConnectWithdrawals(owner:string,client:Client=stripeTest) {
   const rows=await history(owner);
-  if(!rows.some(row=>row.payout_id && row.status==="pending")) return;
+  if(!rows.some(row=>row.payout_id && ["pending","paid"].includes(row.status))) return;
   const s=client(),account=await linked(owner,s);sandbox(await s.balance.retrieve({},{stripeAccount:account.id}));
-  for(const row of rows.filter(w=>w.payout_id && w.status==="pending").slice(0,20)) {
+  await Promise.all(rows.filter(w=>w.payout_id && ["pending","paid"].includes(w.status)).slice(0,20).map(async row=>{
     if(row.account_id!==account.id) throw Error("Compte du retrait incompatible.");
     row.amount_cents=Number(row.amount_cents);row.payout_attempt=Number(row.payout_attempt);
     await recordPayout(row,await s.payouts.retrieve(row.payout_id!,{},{stripeAccount:account.id}));
-  }
+  }));
 }
 export async function handleConnectEvent(event:Stripe.Event,client:Client=stripeTest) {
   if(event.livemode) throw Error("Événement réel refusé.");
@@ -215,7 +219,14 @@ export async function handleConnectEvent(event:Stripe.Event,client:Client=stripe
   if(!row) return;
   const actor=(await query("SELECT id,email FROM \"user\" WHERE id=$1",[row.owner_id]))[0];
   if(!actor || !await isCrmOwner({id:String(actor.id),email:String(actor.email)})) return;
-  if(["payout.paid","payout.failed","payout.canceled","payout.updated","payout.created"].includes(event.type))
-    await refreshConnectWithdrawals(row.owner_id,client);
+  if(["payout.paid","payout.failed","payout.canceled","payout.updated","payout.created"].includes(event.type)) {
+    const payoutId=(event.data?.object as {id?:string})?.id;
+    if(!payoutId) return;
+    const item=(await query<Withdrawal>("SELECT * FROM money_connect_withdrawals WHERE payout_id=$1 AND owner_id=$2 AND account_id=$3",[payoutId,row.owner_id,event.account]))[0];
+    if(!item) return;
+    item.amount_cents=Number(item.amount_cents);item.payout_attempt=Number(item.payout_attempt);
+    const s=client(),account=await linked(row.owner_id,s);sandbox(await s.balance.retrieve({},{stripeAccount:account.id}));
+    await recordPayout(item,await s.payouts.retrieve(payoutId,{},{stripeAccount:account.id}));
+  }
   // Account status is always read from Stripe on the next authenticated request.
 }
