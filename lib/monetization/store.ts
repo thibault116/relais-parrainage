@@ -2,6 +2,7 @@ import { query, inTransaction, database } from "../db";
 import { Pool } from "pg";
 import { z } from "zod";
 import { payoutRate } from "./catalog";
+import { migrateConnect } from "./connect-schema";
 let queue: Promise<unknown> = Promise.resolve();
 export function moneyTransaction<T>(
   work: (q: typeof query) => Promise<T>,
@@ -22,6 +23,7 @@ export async function migrateMonetization() {
     `CREATE TABLE IF NOT EXISTS money_events(id TEXT PRIMARY KEY,created_at TEXT NOT NULL)`,
   ])
     await query(sql);
+  await migrateConnect();
 }
 export async function lock(q: typeof query, owner: string) {
   await q(
@@ -177,6 +179,8 @@ export async function bookingAction(owner: string, id: string, action: string) {
       ]);
       await entry(q, owner, Number(b.credits), "Restitution", `restore:${id}`);
     } else if (action === "refund" && b.status === "completed") {
+      if ((await q("SELECT booking_id FROM money_connect_allocations WHERE booking_id=$1",[id])).length)
+        throw Error("Cette rémunération est réservée ou transférée dans un retrait. Vérifie le retrait Stripe avant de rembourser cette prestation.");
       await q("UPDATE money_bookings SET status='refunded' WHERE id=$1", [id]);
       await entry(
         q,

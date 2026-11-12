@@ -1,5 +1,6 @@
 "use client";
 import { PayoutTestPanel } from "./payout-test";
+import { ConnectPayoutPanel } from "./connect-payouts";
 import {
   Crown,
   Coins,
@@ -551,7 +552,7 @@ export function AdminMonetization({
             <article className="commerce-card commerce-balance">
               <div className="commerce-plan-top">
                 <Wallet />
-                <span>Rémunération due</span>
+                <span>Total des prestations terminées</span>
               </div>
               <strong>{euro(due)}</strong>
               <button className="commerce-primary" disabled>
@@ -560,7 +561,8 @@ export function AdminMonetization({
               </button>
               <small>Simulation · aucun versement réel</small>
             </article>
-            <PayoutTestPanel />
+            <ConnectPayoutPanel />
+            <details className="commerce-card"><summary>Ancien test du compte Stripe de la plateforme</summary><PayoutTestPanel /></details>
             <section className="commerce-card commerce-simulation">
               <h2>Simuler une rémunération</h2>
               <p>Exemple séparé de ton solde. Taux test de {euro(data.payoutRate)} par crédit.</p>
@@ -1332,7 +1334,8 @@ export function AdminMonetization({
       )}
       {tab === "payouts" && (
         <>
-          <PayoutTestPanel />
+          <ConnectPayoutPanel />
+          <details className="commerce-card"><summary>Ancien test du compte Stripe de la plateforme</summary><PayoutTestPanel /></details>
           <h3>Rémunérations dues · simulation</h3>
           <div className="pricing-results">
             <div>
@@ -1358,8 +1361,7 @@ export function AdminMonetization({
           </div>
           <p>
             Ce registre suit la rémunération de prestations, pas une conversion
-            de portefeuille. Aucun virement, compte bancaire ou Stripe Connect
-            n’est activé.
+            de portefeuille. Stripe Connect est disponible uniquement dans ce test privé ; aucun versement réel n’est activé.
           </p>
           {data.bookings
             .filter((b) => b.status === "completed")

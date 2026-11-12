@@ -127,6 +127,18 @@
   color: var(--brand-highlight);
   flex-shrink: 0;
 }
+.connect-payout-panel > section { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); min-width: 0; }
+.connect-payout-panel .connect-heading { display:flex; gap:12px; align-items:center; justify-content:space-between; }
+.connect-payout-panel h2,.connect-payout-panel h3 { display:flex; align-items:center; gap:8px; }
+.connect-payout-panel .connect-refresh { width:auto; min-width:44px; min-height:44px; margin:0; justify-content:center; }
+.connect-balances { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:16px; }
+.connect-balances article { padding:14px; border:1px solid var(--line); border-radius:12px; min-width:0; }
+.connect-balances span,.connect-balances strong,.connect-balances small { display:block; overflow-wrap:anywhere; }
+.connect-balances strong { margin:6px 0; font-size:24px; }
+.connect-payout-panel .connect-confirm { display:flex; align-items:flex-start; gap:10px; margin:14px 0; font-size:13px; line-height:1.5; }
+.connect-payout-panel .connect-confirm input { width:18px; height:18px; flex-shrink:0; margin-top:2px; }
+.connect-payout-panel p,.connect-payout-panel small { overflow-wrap:anywhere; }
+@media(max-width:640px) { .connect-balances { grid-template-columns:1fr; } .connect-balances article { padding:12px; } .connect-payout-panel .commerce-primary,.connect-payout-panel .commerce-row { white-space:normal; height:auto; min-height:44px; } }
 .commerce-plan-top {
   display: flex;
   align-items: flex-start;
