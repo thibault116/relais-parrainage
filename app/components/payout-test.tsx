@@ -62,7 +62,7 @@ export function PayoutTestPanel() {
       </div>}
       <a href="https://dashboard.stripe.com/test/settings/payouts" target="_blank" rel="noreferrer">Configurer la banque dans Stripe test</a>
     </section>
-    <p>Stripe impose un minimum de 1 € pour les virements de test en euros. L’ancien essai à 0,01 € est conservé dans l’historique.</p>
+    <p>Montant autorisé pour cet essai : 1 €. Stripe peut imposer un minimum supérieur selon le compte et la destination ; son refus sera affiché sans augmenter le montant.</p>
     <label>Montant du test
       <select value={amount} disabled={busy || unresolved} onChange={event => {setAmount(Number(event.target.value));pendingKey.current=null;}}>
         <option value={0}>0 € · vérifier le parcours sans Stripe</option>

@@ -1,3 +1,3 @@
-// Confirmed by Stripe in Mentora's EUR sandbox: minimum payout is EUR 1.00.
-// This remains a fixed, admin-only test amount, never a live payout setting.
+// User-authorized fixed sandbox test amount, not a universal Stripe minimum.
+// Never increase it automatically in response to a provider error.
 export const testPayoutCents = 100;

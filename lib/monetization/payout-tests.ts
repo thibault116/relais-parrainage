@@ -34,6 +34,7 @@ export async function listPayoutTests(owner: string) {
   return readTests("SELECT * FROM money_payout_tests WHERE owner_id=$1 ORDER BY created_at DESC LIMIT 50", [owner]);
 }
 const readableErrors: Record<string, string> = {
+  amount_too_small: "Le montant de cet essai est inférieur au minimum imposé par Stripe pour ce compte, cette devise et cette destination.",
   balance_insufficient: "Le solde EUR disponible du bac à sable Stripe est insuffisant. Ajoute des fonds de test dans Stripe.",
   insufficient_funds: "Le solde de test Stripe est insuffisant.",
   bank_account_missing: "Ajoute un compte bancaire de test EUR dans les paramètres de versement Stripe.",
