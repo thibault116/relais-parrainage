@@ -83,11 +83,30 @@ export async function connectOnboarding(owner:string,client:Client=stripeTest) {
   const link=await s.accountLinks.create({account:account.id,type:"account_onboarding",
     return_url:appOrigin()+returnPath,
     refresh_url:appOrigin()+"/?mobile=payouts&connect=refresh#profile",
-    collection_options:{fields:"eventually_due"},
+    collection_options:{fields:"currently_due"},
   });
   const url=new URL(link.url);
   if(url.protocol!=="https:" || !url.hostname.endsWith(".stripe.com")) throw Error("Lien Stripe inattendu.");
   return link.url;
+}
+export async function connectEmbeddedSession(owner:string,mode:unknown,client:Client=stripeTest) {
+  const selected=z.enum(["onboarding","management"]).parse(mode);
+  const publishableKey=process.env.STRIPE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
+  if(!publishableKey.startsWith("pk_test_")) throw Error("La clé publique Stripe de test est manquante ou invalide.");
+  const s=client(),account=await linked(owner,s);
+  sandbox(await s.balance.retrieve());
+  sandbox(await s.balance.retrieve({},{stripeAccount:account.id}));
+  // No payout/payment components: all money movement must use the earnings
+  // ledger below. Never accept an account ID or component list from the client.
+  const session=await s.accountSessions.create({account:account.id,components:
+    selected==="onboarding"
+      ? {account_onboarding:{enabled:true,features:{external_account_collection:true}}}
+      : {account_management:{enabled:true,features:{external_account_collection:true}}}
+  });
+  if(session.livemode!==false || session.account!==account.id || !session.client_secret || session.expires_at<=Math.floor(Date.now()/1000))
+    throw Error("Session bancaire Stripe incompatible avec ce compte de test.");
+  // Ephemeral credential, returned only to the authenticated owner; never stored.
+  return {publishableKey,clientSecret:session.client_secret};
 }
 export async function connectDashboard(owner:string,client:Client=stripeTest) {
   const s=client(),account=await linked(owner,s);

@@ -10,7 +10,13 @@ Le client `stripeTest()` refuse les clés réelles. Les soldes de la plateforme 
 
 La création d’un compte connecté utilise Accounts v1 avec les propriétés `controller` (collecte des exigences chez Stripe, dashboard Express, transferts et calendrier manuel). Cette variante s’intègre aux objets Transfer et Payout v1 déjà utilisés par Mentora, sans migration des paiements existants. Stripe conserve l’identité, les justificatifs et l’IBAN. Mentora ne garde que le rattachement utilisateur/compte Stripe, le pays déclaré et les identifiants d’opérations. Les éventuels nom de banque et quatre derniers chiffres sont relus chez Stripe, pas stockés.
 
-Le membre ouvre un lien Stripe éphémère et authentifié depuis Mentora. Au retour, le serveur relit les capacités et `payouts_enabled` : un retour sur le site n’est pas considéré comme une validation du dossier. Un lien expiré se renouvelle avec « Compléter mon dossier Stripe ». Le bouton de dashboard permet de gérer la banque chez Stripe. Le compte utilise l’accord de service complet et demande `card_payments` et `transfers`, exigés ensemble par Stripe pour le compte FR de ce bac à sable US. L’application n’ajoute pas d’encaissement direct par les parrains. Ne pas substituer l’accord `recipient` : il relève d’un autre parcours pour les virements transfrontaliers.
+Le membre clique sur « Configurer mes retraits » dans Rémunération : le formulaire officiel Stripe est intégré dans Mentora avec Connect.js, sans redirection vers un dashboard séparé. Un compte Stripe préexistant n’est pas nécessaire. Après configuration, le bouton « Modifier mes informations bancaires » ouvre le composant Account Management au même endroit. Les formulaires suivent le mode clair/sombre et le violet Mentora. Les composants ne sont chargés qu’à l’ouverture volontaire.
+
+Une AccountSession éphémère est créée côté serveur pour le compte associé à la session Mentora du propriétaire. Aucun identifiant de bénéficiaire ni liste de composants n’est accepté depuis le navigateur. Seul account_onboarding ou account_management est activé selon l’action ; aucun composant de paiement ou retrait direct ne peut contourner le registre de gains. Les identifiants de session ne sont ni stockés ni journalisés, et les réponses sont privées/no-store. À la fermeture ou au démontage, la session Connect.js est déconnectée ; un nouveau jeton est demandé lorsqu’elle expire.
+
+La collecte est progressive (`currently_due`, sans exigences futures facultatives). Les vérifications légales ne sont pas supprimées. Le compte existant utilise Stripe Express : Stripe peut demander une authentification de sécurité et les justificatifs nécessaires. L’accord Stripe reste présenté par Stripe et n’est jamais accepté automatiquement. Sortir du formulaire n’implique pas que le dossier est validé : Mentora relit les capacités et `payouts_enabled` côté serveur avant de permettre un retrait.
+
+Le compte utilise l’accord de service complet et demande `card_payments` et `transfers`, exigés ensemble par Stripe pour le compte FR de ce bac à sable US. L’application n’ajoute pas d’encaissement direct par les parrains. Ne pas substituer l’accord `recipient` : il relève d’un autre parcours pour les virements transfrontaliers. Les anciennes actions de liens hébergés restent disponibles côté API propriétaire pour compatibilité, mais ne sont plus proposées dans le parcours principal.
 
 ## Gains et retraits
 
@@ -27,7 +33,7 @@ Un remboursement de prestation dont les gains sont réservés ou transférés es
 ## Configuration Stripe indispensable
 
 1. Activer/configurer **Connect dans le bac à sable existant**. Ne pas activer les paiements réels. Stripe peut demander au titulaire du compte de compléter son profil de plateforme et d’accepter ses conditions. Les pays autorisés et transferts transfrontaliers dépendent de cette configuration.
-2. Conserver `STRIPE_SECRET_KEY` en mode test, avec les droits Accounts, Account Links/Login Links, Balances, Transfers et Payouts nécessaires. Ne jamais publier cette clé dans GitHub ou dans `NEXT_PUBLIC_*`.
+2. Conserver `STRIPE_SECRET_KEY` en mode test, avec les droits Accounts, Account Sessions, Account Links/Login Links, Balances, Transfers et Payouts nécessaires. Conserver également `STRIPE_PUBLISHABLE_KEY` (ou `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`) du même bac à sable, commençant par `pk_test_`. Ces variables sont déjà fournies par l’intégration Vercel ; aucune nouvelle intégration n’est nécessaire. Ne jamais publier cette clé dans GitHub ou dans `NEXT_PUBLIC_*`.
 3. Ajouter une destination d’événements de **comptes connectés** (Accounts v1, événements snapshot) vers `https://mentora-resell.vercel.app/api/stripe/webhook`. Événements : `account.updated`, `payout.created`, `payout.updated`, `payout.paid`, `payout.failed`, `payout.canceled`. Renseigner sa clé de signature dans **`STRIPE_CONNECT_WEBHOOK_SECRET`** sur Vercel, puis redéployer. La signature existante `STRIPE_WEBHOOK_SECRET` des abonnements/recharges reste en place.
 4. Depuis Rémunération, choisir le pays du titulaire de test, confirmer le mode test, puis compléter le parcours Stripe avec les données de test documentées. L’identité réelle et les conditions légales ne sont pas validées automatiquement par Mentora.
 5. Un solde plateforme EUR disponible est nécessaire pour transférer les rémunérations. Un montant minimal peut être imposé par Stripe selon compte/pays/devise. Ne jamais augmenter automatiquement le retrait ni créer de faux gains pour contourner ce minimum.
@@ -50,3 +56,13 @@ Sources officielles consultées :
 - https://docs.stripe.com/connect/separate-charges-and-transfers
 - https://docs.stripe.com/connect/manual-payouts
 - https://docs.stripe.com/connect/webhooks?accounts-namespace=v1
+
+## Vérifier le formulaire intégré
+
+Ouvrir Rémunération avec le compte principal, cliquer sur Configurer mes retraits. Le formulaire reste dans Mentora, avec uniquement les données de test. Fermer puis rouvrir doit reprendre le même compte. Vérifier le mode clair/sombre et la largeur mobile. Aucun test automatisé n’accepte les conditions Stripe ni ne remplit de données d’identité réelles. La vérification des virements bout en bout nécessite toujours un dossier Stripe de test terminé et le secret du webhook Connect configuré.
+
+Sources du parcours intégré :
+- https://docs.stripe.com/connect/get-started-connect-embedded-components?platform=web
+- https://docs.stripe.com/api/account_sessions/create
+- https://docs.stripe.com/connect/supported-embedded-components/account-management
+- https://docs.stripe.com/connect/identity-verification

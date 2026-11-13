@@ -12,6 +12,8 @@
     "test": "tsx scripts/test.ts"
   },
   "dependencies": {
+    "@stripe/connect-js": "^3.5.0",
+    "@stripe/react-connect-js": "^3.5.1",
     "@vercel/blob": "^2.8.2",
     "better-auth": "^1.7.0",
     "lucide-react": "^0.468.0",

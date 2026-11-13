@@ -1,7 +1,7 @@
 import { user, guard, json } from "@/lib/http";
 import { isCrmOwner } from "@/lib/crm";
 import { z } from "zod";
-import { connectOverview, createConnectAccount, connectOnboarding, connectDashboard, requestConnectWithdrawal, resumeConnectWithdrawal, refreshConnectWithdrawals } from "@/lib/monetization/connect";
+import { connectOverview, createConnectAccount, connectOnboarding, connectDashboard, connectEmbeddedSession, requestConnectWithdrawal, resumeConnectWithdrawal, refreshConnectWithdrawals } from "@/lib/monetization/connect";
 import { safeStripeFailure } from "@/lib/monetization/payout-diagnostics";
 export const runtime="nodejs";
 export const maxDuration=60;
@@ -21,8 +21,9 @@ export async function POST(request:Request) {
       case "setup": {
         if(data.acknowledgeTest!==true) return json({error:"Confirme que tu configures un compte Connect en mode test."},400);
         await createConnectAccount({id:owner,email:actor!.email},data.country);
-        return json({url:await connectOnboarding(owner)});
+        return json({configured:true});
       }
+      case "session": return json(await connectEmbeddedSession(owner,data.mode));
       case "onboarding": return json({url:await connectOnboarding(owner)});
       case "dashboard": return json({url:await connectDashboard(owner)});
       case "withdraw": return json({result:await requestConnectWithdrawal(owner,data.key)});

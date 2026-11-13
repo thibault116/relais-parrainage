@@ -6,7 +6,7 @@ import type Stripe from "stripe";
 import StripeSDK from "stripe";
 import {query,database} from "../lib/db";
 import {migrateMonetization,saveService,book,bookingAction,entry,balance,moneyTransaction} from "../lib/monetization/store";
-import {connectOverview,createConnectAccount,connectOnboarding,requestConnectWithdrawal,resumeConnectWithdrawal,refreshConnectWithdrawals,handleConnectEvent} from "../lib/monetization/connect";
+import {connectOverview,createConnectAccount,connectOnboarding,connectEmbeddedSession,requestConnectWithdrawal,resumeConnectWithdrawal,refreshConnectWithdrawals,handleConnectEvent} from "../lib/monetization/connect";
 import {GET,POST} from "../app/api/admin/monetization/connect/route";
 import {POST as webhook} from "../app/api/stripe/webhook/route";
 import {getAuth} from "../lib/auth";
@@ -15,6 +15,7 @@ import {getMigrations} from "better-auth/db/migration";
 if(process.env.DATABASE_URL || process.env.VERCEL) throw Error("Tests locaux isolés uniquement.");
 const cwd=process.cwd(),dir=await mkdtemp(join(tmpdir(),"mentora-connect-"));process.chdir(dir);
 const previousKey=process.env.STRIPE_SECRET_KEY,previousSecret=process.env.STRIPE_WEBHOOK_SECRET,previousConnectSecret=process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
+const previousPublic=process.env.STRIPE_PUBLISHABLE_KEY,previousNextPublic=process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 try {
   await migrateMonetization();
   const auth=getAuth();await (await getMigrations(auth.options)).runMigrations();
@@ -27,6 +28,10 @@ try {
     const req=new Request("http://localhost:3000/api/admin/monetization/connect",{method,headers:{cookie,origin:"http://localhost:3000","Content-Type":"application/json"},...(method==="POST"?{body:JSON.stringify({action:"setup",country:"FR",acknowledgeTest:true,owner_id:"owner"})}:{})});
     assert.equal((await (method==="GET"?GET(req):POST(req))).status,403);
   }
+  for(const action of ["session","withdraw","onboarding","dashboard","refresh"]) {
+    const req=new Request("http://localhost:3000/api/admin/monetization/connect",{method:"POST",headers:{cookie,origin:"http://localhost:3000","Content-Type":"application/json"},body:JSON.stringify({action,mode:"onboarding",account:"acct_owner"})});
+    assert.equal((await POST(req)).status,403);
+  }
   const memberData=await member.json();
   await query("INSERT INTO moderators(user_id,email) VALUES($1,$2)",[memberData.user.id,memberData.user.email]);
   assert.equal((await GET(new Request("http://localhost:3000/api/admin/monetization/connect",{headers:{cookie}}))).status,403);
@@ -36,14 +41,22 @@ try {
   const accounts=new Map<string,Stripe.Account>();
   const transfers=new Map<string,Stripe.Transfer>(),payouts=new Map<string,Stripe.Payout>();
   let transferCalls=0,payoutCalls=0,failTransfer=false,failPayout=false,timeoutPayout=false,connectedBalance=100000,live=false;
-  let bankStatus="paid";
+  let bankStatus="paid",sessionLive=false,sessionAccount="acct_owner",sessionExpired=false;
   const fake={accounts:{create:async(params:any)=>{
     assert.equal(params.type,undefined);assert.equal(params.settings.payouts.schedule.interval,"manual");
     assert.equal(params.capabilities.card_payments.requested,true);assert.equal(params.capabilities.transfers.requested,true);
     const account={id:`acct_${params.metadata.mentora_owner}`,controller:{is_controller:true},metadata:params.metadata,payouts_enabled:true,details_submitted:true,settings:{payouts:{schedule:{interval:"manual"}}},capabilities:{transfers:"active"},requirements:{currently_due:[],pending_verification:[]},external_accounts:{data:[{object:"bank_account",bank_name:"TEST",last4:"2606",currency:"eur"}]}} as unknown as Stripe.Account;
     accounts.set(account.id,account);return account;
   },retrieve:async(id:string)=>accounts.get(id)!,createLoginLink:async()=>({url:"https://connect.stripe.com/test-login"})},
-  accountLinks:{create:async(params:any)=>{assert.equal(params.account,"acct_owner");assert.equal(params.type,"account_onboarding");return {url:"https://connect.stripe.com/test-onboarding"};}},
+  accountSessions:{create:async(params:any)=>{
+    assert.equal(params.account,"acct_owner");
+    assert.equal(Object.keys(params.components).length,1);
+    const key=Object.keys(params.components)[0];
+    assert(["account_onboarding","account_management"].includes(key));
+    assert.deepEqual(params.components[key],{enabled:true,features:{external_account_collection:true}});
+    return {account:sessionAccount,livemode:sessionLive,client_secret:"fixture-ephemeral-secret",expires_at:Math.floor(Date.now()/1000)+(sessionExpired?-1:3600)};
+  }},
+  accountLinks:{create:async(params:any)=>{assert.equal(params.account,"acct_owner");assert.equal(params.type,"account_onboarding");assert.equal(params.collection_options.fields,"currently_due");return {url:"https://connect.stripe.com/test-onboarding"};}},
   balance:{retrieve:async(_params:any,options:any)=>{if(options?.stripeAccount)assert(accounts.has(options.stripeAccount));return {livemode:live,available:[{currency:"eur",amount:options?.stripeAccount?connectedBalance:100000}],pending:[]};}},
   transfers:{create:async(params:any,options:any)=>{
     if(failTransfer)throw {statusCode:400,code:"balance_insufficient",message:"Solde plateforme insuffisant"};
@@ -63,6 +76,24 @@ try {
   await assert.rejects(()=>createConnectAccount({id:owner,email:"owner@example.test"},"US",client),/autre pays/);
   assert.equal(await connectOnboarding(owner,client),"https://connect.stripe.com/test-onboarding");
   await assert.rejects(()=>connectOnboarding(other,client),/Configure/);
+  delete process.env.STRIPE_PUBLISHABLE_KEY;delete process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+  await assert.rejects(()=>connectEmbeddedSession(owner,"onboarding",client),/publique Stripe/);
+  process.env.STRIPE_PUBLISHABLE_KEY="pk_live_fixture";
+  await assert.rejects(()=>connectEmbeddedSession(owner,"onboarding",client),/publique Stripe/);
+  process.env.STRIPE_PUBLISHABLE_KEY="pk_test_fixture";
+  for(const mode of ["onboarding","management"]) {
+    assert.deepEqual(await connectEmbeddedSession(owner,mode,client),{publishableKey:"pk_test_fixture",clientSecret:"fixture-ephemeral-secret"});
+  }
+  await assert.rejects(()=>connectEmbeddedSession(owner,"payouts",client));
+  await assert.rejects(()=>connectEmbeddedSession(other,"onboarding",client),/Configure/);
+  sessionLive=true;await assert.rejects(()=>connectEmbeddedSession(owner,"onboarding",client),/incompatible/);sessionLive=false;
+  sessionAccount="acct_foreign";await assert.rejects(()=>connectEmbeddedSession(owner,"management",client),/incompatible/);sessionAccount="acct_owner";
+  sessionExpired=true;await assert.rejects(()=>connectEmbeddedSession(owner,"management",client),/incompatible/);sessionExpired=false;
+  const ownAccount=accounts.get("acct_owner")!;
+  ownAccount.metadata!.mentora_owner=other;
+  await assert.rejects(()=>connectEmbeddedSession(owner,"onboarding",client),/associé/);
+  ownAccount.metadata!.mentora_owner=owner;
+  live=true;await assert.rejects(()=>connectEmbeddedSession(owner,"onboarding",client),/réel/);live=false;
   live=true;await assert.rejects(()=>connectOverview(owner,client),/réel/);live=false;
   const service=await saveService(owner,{title:"Conseils test",description:"Une prestation de conseil en achat-revente pour tests.",category:"Conseil",duration:0,calls:0,followup:"",availability:"Messages",credits:10,capacity:50,published:true});
   await moneyTransaction(async q=>{await entry(q,owner,1000,"fixture","connect-fixture");});
@@ -124,6 +155,7 @@ try {
   const signature=new StripeSDK("sk_test_fixture").webhooks.generateTestHeaderString({payload:event,secret:process.env.STRIPE_CONNECT_WEBHOOK_SECRET});
   assert.equal((await webhook(new Request("http://localhost/api/stripe/webhook",{method:"POST",headers:{"stripe-signature":signature},body:event}))).status,200);
   delete process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
+  console.log("PASS sessions intégrées privées, permissions minimales, mauvaise clé, mode réel, compte étranger et session expirée refusés");
   console.log("PASS accès anonyme et membre refusés, comptes Connect isolés et mode réel rejeté");
   console.log("PASS prestations terminées uniquement, crédits inchangés, remboursement d’un gain réservé bloqué");
   console.log("PASS doubles clics et demandes concurrentes, un seul transfert et un seul payout");
@@ -133,5 +165,7 @@ try {
   if(previousKey===undefined)delete process.env.STRIPE_SECRET_KEY;else process.env.STRIPE_SECRET_KEY=previousKey;
   if(previousSecret===undefined)delete process.env.STRIPE_WEBHOOK_SECRET;else process.env.STRIPE_WEBHOOK_SECRET=previousSecret;
   if(previousConnectSecret===undefined)delete process.env.STRIPE_CONNECT_WEBHOOK_SECRET;else process.env.STRIPE_CONNECT_WEBHOOK_SECRET=previousConnectSecret;
+  if(previousPublic===undefined)delete process.env.STRIPE_PUBLISHABLE_KEY;else process.env.STRIPE_PUBLISHABLE_KEY=previousPublic;
+  if(previousNextPublic===undefined)delete process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;else process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=previousNextPublic;
   const db=database();if("close" in db)db.close();process.chdir(cwd);await rm(dir,{recursive:true,force:true});
 }

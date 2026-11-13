@@ -806,3 +806,11 @@
 .commerce-legal a { color: var(--purple-dark); text-decoration: underline; }
 .service-credit-fields { grid-column: 1 / -1; display: grid; gap: 10px; }
 .service-credit-fields input[type="range"] { padding-inline: 0; accent-color: var(--purple); }
+
+/* Private banking configuration stays inside the remuneration page. */
+.connect-embedded { min-width:0; margin-top:16px; padding:16px; border:1px solid var(--line); border-radius:16px; background:var(--surface); scroll-margin-top:16px; }
+.connect-embedded h4 { margin:0; font-size:18px; }
+.connect-embedded-note { font-size:13px; line-height:1.5; }
+.connect-embedded .connect-heading { margin-bottom:12px; }
+.connect-embedded connect-account-onboarding,.connect-embedded connect-account-management { display:block; width:100%; min-width:0; }
+@media(max-width:640px) { .connect-embedded { padding:12px 8px; margin-inline:-4px; } .connect-embedded .connect-heading { gap:6px; } }
