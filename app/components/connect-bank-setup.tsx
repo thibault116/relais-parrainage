@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import type { StripeConnectInstance } from "@stripe/connect-js";
 import { ConnectAccountManagement, ConnectAccountOnboarding, ConnectComponentsProvider } from "@stripe/react-connect-js";
 
-type Props = {mode:"onboarding"|"management";onDone:()=>void};
+type Props = {mode:"onboarding"|"management";onDone:()=>void;hasEuroBank?:boolean};
 const collectionOptions = {fields:"currently_due" as const, futureRequirements:"omit" as const};
 
-export default function ConnectBankSetup({mode,onDone}:Props) {
+export default function ConnectBankSetup({mode,onDone,hasEuroBank=false}:Props) {
   const [instance,setInstance]=useState<StripeConnectInstance|null>(null);
   const [error,setError]=useState("");
   const [attempt,setAttempt]=useState(0);
@@ -59,8 +59,11 @@ export default function ConnectBankSetup({mode,onDone}:Props) {
   },[mode,attempt]);
 
   return <div className="connect-embedded" aria-label={mode==="onboarding"?"Configurer mes retraits dans Mentora":"Modifier mes informations bancaires"}>
-    <div className="connect-heading"><h4>{mode==="onboarding"?"Configurer mes retraits":"Mon IBAN et mon titulaire"}</h4><button type="button" className="commerce-row connect-refresh" onClick={onDone}>Fermer</button></div>
-    {mode==="management" && <p>Dans « Détails du virement », ajoute ou modifie ton compte bancaire : pays de la banque (France, Belgique…), nom du titulaire et IBAN pour un compte en euros. Choisis le compte EUR par défaut pour recevoir tes retraits.</p>}
+    <div className="connect-heading"><h4>{mode==="onboarding"?"Configurer mes retraits":"Mon compte bancaire (IBAN)"}</h4><button type="button" className="commerce-row connect-refresh" onClick={onDone}>Fermer</button></div>
+    {mode==="management" && <>
+      <p>{hasEuroBank?"Un compte en euros est déjà enregistré. Dans « Détails du virement », choisis « Modifier » à côté du compte EUR pour remplacer ton IBAN.":"Dans « Détails du virement », choisis « Ajouter un compte bancaire », puis la devise EUR."} Sélectionne le pays de ta banque (France, Belgique…), puis saisis et confirme ton IBAN.</p>
+      <p>Le titulaire correspond au nom renseigné dans tes informations personnelles ou professionnelles. Tu peux les corriger dans ce même formulaire.</p>
+    </>}
     <p className="connect-embedded-note">Formulaire sécurisé par Stripe. Utilise uniquement les données de test proposées. Ton IBAN et tes justificatifs restent chez Stripe.</p>
     {error ? <div role="alert"><p>{error}</p><button type="button" className="commerce-row" onClick={()=>{setError("");setInstance(null);setAttempt(n=>n+1);}}>Réessayer</button></div>
       : instance ? <ConnectComponentsProvider connectInstance={instance}>

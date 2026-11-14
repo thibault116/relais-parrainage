@@ -63,13 +63,13 @@ export function ConnectPayoutPanel() {
           {data.account.pendingVerificationCount>0 && <p>Des informations sont en cours de vérification par Stripe.</p>}
           {!bankForm && <>
             {!ready && <button type="button" className="commerce-primary" disabled={busy} onClick={()=>setBankForm("onboarding")}>Configurer mes retraits · test</button>}
-            <button type="button" className={ready?"commerce-primary":"commerce-row"} disabled={busy} onClick={()=>setBankForm("management")}>Ajouter ou modifier mon IBAN</button>
+            <button type="button" className={ready?"commerce-primary":"commerce-row"} disabled={busy} onClick={()=>setBankForm("management")}>{data.account.banks.some(b=>b.currency==="eur")?"Modifier mon IBAN (EUR)":"Ajouter mon compte bancaire (IBAN)"}</button>
             <p>Compte français, belge… : renseigne le pays de ta banque et tes coordonnées dans le formulaire sécurisé. Seuls les derniers chiffres sont affichés ici.</p>
           </>}
           {!ready && !bankForm && <p>Tout se fait ici. Tu n’as pas besoin de gérer un tableau de bord Stripe séparé.</p>}
           <p>Solde EUR disponible chez Stripe : {euro(data.account.availableCents)}{data.account.pendingCents>0?` · En attente : ${euro(data.account.pendingCents)}`:""}.</p>
         </>}
-        {bankForm && <ConnectBankSetup mode={bankForm} onDone={()=>{setBankForm(null);void load().catch(e=>setError(e.message));}}/>}
+        {bankForm && <ConnectBankSetup mode={bankForm} hasEuroBank={data.account?.banks.some(b=>b.currency==="eur")} onDone={()=>{setBankForm(null);void load().catch(e=>setError(e.message));}}/>}
       </section>
       <section aria-label="Demander un retrait de gains"><h3>Retirer mes gains</h3>
         <p>Seule la rémunération des prestations terminées est retirable. Tes crédits ne sont pas convertibles en argent.</p>
