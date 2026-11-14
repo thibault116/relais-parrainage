@@ -66,3 +66,9 @@ Sources du parcours intégré :
 - https://docs.stripe.com/api/account_sessions/create
 - https://docs.stripe.com/connect/supported-embedded-components/account-management
 - https://docs.stripe.com/connect/identity-verification
+
+## Banque française ou belge
+
+France est le pays du bénéficiaire par défaut (client et serveur). La liste partagée conserve notamment Belgique, Luxembourg, Allemagne, Espagne et Italie. Pour ces comptes, la création demande EUR comme devise par défaut. Le pays de résidence/établissement d’un compte existant ne peut pas être changé en modifiant le pays de sa banque : aucun compte n’est recréé automatiquement.
+
+Le bouton « Ajouter ou modifier mon IBAN » reste accessible même si la vérification d’identité est incomplète. Il ouvre Account Management avec la collecte bancaire activée. Stripe collecte le pays de la banque, les coordonnées et les informations du titulaire selon le pays et les exigences du compte. Le membre peut choisir un compte EUR par défaut dans les détails du virement ; Mentora utilise cette destination pour ses retraits. Le pays de banque, le nom du titulaire, la devise, les derniers chiffres et l’indicateur par défaut sont relus chez Stripe pour le résumé privé, jamais enregistrés dans la base Mentora. Aucun IBAN complet ni numéro de routage n’est renvoyé par l’API Mentora.

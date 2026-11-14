@@ -43,9 +43,10 @@ try {
   let transferCalls=0,payoutCalls=0,failTransfer=false,failPayout=false,timeoutPayout=false,connectedBalance=100000,live=false;
   let bankStatus="paid",sessionLive=false,sessionAccount="acct_owner",sessionExpired=false;
   const fake={accounts:{create:async(params:any)=>{
+    assert.equal(params.default_currency,["FR","BE","LU","DE","ES","IT"].includes(params.country)?"eur":undefined);
     assert.equal(params.type,undefined);assert.equal(params.settings.payouts.schedule.interval,"manual");
     assert.equal(params.capabilities.card_payments.requested,true);assert.equal(params.capabilities.transfers.requested,true);
-    const account={id:`acct_${params.metadata.mentora_owner}`,controller:{is_controller:true},metadata:params.metadata,payouts_enabled:true,details_submitted:true,settings:{payouts:{schedule:{interval:"manual"}}},capabilities:{transfers:"active"},requirements:{currently_due:[],pending_verification:[]},external_accounts:{data:[{object:"bank_account",bank_name:"TEST",last4:"2606",currency:"eur"}]}} as unknown as Stripe.Account;
+    const account={id:`acct_${params.metadata.mentora_owner}`,controller:{is_controller:true},metadata:params.metadata,payouts_enabled:true,details_submitted:true,settings:{payouts:{schedule:{interval:"manual"}}},capabilities:{transfers:"active"},requirements:{currently_due:[],pending_verification:[]},external_accounts:{data:[{object:"bank_account",bank_name:"TEST",last4:"2606",currency:"eur",country:params.country,account_holder_name:"Titulaire de test",default_for_currency:true}]}} as unknown as Stripe.Account;
     accounts.set(account.id,account);return account;
   },retrieve:async(id:string)=>accounts.get(id)!,createLoginLink:async()=>({url:"https://connect.stripe.com/test-login"})},
   accountSessions:{create:async(params:any)=>{
@@ -71,7 +72,14 @@ try {
     return payouts.get(options.idempotencyKey);
   },retrieve:async(id:string,_params:any,options:any)=>{assert.equal(options.stripeAccount,"acct_owner");return {...Array.from(payouts.values()).find(p=>p.id===id),status:bankStatus};}}} as unknown as Stripe;
   const client=()=>fake;
-  await createConnectAccount({id:owner,email:"owner@example.test"},"FR",client);
+  await createConnectAccount({id:owner,email:"owner@example.test"},undefined,client);
+  await createConnectAccount({id:"belgian-fixture",email:"belgium@example.test"},"BE",client);
+  assert.equal((await connectOverview("belgian-fixture",client)).country,"BE");
+  await assert.rejects(()=>createConnectAccount({id:"invalid-country",email:"invalid@example.test"},"XX",client));
+  const bank=(await connectOverview(owner,client)).account!.banks[0];
+  assert.deepEqual(bank,{bankName:"TEST",last4:"2606",currency:"eur",country:"FR",holderName:"Titulaire de test",defaultForCurrency:true});
+  assert.equal("iban" in bank,false);
+  assert.equal("routing_number" in bank,false);
   assert.equal((await createConnectAccount({id:owner,email:"owner@example.test"},"FR",client)).id,"acct_owner");
   await assert.rejects(()=>createConnectAccount({id:owner,email:"owner@example.test"},"US",client),/autre pays/);
   assert.equal(await connectOnboarding(owner,client),"https://connect.stripe.com/test-onboarding");

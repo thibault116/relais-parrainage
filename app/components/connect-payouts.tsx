@@ -3,12 +3,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 const ConnectBankSetup=dynamic(()=>import("./connect-bank-setup"),{ssr:false,loading:()=><p role="status">Ouverture du formulaire sécurisé…</p>});
 import { Building2, CircleCheck, RefreshCw, ShieldCheck, Wallet } from "lucide-react";
+import { defaultPayoutCountry, payoutCountries, payoutCountryLabel } from "@/lib/monetization/bank-countries";
 const euro=(cents:number)=>(cents/100).toLocaleString("fr-FR",{style:"currency",currency:"EUR"});
 type Withdrawal={id:string;amount_cents:number;status:string;error:string;created_at:string;transfer_id:string|null;payout_id:string|null};
-type Overview={availableCents:number;paidCents:number;reservedCents:number;country?:string;earnings:{id:string;title:string;cents:number}[];withdrawals:Withdrawal[];account:null|{id:string;detailsSubmitted:boolean;payoutsEnabled:boolean;transfersActive:boolean;requirementsCount:number;pendingVerificationCount:number;banks:{bankName:string|null;last4:string|null;currency:string}[];availableCents:number;pendingCents:number}};
+type Overview={availableCents:number;paidCents:number;reservedCents:number;country?:string;earnings:{id:string;title:string;cents:number}[];withdrawals:Withdrawal[];account:null|{id:string;detailsSubmitted:boolean;payoutsEnabled:boolean;transfersActive:boolean;requirementsCount:number;pendingVerificationCount:number;banks:{bankName:string|null;last4:string|null;currency:string;country?:string;holderName?:string|null;defaultForCurrency?:boolean}[];availableCents:number;pendingCents:number}};
 const statuses:Record<string,string>={creating:"Préparation du transfert",funded:"Sur ton compte Stripe · retrait à reprendre",pending:"Virement bancaire en cours",paid:"Versé · mode test",failed:"Transfert refusé · gains à nouveau disponibles",payout_failed:"Virement bancaire refusé · gains conservés sur Stripe",uncertain:"Résultat à vérifier · reprendre le même retrait"};
 export function ConnectPayoutPanel() {
-  const [data,setData]=useState<Overview|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false),[country,setCountry]=useState("FR"),[acknowledged,setAcknowledged]=useState(false),[message,setMessage]=useState("");
+  const [data,setData]=useState<Overview|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false),[country,setCountry]=useState<string>(defaultPayoutCountry),[acknowledged,setAcknowledged]=useState(false),[message,setMessage]=useState("");
   const withdrawalKey=useRef<string|null>(null);
   const [bankForm,setBankForm]=useState<"onboarding"|"management"|null>(null);
   const load=useCallback(async()=>{
@@ -47,18 +48,24 @@ export function ConnectPayoutPanel() {
         <h3><Building2 size={20}/> Mon compte bancaire</h3>
         {!data.account ? <>
           <p>Configure tes retraits ici, sans compte Stripe à créer au préalable. Stripe sécurise tes informations et peut demander un justificatif d’identité. Mentora ne conserve ni ton IBAN ni tes justificatifs.</p>
-          <label>Pays du titulaire du compte<select value={country} onChange={e=>setCountry(e.target.value)} disabled={busy || !!data.country}>
-            {Object.entries({FR:"France",BE:"Belgique",CH:"Suisse",LU:"Luxembourg",DE:"Allemagne",ES:"Espagne",IT:"Italie",GB:"Royaume-Uni",US:"États-Unis",CA:"Canada"}).map(([value,label])=><option value={value} key={value}>{label}</option>)}
+          <label>Pays de résidence ou d’établissement<select value={country} onChange={e=>setCountry(e.target.value)} disabled={busy || !!data.country}>
+            {Object.entries(payoutCountries).map(([value,label])=><option value={value} key={value}>{label}</option>)}
           </select></label>
+          <p>France est sélectionnée par défaut. Choisis ton pays réel, par exemple Belgique. Le pays de ta banque se choisit ensuite dans le formulaire bancaire sécurisé.</p>
           <label className="connect-confirm"><input type="checkbox" checked={acknowledged} onChange={e=>setAcknowledged(e.target.checked)}/> Je teste la configuration des retraits avec les données fictives proposées par Stripe.</label>
           <button type="button" className="commerce-primary" disabled={busy || !acknowledged} onClick={()=>void action("setup")}>Configurer mes retraits · test</button>
         </> : <>
           <p><ShieldCheck size={18}/> {ready?"Compte prêt pour les virements de test":"Configuration à compléter ou en cours de vérification"}</p>
-          {data.account.banks.map((bank,index)=><p key={index}>{bank.bankName || "Banque"} · •••• {bank.last4} · {bank.currency.toUpperCase()}</p>)}
+          <p>Pays du bénéficiaire : <strong>{payoutCountryLabel(data.country || defaultPayoutCountry)}</strong>. Retraits Mentora en euros.</p>
+          {data.account.banks.map((bank,index)=><article key={index} className="connect-bank-summary"><strong>{bank.bankName || "Compte bancaire"}</strong><p>{bank.holderName && <>{bank.holderName} · </>}{payoutCountryLabel(bank.country)} · {bank.currency.toUpperCase()} · •••• {bank.last4}</p>{bank.defaultForCurrency && <small>Compte de versement par défaut en {bank.currency.toUpperCase()}</small>}</article>)}
           {!data.account.banks.length && <p>Ajoute ton compte bancaire dans le formulaire sécurisé ci-dessous.</p>}
           {data.account.requirementsCount>0 && <p>Stripe attend encore des informations pour activer les versements.</p>}
           {data.account.pendingVerificationCount>0 && <p>Des informations sont en cours de vérification par Stripe.</p>}
-          {!bankForm && <button type="button" className="commerce-primary" disabled={busy} onClick={()=>setBankForm(ready?"management":"onboarding")}>{ready?"Modifier mes informations bancaires":"Configurer mes retraits · test"}</button>}
+          {!bankForm && <>
+            {!ready && <button type="button" className="commerce-primary" disabled={busy} onClick={()=>setBankForm("onboarding")}>Configurer mes retraits · test</button>}
+            <button type="button" className={ready?"commerce-primary":"commerce-row"} disabled={busy} onClick={()=>setBankForm("management")}>Ajouter ou modifier mon IBAN</button>
+            <p>Compte français, belge… : renseigne le pays de ta banque et tes coordonnées dans le formulaire sécurisé. Seuls les derniers chiffres sont affichés ici.</p>
+          </>}
           {!ready && !bankForm && <p>Tout se fait ici. Tu n’as pas besoin de gérer un tableau de bord Stripe séparé.</p>}
           <p>Solde EUR disponible chez Stripe : {euro(data.account.availableCents)}{data.account.pendingCents>0?` · En attente : ${euro(data.account.pendingCents)}`:""}.</p>
         </>}

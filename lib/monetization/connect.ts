@@ -5,6 +5,7 @@ import { isCrmOwner } from "../crm";
 import { lock, moneyTransaction, balance as creditBalance } from "./store";
 import { stripeTest, appOrigin } from "./stripe";
 import { safeStripeFailure } from "./payout-diagnostics";
+import { defaultPayoutCountry, euroPayoutCountries, payoutCountries } from "./bank-countries";
 
 type Client = () => Stripe;
 type Actor = {id:string;email:string};
@@ -12,7 +13,7 @@ type LinkRow = {owner_id:string;account_id:string|null;country:string;creation_k
 type Withdrawal = {id:string;owner_id:string;request_key:string;account_id:string;amount_cents:number;transfer_id:string|null;payout_id:string|null;payout_attempt:number;status:string;error:string;created_at:string;updated_at:string};
 const returnPath="/?mobile=payouts&connect=return#profile";
 const uuid=z.string().uuid();
-const countries=z.enum(["FR","BE","CH","LU","DE","ES","IT","GB","US","CA"]);
+const countries=z.enum(Object.keys(payoutCountries) as [keyof typeof payoutCountries,...(keyof typeof payoutCountries)[]]).default(defaultPayoutCountry);
 const reference=(owner:string,key:unknown)=>`${owner}:${uuid.parse(key)}`;
 const eligibleSql=`SELECT b.id,b.payout_cents,b.credits,b.snapshot FROM money_bookings b
   JOIN money_services s ON s.id=b.service_id
@@ -59,6 +60,7 @@ export async function createConnectAccount(actor:Actor,country:unknown,client:Cl
   let account:Stripe.Account;
   try {account=await s.accounts.create({
     country:selected,
+    ...(euroPayoutCountries.has(selected)?{default_currency:"eur"}:{}),
     controller:{fees:{payer:"application"},losses:{payments:"application"},requirement_collection:"stripe",stripe_dashboard:{type:"express"}},
     // Full-service FR accounts require both capabilities. Recipient agreements
     // cannot use the Connect cross-border flow used by this US sandbox.
@@ -124,7 +126,7 @@ export async function connectOverview(owner:string,client:Client=stripeTest) {
   if(!row?.account_id) return {...result,account:null,country:row?.country};
   const s=client(),account=await linked(owner,s),balance=await s.balance.retrieve({},{stripeAccount:account.id});
   sandbox(balance);
-  const banks=account.external_accounts?.data.filter(b=>b.object==="bank_account").map(b=>({bankName:b.bank_name,last4:b.last4,currency:b.currency})) || [];
+  const banks=account.external_accounts?.data.filter(b=>b.object==="bank_account").map(b=>({bankName:b.bank_name,last4:b.last4,currency:b.currency,country:b.country,holderName:b.account_holder_name,defaultForCurrency:b.default_for_currency})) || [];
   return {...result,country:row.country,account:{id:account.id,detailsSubmitted:account.details_submitted,payoutsEnabled:account.payouts_enabled,transfersActive:account.capabilities?.transfers==="active",requirementsCount:account.requirements?.currently_due?.length || 0,pendingVerificationCount:account.requirements?.pending_verification?.length || 0,banks,availableCents:balance.available.find(b=>b.currency==="eur")?.amount || 0,pendingCents:balance.pending.find(b=>b.currency==="eur")?.amount || 0}};
 }
 function expired(row:Withdrawal) {
