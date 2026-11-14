@@ -23,3 +23,7 @@ Mes retraits rassemble demandes manuelles et anciens retraits Connect. Une deman
 node --import tsx scripts/test-manual-bank.ts : base temporaire, clé éphémère, aucune requête bancaire. Vérifie accès, CSRF, validation FR/BE, chiffrement, isolation, idempotence, 1 centime, annulation et allocations communes. Les données de test sont effacées ensuite.
 
 L'ajout de la clé privée en environnement Vercel Production a été refusé par le contrôle automatique faute d'accord explicite. L'interface et les tests sont préparés ; l'enregistrement restera inactif tant que l'administrateur n'aura pas autorisé et configuré cette clé. L'environnement Production désigne l'hébergement du site, pas l'activation de virements réels.
+
+## Activation du 14 novembre 2026
+
+Après présentation du formulaire et explication du refus automatique, le propriétaire a explicitement autorisé la création de BANK_DETAILS_ENCRYPTION_KEY. La clé a été générée aléatoirement en mémoire, transmise à Vercel par l’entrée standard du CLI et enregistrée comme Secret, sur relais-parrainage / Production uniquement. Elle n’a pas été affichée ni conservée dans un fichier local ou dans Git. Cette activation ne déclenche aucun versement et ne met pas en service des paiements réels.
