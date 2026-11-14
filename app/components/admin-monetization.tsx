@@ -1,6 +1,6 @@
 "use client";
 import { PayoutTestPanel } from "./payout-test";
-import { ConnectPayoutPanel } from "./connect-payouts";
+import { ManualBankForm, ManualBankHistory } from "./manual-bank";
 import {
   Crown,
   Coins,
@@ -549,34 +549,7 @@ export function AdminMonetization({
         )}
         {tab === "payouts" && (
           <>
-            <ConnectPayoutPanel />
-            <details className="commerce-card"><summary>Ancien test du compte Stripe de la plateforme</summary><PayoutTestPanel /></details>
-            <details className="commerce-card commerce-simulation">
-              <summary>Simuler une rémunération</summary>
-              <p>Exemple séparé de ton solde. Taux test de {euro(data.payoutRate)} par crédit.</p>
-              <label>
-                Prix de la prestation en crédits
-                <input type="number" min={1} max={1000} step={1} value={simulatedCredits || ""}
-                  disabled={simulationStep !== 0}
-                  onChange={(event) => setSimulatedCredits(Number(event.target.value))} />
-              </label>
-              <p aria-live="polite">
-                {simulationStep === 0 && `Montant prévu : ${euro(simulatedCredits * data.payoutRate)}.`}
-                {simulationStep === 1 && "Prestation réservée. La rémunération sera due une fois la prestation terminée."}
-                {simulationStep === 2 && `Prestation terminée. Rémunération simulée due : ${euro(simulatedCredits * data.payoutRate)}.`}
-                {simulationStep === 3 && `Versement fictif de ${euro(simulatedCredits * data.payoutRate)} terminé.`}
-              </p>
-              {simulationStep < 3 && (
-                <button className="commerce-primary"
-                  disabled={!Number.isInteger(simulatedCredits) || simulatedCredits < 1 || simulatedCredits > 1000}
-                  onClick={() => setSimulationStep(simulationStep + 1)}>
-                  {["Simuler la réservation", "Terminer la prestation", "Simuler le versement"][simulationStep]}
-                </button>
-              )}
-              {simulationStep > 0 && (
-                <button className="commerce-row" onClick={() => setSimulationStep(0)}>Recommencer la simulation</button>
-              )}
-            </details>
+            <ManualBankForm />
             <div className="commerce-stat-grid">
               <article className="commerce-card">
                 <Coins />
@@ -627,13 +600,7 @@ export function AdminMonetization({
               </div>
             )}
             {row("Mes retraits", Wallet, () => toggle("withdrawals"))}
-            {panel === "withdrawals" && (
-              <div className="commerce-card">
-                <p>
-                  Les essais à 0 € et 0,01 € sont disponibles ci-dessus dans « Tester un retrait ». Les versements réels restent désactivés.
-                </p>
-              </div>
-            )}
+            {panel === "withdrawals" && <ManualBankHistory />}
           </>
         )}
         {tab === "services" && (
@@ -1322,7 +1289,8 @@ export function AdminMonetization({
       )}
       {tab === "payouts" && (
         <>
-          <ConnectPayoutPanel />
+          <ManualBankForm />
+          <ManualBankHistory />
           <details className="commerce-card"><summary>Ancien test du compte Stripe de la plateforme</summary><PayoutTestPanel /></details>
           <h3>Rémunérations dues · simulation</h3>
           <div className="pricing-results">

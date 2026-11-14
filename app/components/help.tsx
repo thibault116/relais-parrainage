@@ -121,11 +121,11 @@ const chapters = [
 const payoutTutorial=[
   "retraits",
   "Retraits et compte bancaire · test privé",
-  "Dans Rémunération, Gérer mon IBAN ouvre uniquement la gestion des virements. Les vérifications du dossier sont séparées derrière Vérification requise. Stripe peut demander une connexion de sécurité avant de modifier les coordonnées bancaires.",
-  "Pour un compte français ou belge, choisis EUR, puis le pays de la banque et saisis l’IBAN. Le nom du titulaire est celui de tes informations personnelles ou professionnelles Stripe. L’IBAN complet et les justificatifs restent chez Stripe ; Mentora affiche uniquement un résumé masqué.",
-  "Si un compte EUR existe déjà et que Stripe ne permet qu’un compte par devise, remplace-le avec Modifier. Ajouter peut alors proposer seulement USD. Le réglage Stripe Collecter plusieurs comptes externes par devise permet d’ajouter plusieurs banques EUR ; le compte EUR par défaut reçoit les retraits.",
-  "L’enregistrement d’un IBAN ne dispense pas des vérifications exigées par Stripe. Les retraits restent bloqués tant que les capacités de versement ne sont pas actives. Les gains proviennent uniquement des prestations terminées, les crédits ne se convertissent pas en argent. L’historique indique les virements en cours, versés ou refusés.",
-  "Cette version est réservée à l’administrateur principal, en mode test. Utilise uniquement les coordonnées fictives proposées par Stripe. Aucun paiement réel n’est activé.",
+  "Dans Rémunération, renseigne le titulaire du compte, le pays de la banque et l’IBAN, puis Enregistrer. Les comptes français, belges et d’autres pays utilisant un IBAN sont acceptés. Le pays et la clé de contrôle de l’IBAN sont vérifiés. Un RIB joint n’est pas nécessaire.",
+  "Demander le versement réserve les gains disponibles issus de prestations terminées. Mentora n’impose aucun seuil de 50 € : une somme positive, dès un centime, peut faire l’objet d’une demande. Les crédits achetés ne sont pas convertibles en argent. Un gain ne peut être réservé deux fois, y compris s’il est déjà engagé dans un ancien retrait Stripe.",
+  "Ce parcours ne déclenche aucun virement automatique et ne crée aucun compte Stripe. La demande est à traiter manuellement. Dans Mes retraits, À traiter signifie qu’aucun versement n’a été confirmé. Annuler la demande remet les gains à disposition. Les anciens retraits Stripe restent consultables dans ce même historique.",
+  "L’IBAN et le titulaire sont chiffrés sur le serveur. Seuls les derniers caractères de l’IBAN sont renvoyés à l’écran. Une demande conserve un instantané chiffré des coordonnées enregistrées lors de sa création. Les coordonnées ne sont pas envoyées à Stripe par ce formulaire.",
+  "Tout reste réservé à l’administrateur principal et en mode test. Le fonctionnement réel des versements manuels, leur comptabilité et les obligations applicables devront être validés avant commercialisation. Le refus du parcours Connect ne constitue pas une dispense générale des obligations d’identification ou de facturation.",
 ];
 export function Help({privatePayouts=false}:{privatePayouts?:boolean}) {
   const visibleChapters=privatePayouts?[...chapters,payoutTutorial]:chapters;

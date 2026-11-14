@@ -2,6 +2,8 @@ import { query } from "../db";
 
 export async function migrateConnect() {
   for (const sql of [
+    `CREATE TABLE IF NOT EXISTS money_bank_details(owner_id TEXT PRIMARY KEY,payload TEXT NOT NULL,updated_at TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS money_bank_requests(id TEXT PRIMARY KEY,owner_id TEXT NOT NULL,request_key TEXT NOT NULL UNIQUE,amount_cents INTEGER NOT NULL CHECK(amount_cents>0),bank_snapshot TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','canceled')),created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS money_connect_accounts(owner_id TEXT PRIMARY KEY,account_id TEXT UNIQUE,country TEXT NOT NULL,creation_key TEXT NOT NULL UNIQUE,created_at TEXT NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS money_connect_withdrawals(id TEXT PRIMARY KEY,owner_id TEXT NOT NULL,request_key TEXT NOT NULL UNIQUE,account_id TEXT NOT NULL,amount_cents INTEGER NOT NULL CHECK(amount_cents>0),transfer_id TEXT UNIQUE,payout_id TEXT UNIQUE,payout_attempt INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL,error TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS money_connect_allocations(booking_id TEXT PRIMARY KEY,owner_id TEXT NOT NULL,withdrawal_id TEXT NOT NULL,amount_cents INTEGER NOT NULL CHECK(amount_cents>0))`,
