@@ -814,3 +814,10 @@
 .connect-embedded .connect-heading { margin-bottom:12px; }
 .connect-embedded connect-account-onboarding,.connect-embedded connect-account-management { display:block; width:100%; min-width:0; }
 @media(max-width:640px) { .connect-embedded { padding:12px 8px; margin-inline:-4px; } .connect-embedded .connect-heading { gap:6px; } }
+
+.connect-tools { display:flex; gap:6px; }
+.connect-payout-compact .connect-balances { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.connect-payout-compact .connect-balances article { padding:12px 8px; }
+.connect-payout-compact .connect-balances strong { font-size:clamp(17px,4.8vw,26px); }
+.connect-payout-compact .connect-balances span { font-size:12px; }
+.connect-withdrawal-history { margin-top:16px; }

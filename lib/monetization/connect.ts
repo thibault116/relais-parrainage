@@ -92,18 +92,20 @@ export async function connectOnboarding(owner:string,client:Client=stripeTest) {
   return link.url;
 }
 export async function connectEmbeddedSession(owner:string,mode:unknown,client:Client=stripeTest) {
-  const selected=z.enum(["onboarding","management"]).parse(mode);
+  const selected=z.enum(["onboarding","management","bank"]).parse(mode);
   const publishableKey=process.env.STRIPE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
   if(!publishableKey.startsWith("pk_test_")) throw Error("La clé publique Stripe de test est manquante ou invalide.");
   const s=client(),account=await linked(owner,s);
   sandbox(await s.balance.retrieve());
   sandbox(await s.balance.retrieve({},{stripeAccount:account.id}));
-  // No payout/payment components: all money movement must use the earnings
-  // ledger below. Never accept an account ID or component list from the client.
+  // The banking view must not initiate payouts or alter their schedule:
+  // all money movement must use the earnings ledger below.
   const session=await s.accountSessions.create({account:account.id,components:
     selected==="onboarding"
       ? {account_onboarding:{enabled:true,features:{external_account_collection:true}}}
-      : {account_management:{enabled:true,features:{external_account_collection:true}}}
+      : selected==="bank"
+        ? {payouts:{enabled:true,features:{external_account_collection:true,standard_payouts:false,instant_payouts:false,edit_payout_schedule:false}}}
+        : {account_management:{enabled:true,features:{external_account_collection:true}}}
   });
   if(session.livemode!==false || session.account!==account.id || !session.client_secret || session.expires_at<=Math.floor(Date.now()/1000))
     throw Error("Session bancaire Stripe incompatible avec ce compte de test.");

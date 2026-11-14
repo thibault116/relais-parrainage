@@ -53,8 +53,8 @@ try {
     assert.equal(params.account,"acct_owner");
     assert.equal(Object.keys(params.components).length,1);
     const key=Object.keys(params.components)[0];
-    assert(["account_onboarding","account_management"].includes(key));
-    assert.deepEqual(params.components[key],{enabled:true,features:{external_account_collection:true}});
+    assert(["account_onboarding","account_management","payouts"].includes(key));
+    assert.deepEqual(params.components[key],{enabled:true,features:key==="payouts"?{external_account_collection:true,standard_payouts:false,instant_payouts:false,edit_payout_schedule:false}:{external_account_collection:true}});
     return {account:sessionAccount,livemode:sessionLive,client_secret:"fixture-ephemeral-secret",expires_at:Math.floor(Date.now()/1000)+(sessionExpired?-1:3600)};
   }},
   accountLinks:{create:async(params:any)=>{assert.equal(params.account,"acct_owner");assert.equal(params.type,"account_onboarding");assert.equal(params.collection_options.fields,"currently_due");return {url:"https://connect.stripe.com/test-onboarding"};}},
@@ -89,7 +89,7 @@ try {
   process.env.STRIPE_PUBLISHABLE_KEY="pk_live_fixture";
   await assert.rejects(()=>connectEmbeddedSession(owner,"onboarding",client),/publique Stripe/);
   process.env.STRIPE_PUBLISHABLE_KEY="pk_test_fixture";
-  for(const mode of ["onboarding","management"]) {
+  for(const mode of ["onboarding","management","bank"]) {
     assert.deepEqual(await connectEmbeddedSession(owner,mode,client),{publishableKey:"pk_test_fixture",clientSecret:"fixture-ephemeral-secret"});
   }
   await assert.rejects(()=>connectEmbeddedSession(owner,"payouts",client));

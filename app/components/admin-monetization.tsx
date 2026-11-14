@@ -257,7 +257,7 @@ export function AdminMonetization({
               }[tab]
             }
           </h1>
-          <p>
+          {tab !== "payouts" && <p>
             {
               {
                 plans: "Gère ton offre et ta facturation.",
@@ -268,7 +268,7 @@ export function AdminMonetization({
                 services: "Gère les prestations que tu proposes aux membres.",
               }[tab]
             }
-          </p>
+          </p>}
         </header>
         <span className="commerce-test">TEST PRIVÉ · Aucun paiement réel</span>
         {error && (
@@ -549,22 +549,10 @@ export function AdminMonetization({
         )}
         {tab === "payouts" && (
           <>
-            <article className="commerce-card commerce-balance">
-              <div className="commerce-plan-top">
-                <Wallet />
-                <span>Total des prestations terminées</span>
-              </div>
-              <strong>{euro(due)}</strong>
-              <button className="commerce-primary" disabled>
-                <ArrowDownToLine />
-                Versements réels non activés
-              </button>
-              <small>Simulation · aucun versement réel</small>
-            </article>
             <ConnectPayoutPanel />
             <details className="commerce-card"><summary>Ancien test du compte Stripe de la plateforme</summary><PayoutTestPanel /></details>
-            <section className="commerce-card commerce-simulation">
-              <h2>Simuler une rémunération</h2>
+            <details className="commerce-card commerce-simulation">
+              <summary>Simuler une rémunération</summary>
               <p>Exemple séparé de ton solde. Taux test de {euro(data.payoutRate)} par crédit.</p>
               <label>
                 Prix de la prestation en crédits
@@ -588,7 +576,7 @@ export function AdminMonetization({
               {simulationStep > 0 && (
                 <button className="commerce-row" onClick={() => setSimulationStep(0)}>Recommencer la simulation</button>
               )}
-            </section>
+            </details>
             <div className="commerce-stat-grid">
               <article className="commerce-card">
                 <Coins />

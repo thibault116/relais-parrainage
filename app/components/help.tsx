@@ -118,16 +118,27 @@ const chapters = [
     "L’administration examine les réponses et justificatifs confidentiels avant de valider les domaines d’un parrain ou de demander des compléments. Aucun membre ne peut valider son propre dossier.",
   ],
 ];
-export function Help() {
+const payoutTutorial=[
+  "retraits",
+  "Retraits et compte bancaire · test privé",
+  "Dans Rémunération, Gérer mon IBAN ouvre uniquement la gestion des virements. Les vérifications du dossier sont séparées derrière Vérification requise. Stripe peut demander une connexion de sécurité avant de modifier les coordonnées bancaires.",
+  "Pour un compte français ou belge, choisis EUR, puis le pays de la banque et saisis l’IBAN. Le nom du titulaire est celui de tes informations personnelles ou professionnelles Stripe. L’IBAN complet et les justificatifs restent chez Stripe ; Mentora affiche uniquement un résumé masqué.",
+  "Si un compte EUR existe déjà et que Stripe ne permet qu’un compte par devise, remplace-le avec Modifier. Ajouter peut alors proposer seulement USD. Le réglage Stripe Collecter plusieurs comptes externes par devise permet d’ajouter plusieurs banques EUR ; le compte EUR par défaut reçoit les retraits.",
+  "L’enregistrement d’un IBAN ne dispense pas des vérifications exigées par Stripe. Les retraits restent bloqués tant que les capacités de versement ne sont pas actives. Les gains proviennent uniquement des prestations terminées, les crédits ne se convertissent pas en argent. L’historique indique les virements en cours, versés ou refusés.",
+  "Cette version est réservée à l’administrateur principal, en mode test. Utilise uniquement les coordonnées fictives proposées par Stripe. Aucun paiement réel n’est activé.",
+];
+export function Help({privatePayouts=false}:{privatePayouts?:boolean}) {
+  const visibleChapters=privatePayouts?[...chapters,payoutTutorial]:chapters;
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("help") !== "installation") return;
+    const requested=new URLSearchParams(window.location.search).get("help");
+    if(requested!=="installation" && !(privatePayouts && requested==="retraits"))return;
     const frame = requestAnimationFrame(() => {
-      const chapter = document.getElementById("aide-installation");
+      const chapter = document.getElementById(`aide-${requested}`);
       chapter?.scrollIntoView({ behavior: "instant", block: "start" });
       chapter?.focus({ preventScroll: true });
     });
     return () => cancelAnimationFrame(frame);
-  }, []);
+  }, [privatePayouts]);
   return (
     <section className="wrap help-page">
       <div className="page-heading">
@@ -162,7 +173,7 @@ export function Help() {
         className="help-index"
         aria-label={translateUi("Sommaire de l’aide")}
       >
-        {chapters.map(([id, title], i) => (
+        {visibleChapters.map(([id, title], i) => (
           <a
             href={`#aide-${id}`}
             key={id}
@@ -183,7 +194,7 @@ export function Help() {
         ))}
       </nav>
       <div className="help-chapters">
-        {chapters.map(([id, title, ...paragraphs], i) => (
+        {visibleChapters.map(([id, title, ...paragraphs], i) => (
           <article key={id} id={`aide-${id}`} tabIndex={-1}>
             <span className="eyebrow">
               {translateUi(String(i + 1).padStart(2, "0"))}

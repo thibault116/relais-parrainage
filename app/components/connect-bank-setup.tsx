@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import type { StripeConnectInstance } from "@stripe/connect-js";
-import { ConnectAccountManagement, ConnectAccountOnboarding, ConnectComponentsProvider } from "@stripe/react-connect-js";
+import { ConnectPayouts, ConnectAccountOnboarding, ConnectComponentsProvider } from "@stripe/react-connect-js";
 
-type Props = {mode:"onboarding"|"management";onDone:()=>void;hasEuroBank?:boolean};
+type Props = {mode:"onboarding"|"bank";onDone:()=>void};
 const collectionOptions = {fields:"currently_due" as const, futureRequirements:"omit" as const};
 
-export default function ConnectBankSetup({mode,onDone,hasEuroBank=false}:Props) {
+export default function ConnectBankSetup({mode,onDone}:Props) {
   const [instance,setInstance]=useState<StripeConnectInstance|null>(null);
   const [error,setError]=useState("");
   const [attempt,setAttempt]=useState(0);
@@ -59,18 +59,13 @@ export default function ConnectBankSetup({mode,onDone,hasEuroBank=false}:Props) 
   },[mode,attempt]);
 
   return <div className="connect-embedded" aria-label={mode==="onboarding"?"Configurer mes retraits dans Mentora":"Modifier mes informations bancaires"}>
-    <div className="connect-heading"><h4>{mode==="onboarding"?"Configurer mes retraits":"Mon compte bancaire (IBAN)"}</h4><button type="button" className="commerce-row connect-refresh" onClick={onDone}>Fermer</button></div>
-    {mode==="management" && <>
-      <p>{hasEuroBank?"Un compte en euros est déjà enregistré. Dans « Détails du virement », choisis « Modifier » à côté du compte EUR pour remplacer ton IBAN.":"Dans « Détails du virement », choisis « Ajouter un compte bancaire », puis la devise EUR."} Sélectionne le pays de ta banque (France, Belgique…), puis saisis et confirme ton IBAN.</p>
-      <p>Le titulaire correspond au nom renseigné dans tes informations personnelles ou professionnelles. Tu peux les corriger dans ce même formulaire.</p>
-    </>}
-    <p className="connect-embedded-note">Formulaire sécurisé par Stripe. Utilise uniquement les données de test proposées. Ton IBAN et tes justificatifs restent chez Stripe.</p>
+    <div className="connect-heading"><h4>{mode==="onboarding"?"Vérification":"Compte bancaire"}</h4><button type="button" className="commerce-row connect-refresh" onClick={onDone}>Fermer</button></div>
     {error ? <div role="alert"><p>{error}</p><button type="button" className="commerce-row" onClick={()=>{setError("");setInstance(null);setAttempt(n=>n+1);}}>Réessayer</button></div>
       : instance ? <ConnectComponentsProvider connectInstance={instance}>
         {mode==="onboarding" ? <ConnectAccountOnboarding collectionOptions={collectionOptions} onExit={onDone} onLoadError={()=>setError("Le formulaire Stripe n’a pas pu se charger. Vérifie ta connexion puis réessaie.")}/>
-          : <ConnectAccountManagement collectionOptions={collectionOptions} onLoadError={()=>setError("Les informations bancaires n’ont pas pu se charger. Réessaie dans un instant.")}/>}
+          : <ConnectPayouts onLoadError={()=>setError("Les informations bancaires n’ont pas pu se charger. Réessaie dans un instant.")}/>}
       </ConnectComponentsProvider>
       : <p role="status">Ouverture du formulaire sécurisé…</p>}
-    {instance && !error && mode==="management" && <button type="button" className="commerce-primary" onClick={onDone}>Terminé · actualiser mes informations</button>}
+    {instance && !error && mode==="bank" && <button type="button" className="commerce-primary" onClick={onDone}>Terminé</button>}
   </div>;
 }

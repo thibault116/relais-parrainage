@@ -1017,7 +1017,7 @@ export default function App() {
           />
         )}
         {pricingPreview && view === "pricing" && <PricingPreview />}
-        {!isPending && view === "help" && <Help />}
+        {!isPending && view === "help" && <Help privatePayouts={owner} />}
         {!isPending && view === "guide" && (
           <Guide onJoin={() => join("beginner")} />
         )}

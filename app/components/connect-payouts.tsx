@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 const ConnectBankSetup=dynamic(()=>import("./connect-bank-setup"),{ssr:false,loading:()=><p role="status">Ouverture du formulaire sécurisé…</p>});
-import { Building2, CircleCheck, RefreshCw, ShieldCheck, Wallet } from "lucide-react";
+import { Building2, CircleCheck, RefreshCw, CircleHelp, Wallet } from "lucide-react";
 import { defaultPayoutCountry, payoutCountries, payoutCountryLabel } from "@/lib/monetization/bank-countries";
 const euro=(cents:number)=>(cents/100).toLocaleString("fr-FR",{style:"currency",currency:"EUR"});
 type Withdrawal={id:string;amount_cents:number;status:string;error:string;created_at:string;transfer_id:string|null;payout_id:string|null};
@@ -11,7 +11,7 @@ const statuses:Record<string,string>={creating:"Préparation du transfert",funde
 export function ConnectPayoutPanel() {
   const [data,setData]=useState<Overview|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false),[country,setCountry]=useState<string>(defaultPayoutCountry),[acknowledged,setAcknowledged]=useState(false),[message,setMessage]=useState("");
   const withdrawalKey=useRef<string|null>(null);
-  const [bankForm,setBankForm]=useState<"onboarding"|"management"|null>(null);
+  const [bankForm,setBankForm]=useState<"onboarding"|"bank"|null>(null);
   const load=useCallback(async()=>{
     const r=await fetch("/api/admin/monetization/connect",{cache:"no-store"}),d=await r.json();
     if(!r.ok) throw Error(d.error || "Rémunérations indisponibles.");
@@ -24,7 +24,7 @@ export function ConnectPayoutPanel() {
     try {
       const r=await fetch("/api/admin/monetization/connect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:name,id,country,acknowledgeTest:acknowledged,key:name==="withdraw"?withdrawalKey.current:crypto.randomUUID()})}),d=await r.json();
       if(!r.ok)throw Error(d.error || "Opération non confirmée.");
-      if(name==="setup")setBankForm("onboarding");
+      if(name==="setup")setBankForm("bank");
       if(d.url){window.location.assign(d.url);return;}
       if(d.result){setMessage(statuses[d.result.status] || d.result.status);if(d.result.error)setError(d.result.error);withdrawalKey.current=null;}
       await load();
@@ -32,56 +32,39 @@ export function ConnectPayoutPanel() {
     finally {setBusy(false);}
   }
   const ready=!!data?.account?.payoutsEnabled && !!data?.account?.transfersActive;
-  return <section className="commerce-card connect-payout-panel" aria-label="Compte bancaire et gains du parrain">
-    <div className="connect-heading"><h2><Wallet size={22}/> Mes gains et mon compte bancaire</h2><button type="button" className="commerce-row connect-refresh" aria-label="Actualiser mes gains et mes retraits" disabled={busy} onClick={()=>void action("refresh")}><RefreshCw size={18}/></button></div>
-    <p><strong>Test privé · compte administrateur uniquement.</strong> Aucun argent réel. Configure tes retraits et retrouve tes gains directement dans Mentora.</p>
-
+  return <section className="commerce-card connect-payout-panel connect-payout-compact" aria-label="Compte bancaire et gains du parrain">
+    <div className="connect-heading"><h2><Wallet size={22}/> Mes gains</h2><div className="connect-tools"><a className="commerce-row connect-refresh" href="/?mobile=help&help=retraits#help" aria-label="Tutoriel des retraits"><CircleHelp size={18}/></a><button type="button" className="commerce-row connect-refresh" aria-label="Actualiser mes gains et mes retraits" disabled={busy} onClick={()=>void action("refresh")}><RefreshCw size={18}/></button></div></div>
+    <small className="commerce-pill">Test privé</small>
     {error && <p role="alert" className="error">{error}</p>}{message && <p role="status">{message}</p>}
-    {!data && !error && <p role="status">Chargement de tes gains…</p>}
+    {!data && !error && <p role="status">Chargement…</p>}
     {data && <>
       <div className="connect-balances">
-        <article><span>Gains disponibles</span><strong>{euro(data.availableCents)}</strong><small>Prestations terminées, hors gains déjà réservés ou transférés.</small></article>
-        <article><span>Retraits en cours</span><strong>{euro(data.reservedCents)}</strong></article>
-        <article><span>Déjà versé en test</span><strong>{euro(data.paidCents)}</strong></article>
+        <article><span>Disponibles</span><strong>{euro(data.availableCents)}</strong></article>
+        <article><span>En cours</span><strong>{euro(data.reservedCents)}</strong></article>
+        <article><span>Versés</span><strong>{euro(data.paidCents)}</strong></article>
       </div>
       <section aria-label="Configuration bancaire Stripe">
-        <h3><Building2 size={20}/> Mon compte bancaire</h3>
+        <h3><Building2 size={20}/> Compte bancaire</h3>
         {!data.account ? <>
-          <p>Configure tes retraits ici, sans compte Stripe à créer au préalable. Stripe sécurise tes informations et peut demander un justificatif d’identité. Mentora ne conserve ni ton IBAN ni tes justificatifs.</p>
-          <label>Pays de résidence ou d’établissement<select value={country} onChange={e=>setCountry(e.target.value)} disabled={busy || !!data.country}>
+          <label>Pays de résidence<select value={country} onChange={e=>setCountry(e.target.value)} disabled={busy || !!data.country}>
             {Object.entries(payoutCountries).map(([value,label])=><option value={value} key={value}>{label}</option>)}
           </select></label>
-          <p>France est sélectionnée par défaut. Choisis ton pays réel, par exemple Belgique. Le pays de ta banque se choisit ensuite dans le formulaire bancaire sécurisé.</p>
-          <label className="connect-confirm"><input type="checkbox" checked={acknowledged} onChange={e=>setAcknowledged(e.target.checked)}/> Je teste la configuration des retraits avec les données fictives proposées par Stripe.</label>
-          <button type="button" className="commerce-primary" disabled={busy || !acknowledged} onClick={()=>void action("setup")}>Configurer mes retraits · test</button>
+          <label className="connect-confirm"><input type="checkbox" checked={acknowledged} onChange={e=>setAcknowledged(e.target.checked)}/> Données de test uniquement</label>
+          <button type="button" className="commerce-primary" disabled={busy || !acknowledged} onClick={()=>void action("setup")}>Ajouter un compte bancaire</button>
         </> : <>
-          <p><ShieldCheck size={18}/> {ready?"Compte prêt pour les virements de test":"Configuration à compléter ou en cours de vérification"}</p>
-          <p>Pays du bénéficiaire : <strong>{payoutCountryLabel(data.country || defaultPayoutCountry)}</strong>. Retraits Mentora en euros.</p>
-          {data.account.banks.map((bank,index)=><article key={index} className="connect-bank-summary"><strong>{bank.bankName || "Compte bancaire"}</strong><p>{bank.holderName && <>{bank.holderName} · </>}{payoutCountryLabel(bank.country)} · {bank.currency.toUpperCase()} · •••• {bank.last4}</p>{bank.defaultForCurrency && <small>Compte de versement par défaut en {bank.currency.toUpperCase()}</small>}</article>)}
-          {!data.account.banks.length && <p>Ajoute ton compte bancaire dans le formulaire sécurisé ci-dessous.</p>}
-          {data.account.requirementsCount>0 && <p>Stripe attend encore des informations pour activer les versements.</p>}
-          {data.account.pendingVerificationCount>0 && <p>Des informations sont en cours de vérification par Stripe.</p>}
-          {!bankForm && <>
-            {!ready && <button type="button" className="commerce-primary" disabled={busy} onClick={()=>setBankForm("onboarding")}>Configurer mes retraits · test</button>}
-            <button type="button" className={ready?"commerce-primary":"commerce-row"} disabled={busy} onClick={()=>setBankForm("management")}>{data.account.banks.some(b=>b.currency==="eur")?"Modifier mon IBAN (EUR)":"Ajouter mon compte bancaire (IBAN)"}</button>
-            <p>Compte français, belge… : renseigne le pays de ta banque et tes coordonnées dans le formulaire sécurisé. Seuls les derniers chiffres sont affichés ici.</p>
-          </>}
-          {!ready && !bankForm && <p>Tout se fait ici. Tu n’as pas besoin de gérer un tableau de bord Stripe séparé.</p>}
-          <p>Solde EUR disponible chez Stripe : {euro(data.account.availableCents)}{data.account.pendingCents>0?` · En attente : ${euro(data.account.pendingCents)}`:""}.</p>
+          {data.account.banks.filter(bank=>bank.currency==="eur").map((bank,index)=><article key={index} className="connect-bank-summary"><strong>{bank.bankName || "Compte bancaire"}</strong><p>{bank.holderName && <>{bank.holderName} · </>}{payoutCountryLabel(bank.country)} · EUR · •••• {bank.last4}</p></article>)}
+          {!bankForm && <button type="button" className="commerce-primary" disabled={busy} onClick={()=>setBankForm("bank")}>{data.account.banks.some(b=>b.currency==="eur")?"Gérer mon IBAN":"Ajouter un compte bancaire"}</button>}
+          {!ready && bankForm!=="onboarding" && <button type="button" className="commerce-row" onClick={()=>setBankForm("onboarding")}>Vérification requise</button>}
         </>}
-        {bankForm && <ConnectBankSetup mode={bankForm} hasEuroBank={data.account?.banks.some(b=>b.currency==="eur")} onDone={()=>{setBankForm(null);void load().catch(e=>setError(e.message));}}/>}
+        {bankForm && <ConnectBankSetup mode={bankForm} onDone={()=>{setBankForm(null);void load().catch(e=>setError(e.message));}}/>}
       </section>
-      <section aria-label="Demander un retrait de gains"><h3>Retirer mes gains</h3>
-        <p>Seule la rémunération des prestations terminées est retirable. Tes crédits ne sont pas convertibles en argent.</p>
-        <button type="button" className="commerce-primary" disabled={busy || !ready || data.availableCents<=0} onClick={()=>void action("withdraw")}>Retirer {euro(data.availableCents)} · test</button>
-        {!ready && <small>Finalise la configuration de tes retraits pour activer ce bouton.</small>}
-        {data.availableCents<=0 && <p>Aucun nouveau gain disponible. Les prestations terminées apparaîtront ici.</p>}
-        {data.earnings.length>0 && <details><summary>Prestations comprises dans ce retrait</summary>{data.earnings.map(e=><p key={e.id}>{e.title} · {euro(e.cents)}</p>)}</details>}
+      <section aria-label="Demander un retrait de gains">
+        <button type="button" className="commerce-primary" disabled={busy || !ready || data.availableCents<=0} onClick={()=>void action("withdraw")}>Retirer {euro(data.availableCents)}</button>
       </section>
-      <section aria-label="Historique de mes virements"><h3>Mes retraits bancaires</h3>
-        {!data.withdrawals.length && <p>Aucun retrait de prestation effectué.</p>}
-        <div className="commerce-history">{data.withdrawals.map(w=><article key={w.id}><div><strong>{euro(Number(w.amount_cents))}</strong><p>{w.status==="paid" && <CircleCheck size={16}/>} {statuses[w.status] || w.status}</p><small>{new Date(w.created_at).toLocaleString("fr-FR")}</small>{w.error && <p>{w.error}</p>}{["creating","funded","uncertain","payout_failed"].includes(w.status) && <button type="button" className="commerce-row" disabled={busy} onClick={()=>void action("resume",w.id)}>Reprendre ce retrait · test</button>}</div></article>)}</div>
-      </section>
+      <details className="connect-withdrawal-history"><summary>Historique des retraits</summary>
+        {!data.withdrawals.length && <p>Aucun retrait.</p>}
+        <div className="commerce-history">{data.withdrawals.map(w=><article key={w.id}><div><strong>{euro(Number(w.amount_cents))}</strong><p>{w.status==="paid" && <CircleCheck size={16}/>} {statuses[w.status] || w.status}</p><small>{new Date(w.created_at).toLocaleString("fr-FR")}</small>{w.error && <p>{w.error}</p>}{["creating","funded","uncertain","payout_failed"].includes(w.status) && <button type="button" className="commerce-row" disabled={busy} onClick={()=>void action("resume",w.id)}>Reprendre</button>}</div></article>)}</div>
+      </details>
     </>}
   </section>;
 }
