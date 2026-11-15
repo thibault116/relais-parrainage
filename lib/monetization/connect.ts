@@ -6,6 +6,7 @@ import { lock, moneyTransaction, balance as creditBalance } from "./store";
 import { stripeTest, appOrigin } from "./stripe";
 import { safeStripeFailure } from "./payout-diagnostics";
 import { defaultPayoutCountry, euroPayoutCountries, payoutCountries } from "./bank-countries";
+import { eligibleSql } from "./earnings";
 
 type Client = () => Stripe;
 type Actor = {id:string;email:string};
@@ -15,11 +16,6 @@ const returnPath="/?mobile=payouts&connect=return#profile";
 const uuid=z.string().uuid();
 const countries=z.enum(Object.keys(payoutCountries) as [keyof typeof payoutCountries,...(keyof typeof payoutCountries)[]]).default(defaultPayoutCountry);
 const reference=(owner:string,key:unknown)=>`${owner}:${uuid.parse(key)}`;
-export const eligibleSql=`SELECT b.id,b.payout_cents,b.credits,b.snapshot FROM money_bookings b
-  JOIN money_services s ON s.id=b.service_id
-  LEFT JOIN money_connect_allocations a ON a.booking_id=b.id
-  WHERE s.owner_id=$1 AND b.status='completed' AND b.payout_cents>0 AND a.booking_id IS NULL
-  ORDER BY b.created_at,b.id`;
 function sandbox(balance:Stripe.Balance) {
   if(balance.livemode!==false) throw Error("Mode réel refusé.");
 }

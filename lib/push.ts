@@ -159,6 +159,11 @@ export const preview = (value: unknown, limit = 150) => {
 };
 export async function pushContent(job: Record<string, unknown>) {
   const kind = String(job.kind);
+  if(kind==="bank_withdrawal"){
+    const [event]=await query("SELECT a.to_state,w.mode FROM money_bank_audit a JOIN money_bank_workflow w ON w.request_id=a.request_id WHERE a.id=$1 AND a.owner_id=$2",[String(job.event_id),String(job.user_id)]);
+    const titles:Record<string,string>={processing:"Retrait en traitement",paid:"Retrait payé",refused:"Retrait refusé"};
+    return {title:(titles[String(event?.to_state)]||"Retrait mis à jour")+(event?.mode==="test"?" · test":""),body:"Le statut de ta demande a changé. Consulte Mes retraits."};
+  }
   if (kind === "private_message" || kind === "community_mention") {
     const table =
       kind === "private_message" ? "private_messages" : "community_messages";
@@ -257,6 +262,10 @@ export async function enqueuePush(
   }
 }
 export async function stillRelevant(job: Record<string, unknown>) {
+  if(job.kind==="bank_withdrawal"){
+    const [event]=await query("SELECT a.id FROM money_bank_audit a JOIN money_bank_workflow w ON w.request_id=a.request_id JOIN money_bank_requests r ON r.id=a.request_id WHERE a.id=$1 AND a.owner_id=$2 AND r.owner_id=$2 AND a.to_state=w.state AND a.revision=w.revision AND a.action IN ('processing','paid','refused')",[String(job.event_id),String(job.user_id)]);
+    return !!event;
+  }
   if (String(job.kind).startsWith("task_")) {
     const [t] = await query(
       `SELECT t.id FROM task_push_events e JOIN mentorship_tasks t ON t.id=e.task_id JOIN accompaniments a ON a.id=t.accompaniment_id WHERE e.id=$1 AND e.recipient_id=$2 AND a.status='active' AND (a.mentor_id=$2 OR a.beginner_id=$2) AND e.kind=$3 AND t.updated_at=e.revision AND NOT EXISTS(SELECT 1 FROM profile_blocks b WHERE b.user_id IN(a.mentor_id,a.beginner_id))`,

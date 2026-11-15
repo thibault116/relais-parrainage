@@ -1,6 +1,7 @@
 import { randomUUID, createHash } from "node:crypto";
 import { query, inTransaction } from "./db";
 import { canUseFeature } from "./beta";
+import {withdrawalLabels} from "./monetization/bank-status";
 export async function migrateMobileSpace() {
   for (const sql of [
     `CREATE TABLE IF NOT EXISTS member_bookmarks(user_id TEXT NOT NULL,profile_id TEXT NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(user_id,profile_id))`,
@@ -238,6 +239,9 @@ export async function mobileNotices(userId: string) {
         });
     }
   }
+  for(const event of await query("SELECT a.id,a.to_state,a.created_at,w.mode FROM money_bank_audit a JOIN money_bank_workflow w ON w.request_id=a.request_id WHERE a.owner_id=$1 AND a.action IN ('processing','paid','refused') ORDER BY a.created_at DESC LIMIT 30",[userId]))notices.push({
+    id:`bank:${event.id}`,title:`Retrait : ${withdrawalLabels[String(event.to_state)]||"mis à jour"}${event.mode==="test"?" · test":""}`,date:String(event.created_at),destination:"payouts",
+  });
   const reads = new Set(
     (
       await query(

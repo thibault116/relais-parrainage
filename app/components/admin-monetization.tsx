@@ -1,5 +1,4 @@
 "use client";
-import { PayoutTestPanel } from "./payout-test";
 import { ManualBankForm, ManualBankHistory } from "./manual-bank";
 import {
   Crown,
@@ -1291,7 +1290,6 @@ export function AdminMonetization({
         <>
           <ManualBankForm />
           <ManualBankHistory />
-          <details className="commerce-card"><summary>Ancien test du compte Stripe de la plateforme</summary><PayoutTestPanel /></details>
           <h3>Rémunérations dues · simulation</h3>
           <div className="pricing-results">
             <div>

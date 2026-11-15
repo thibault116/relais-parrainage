@@ -1,9 +1,10 @@
 "use client";
 import { useCallback,useEffect,useRef,useState } from "react";
+import {withdrawalLabels} from "@/lib/monetization/bank-status";
 const endpoint="/api/admin/monetization/bank";
 const euro=(c:number)=>(c/100).toLocaleString("fr-FR",{style:"currency",currency:"EUR"});
 type Bank={holder:string;country:"FR"|"BE"|"OTHER";ibanCountry:string;last4:string};
-type Entry={id:string;amount_cents:number;status:string;created_at:string;kind:"manual"|"stripe"};
+type Entry={id:string;amount_cents:number;status:string;created_at:string;kind:"manual"|"stripe";mode?:string;reference?:string;reason?:string};
 type Overview={configured:boolean;bank:Bank|null;availableCents:number;history:Entry[]};
 async function api(body?:unknown):Promise<Overview&{error?:string}> {
   const r=await fetch(endpoint,{cache:"no-store",...(body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{})});
@@ -23,7 +24,7 @@ export function ManualBankForm() {
   }
   async function request() {
     setBusy(true);setError("");setMessage("");requestKey.current ||= crypto.randomUUID();
-    try{await api({action:"request",key:requestKey.current});requestKey.current=null;await load();setMessage("Demande de test enregistrée · à traiter manuellement.");changed();}
+    try{await api({action:"request",key:requestKey.current});requestKey.current=null;await load();setMessage("Demande enregistrée · en attente.");changed();}
     catch(e){setError((e as Error).message);}finally{setBusy(false);}
   }
   const unsaved=!!iban || !!data?.bank&&(holder!==data.bank.holder||country!==data.bank.country);
@@ -34,7 +35,7 @@ export function ManualBankForm() {
       <label>Ton IBAN<input autoComplete="off" name="bank-iban" spellCheck={false} autoCapitalize="characters" value={iban} onChange={e=>setIban(e.target.value)} placeholder={data?.bank?`${data.bank.ibanCountry} •••• ${data.bank.last4}`:"FR76 …"} maxLength={80} required disabled={busy}/></label>
       <button type="submit" className="commerce-row" disabled={busy||!data?.configured||!iban.trim()||holder.trim().length<2}>Enregistrer</button>
     </form>
-    <div className="manual-bank-request"><button type="button" className="commerce-primary" disabled={busy||!data?.configured||!data.bank||data.availableCents<=0||unsaved} onClick={()=>void request()}>Demander le versement</button><strong>{euro(data?.availableCents || 0)} disponibles</strong></div>
+    <div className="manual-bank-request"><button type="button" className="commerce-primary" disabled={busy||!data?.configured||!data.bank||data.availableCents<=0||unsaved} onClick={()=>void request()}>Demander un retrait</button><strong>{euro(data?.availableCents || 0)} disponibles</strong></div>
     {data&&!data.configured&&<p role="status">Enregistrement bancaire en attente d’activation.</p>}
     {error&&<p role="alert">{error}</p>}{message&&<p role="status">{message}</p>}
   </section>;
@@ -47,6 +48,6 @@ export function ManualBankHistory() {
   async function cancel(id:string){setBusy(true);setError("");try{await api({action:"cancel",id});await load();changed();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
   return <div className="commerce-history" aria-label="Historique des retraits">
     {error&&<p role="alert">{error}</p>}{data&&!data.history.length&&<p>Aucun retrait.</p>}
-    {data?.history.map(item=><article key={`${item.kind}:${item.id}`}><div><strong>{euro(Number(item.amount_cents))}</strong><p>{item.kind==="manual"?(item.status==="pending"?"À traiter · test":"Annulée"):stripeStatuses[item.status]||item.status}</p><small>{new Date(item.created_at).toLocaleString("fr-FR")}</small>{item.kind==="manual"&&item.status==="pending"&&<button type="button" className="commerce-row" disabled={busy} onClick={()=>void cancel(item.id)}>Annuler la demande</button>}</div></article>)}
+    {data?.history.map(item=><article key={`${item.kind}:${item.id}`}><div><strong>{euro(Number(item.amount_cents))}</strong><p>{item.kind==="manual"?`${withdrawalLabels[item.status]||item.status}${item.mode==="test"?" · test":""}`:stripeStatuses[item.status]||item.status}</p><small>{new Date(item.created_at).toLocaleString("fr-FR")}</small>{item.reference&&<p>Référence : {item.reference}</p>}{item.reason&&<p>Motif : {item.reason}</p>}{item.kind==="manual"&&item.status==="pending"&&<button type="button" className="commerce-row" disabled={busy} onClick={()=>void cancel(item.id)}>Annuler la demande</button>}</div></article>)}
   </div>;
 }

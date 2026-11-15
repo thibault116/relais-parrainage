@@ -180,7 +180,7 @@ export async function bookingAction(owner: string, id: string, action: string) {
       await entry(q, owner, Number(b.credits), "Restitution", `restore:${id}`);
     } else if (action === "refund" && b.status === "completed") {
       if ((await q("SELECT booking_id FROM money_connect_allocations WHERE booking_id=$1",[id])).length)
-        throw Error("Cette rémunération est réservée ou transférée dans un retrait. Vérifie le retrait Stripe avant de rembourser cette prestation.");
+        throw Error("Cette rémunération est réservée ou transférée dans un retrait. Vérifie le retrait avant de rembourser cette prestation.");
       await q("UPDATE money_bookings SET status='refunded' WHERE id=$1", [id]);
       await entry(
         q,

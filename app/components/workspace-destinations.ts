@@ -73,6 +73,7 @@ export function workspaceGroups(mentor: boolean, moderator: boolean, owner: bool
       ["pricing", "Tarifs · étude privée", Layers],
       ["changelog", "Annonces Discord", MessageCircle],
       ["monetization", "Monétisation · test privé", Layers],
+      ["withdrawals", "Retraits", TrendingUp],
     );
     groups.push({ title: "Administration", items: tabs.map(([adminTab, label, icon]) => ({ label, icon, screen: "admin", adminTab })) });
   }

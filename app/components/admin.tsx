@@ -1,5 +1,6 @@
 "use client";
 import { t as translateUi, locale } from "@/app/components/language";
+import { AdminWithdrawals } from "./admin-withdrawals";
 import { AdminChangelog } from "./admin-changelog";
 import { AdminMonetization } from "./admin-monetization";
 import { AdminPricing } from "./admin-pricing";
@@ -122,6 +123,7 @@ export function AdminDashboard({
                   pricing: "Tarifs · étude privée",
                   monetization: "Monétisation · test privé",
                   changelog: "Annonces Discord",
+                  withdrawals: "Retraits",
                 }[tab] || "Administration"
               : "Administration",
           )}
@@ -144,6 +146,7 @@ export function AdminDashboard({
               ? [
                   ["pricing", "Tarifs · étude privée"],
                   ["monetization", "Monétisation · test privé"],
+                  ["withdrawals", "Retraits"],
                   ["changelog", "Annonces Discord"],
                   ["crm", "Mon CRM Vinted"],
                   ["extension", "Extension Vinted"],
@@ -167,9 +170,9 @@ export function AdminDashboard({
           ))}
         </nav>
       )}
-      <button className="text-btn" onClick={() => void load()}>
+      {tab !== "withdrawals" && <button className="text-btn" onClick={() => void load()}>
         {translateUi("Actualiser les donn\u00E9es")}
-      </button>
+      </button>}
       {translateUi(
         error && (
           <p className="error" role="alert">
@@ -177,7 +180,9 @@ export function AdminDashboard({
           </p>
         ),
       )}
-      {tab === "changelog" && crmOwner ? (
+      {tab === "withdrawals" && crmOwner ? (
+        <AdminWithdrawals />
+      ) : tab === "changelog" && crmOwner ? (
         <AdminChangelog />
       ) : tab === "monetization" && crmOwner ? (
         <AdminMonetization />

@@ -9,11 +9,19 @@ import {getMigrations} from "better-auth/db/migration";
 import {migrateMonetization,saveService,book,bookingAction,entry,moneyTransaction,balance} from "../lib/monetization/store";
 import {manualBankOverview,requestBankTransfer,saveBankDetails,cancelBankTransfer} from "../lib/monetization/manual-bank";
 import {GET,POST} from "../app/api/admin/monetization/bank/route";
+import {GET as adminGET,POST as adminPOST} from "../app/api/admin/withdrawals/route";
+import {POST as connectPOST} from "../app/api/admin/monetization/connect/route";
+import {POST as oldPayoutPOST} from "../app/api/admin/monetization/payouts/route";
+import {adminBankList,adminBankDetails,decideBankTransfer} from "../lib/monetization/bank-admin";
+import {manualPayoutPolicy} from "../lib/monetization/manual-payout-policy";
+import {migratePush,pushContent,stillRelevant} from "../lib/push";
 if(process.env.DATABASE_URL||process.env.VERCEL)throw Error("Tests isolés uniquement.");
 const cwd=process.cwd(),dir=await mkdtemp(join(tmpdir(),"mentora-manual-bank-")),previous=process.env.BANK_DETAILS_ENCRYPTION_KEY;
+const policyKeys=["MENTORA_MANUAL_PAYOUTS_LIVE_ENABLED","MENTORA_MANUAL_PAYOUTS_LEGAL_VALIDATED","MENTORA_MANUAL_PAYOUTS_LEGAL_VALIDATION_REFERENCE"];
+const previousPolicy=policyKeys.map(k=>process.env[k]);for(const k of policyKeys)delete process.env[k];
 process.chdir(dir);process.env.BANK_DETAILS_ENCRYPTION_KEY=randomBytes(32).toString("hex");
 try {
-  await migrateMonetization();const auth=getAuth();await(await getMigrations(auth.options)).runMigrations();
+  await migrateMonetization();await migratePush();await query("CREATE TABLE IF NOT EXISTS profiles(user_id TEXT PRIMARY KEY,name TEXT,role TEXT)");const auth=getAuth();await(await getMigrations(auth.options)).runMigrations();
   await query("CREATE TABLE IF NOT EXISTS moderators(user_id TEXT PRIMARY KEY,email TEXT)");
   await query("CREATE TABLE IF NOT EXISTS member_activity(user_id TEXT PRIMARY KEY,last_active_at TEXT NOT NULL)");
   const path="http://localhost:3000/api/admin/monetization/bank";
@@ -67,14 +75,87 @@ try {
   const next=await requestBankTransfer(owner,crypto.randomUUID());assert.notEqual(next.id,one.id);
   // A manually requested gain is also excluded by Stripe's shared allocation query.
   assert.equal((await query("SELECT booking_id FROM money_connect_allocations WHERE booking_id=$1",[booking])).length,1);
+  const actor={id:owner,email:"thibault.cordiez@hotmail.com"},foreign={id:other,email:"bank-member@example.test"};
+  const adminPath="http://localhost:3000/api/admin/withdrawals";
+  for(const c of ["",memberCookie]) {
+    assert.equal((await adminGET(new Request(adminPath,{headers:{cookie:c}}))).status,403);
+    assert.equal((await adminPOST(new Request(adminPath,{method:"POST",headers:{cookie:c,origin:"http://localhost:3000","Content-Type":"application/json"},body:JSON.stringify({action:"reveal",id:next.id})}))).status,403);
+  }
+  assert.equal((await adminPOST(new Request(adminPath,{method:"POST",headers:{cookie,origin:"https://foreign.example","Content-Type":"application/json"},body:JSON.stringify({action:"reveal",id:next.id})}))).status,403);
+  for(const legacy of [connectPOST,oldPayoutPOST])assert.equal((await legacy(new Request(path,{method:"POST",headers:{cookie,origin:"http://localhost:3000","Content-Type":"application/json"},body:JSON.stringify({action:"withdraw",key:crypto.randomUUID()})}))).status,410);
+  await assert.rejects(()=>adminBankList(foreign),/Accès refusé/);
+  await assert.rejects(()=>adminBankDetails(foreign,next.id),/Accès refusé/);
+  const listing=await adminBankList(actor);assert(!JSON.stringify(listing).includes(bank.iban));assert(!JSON.stringify(listing).includes("bank_snapshot"));
+  await saveBankDetails(owner,{holder:"Nouveau titulaire test",country:"BE",iban:"BE68539007547034"});
+  assert.equal((await adminBankDetails(actor,next.id)).bank.iban,bank.iban); // immutable destination snapshot
+  assert.equal((await query("SELECT COUNT(*) AS n FROM money_bank_audit WHERE request_id=$1 AND action='view_bank'",[next.id]))[0].n,1);
+  await query("INSERT INTO push_subscriptions(id,user_id,endpoint,p256dh,auth,label,created_at) VALUES($1,$2,$3,'fixture','fixture','Test',$4)",["owner-bank-device",owner,"https://fcm.googleapis.com/fcm/send/fixture",new Date().toISOString()]);
+  const processKey=crypto.randomUUID();
+  const processing={id:next.id,action:"processing",revision:0,key:processKey,reference:"TEST-PREP"};
+  await assert.rejects(()=>decideBankTransfer(foreign,processing),/Accès refusé/);
+  await decideBankTransfer(actor,processing);await decideBankTransfer(actor,processing);
+  await assert.rejects(()=>decideBankTransfer(actor,{...processing,reference:"Autre référence"}),/réutilisée/);
+  assert.equal((await query("SELECT COUNT(*) AS n FROM push_outbox WHERE kind='bank_withdrawal'"))[0].n,1);
+  const processJob=(await query("SELECT * FROM push_outbox WHERE kind='bank_withdrawal'"))[0];
+  assert(await stillRelevant(processJob));assert.equal(await stillRelevant({...processJob,user_id:other}),false);
+  assert(!JSON.stringify(await pushContent(processJob)).includes(bank.iban));
+  await assert.rejects(()=>cancelBankTransfer(owner,next.id),/plus être annulée/);
+  await assert.rejects(()=>decideBankTransfer(actor,{id:next.id,action:"paid",revision:1,key:crypto.randomUUID()}));
+  await decideBankTransfer(actor,{id:next.id,action:"paid",revision:1,key:crypto.randomUUID(),reference:"TEST-TRANSFER-01",confirmed:true});
+  assert.equal((await manualBankOverview(owner)).history.find(r=>r.id===next.id)?.status,"paid");
+  assert.equal((await manualBankOverview(owner)).availableCents,0);
+  assert.equal(await stillRelevant(processJob),false);
+  const payJob=(await query("SELECT * FROM push_outbox WHERE kind='bank_withdrawal' AND event_id<>$1",[String(processJob.event_id)]))[0];
+  assert(await stillRelevant(payJob));assert((await pushContent(payJob)).title.includes("test"));
+  await assert.rejects(()=>decideBankTransfer(actor,{id:next.id,action:"refused",revision:2,key:crypto.randomUUID(),reason:"Test"}),/impossible/);
+  const b2=String(await book(owner,service,crypto.randomUUID(),"Test refus","Flexible"));await bookingAction(owner,b2,"accept");await bookingAction(owner,b2,"complete");await query("UPDATE money_bookings SET payout_cents=7 WHERE id=$1",[b2]);
+  const req2=await requestBankTransfer(owner,crypto.randomUUID());
+  const race=await Promise.allSettled([
+    decideBankTransfer(actor,{id:req2.id,action:"processing",revision:0,key:crypto.randomUUID()}),
+    decideBankTransfer(actor,{id:req2.id,action:"refused",revision:0,key:crypto.randomUUID(),reason:"Coordonnées à corriger"}),
+  ]);
+  assert.equal(race.filter(r=>r.status==='fulfilled').length,1);
+  let current=(await adminBankList(actor)).items.find(r=>r.id===req2.id)!;
+  let refusalKey:string|undefined;
+  if(current.state==='processing'){refusalKey=crypto.randomUUID();await decideBankTransfer(actor,{id:req2.id,action:"refused",revision:Number(current.revision),key:refusalKey,reason:"Coordonnées à corriger"});}
+  assert.equal((await manualBankOverview(owner)).availableCents,7);
+  const req3=await requestBankTransfer(owner,crypto.randomUUID());
+  if(refusalKey)await decideBankTransfer(actor,{id:req2.id,action:"refused",revision:1,key:refusalKey,reason:"Coordonnées à corriger"});
+  assert.equal((await manualBankOverview(owner)).availableCents,0);
+  assert.equal((await query("SELECT COUNT(*) AS n FROM money_connect_allocations WHERE booking_id=$1",[b2]))[0].n,1);
+  await migrateMonetization(); // additive migrations must not reset paid/refused states
+  assert.equal((await manualBankOverview(owner)).history.find(r=>r.id===next.id)?.status,"paid");
+  assert.equal((await manualBankOverview(owner)).history.find(r=>r.id===req2.id)?.status,"refused");
+  assert(!JSON.stringify(await query("SELECT * FROM money_bank_audit")).includes(bank.iban));
+  assert.equal(manualPayoutPolicy().liveEnabled,false);
+  process.env.MENTORA_MANUAL_PAYOUTS_LIVE_ENABLED="true";assert.equal(manualPayoutPolicy().liveEnabled,false);
+  process.env.MENTORA_MANUAL_PAYOUTS_LEGAL_VALIDATED="true";assert.equal(manualPayoutPolicy().liveEnabled,false);
+  process.env.MENTORA_MANUAL_PAYOUTS_LEGAL_VALIDATION_REFERENCE="fixture-legal-only";assert.equal(manualPayoutPolicy().liveEnabled,true);
+  assert.equal((await manualBankOverview(owner)).history.find(r=>r.id===next.id)?.mode,"test");
+  for(const k of policyKeys)delete process.env[k];
+  const otherService=await saveService(other,{title:"Test autre parrain",description:"Prestation du deuxième parrain pour tester l’isolation.",category:"Conseil",duration:0,calls:0,followup:"",availability:"Messages",credits:1,capacity:10,published:true});
+  await moneyTransaction(async q=>{await entry(q,other,10,"fixture","other-bank-fixture");});
+  const otherBooking=String(await book(other,otherService,crypto.randomUUID(),"Isolation","Flexible"));await bookingAction(other,otherBooking,"accept");await bookingAction(other,otherBooking,"complete");
+  const otherRequest=await requestBankTransfer(other,crypto.randomUUID());
+  assert((await adminBankList(actor)).items.some(r=>r.owner_id===other));
+  assert.equal((await adminBankDetails(actor,otherRequest.id)).bank.iban,"BE68539007547034");
+  assert(!(await manualBankOverview(owner)).history.some(r=>r.id===otherRequest.id));
+  await query("INSERT INTO push_subscriptions(id,user_id,endpoint,p256dh,auth,label,created_at) VALUES($1,$2,$3,'fixture','fixture','Test',$4)",["other-bank-device",other,"https://fcm.googleapis.com/fcm/send/other-fixture",new Date().toISOString()]);
+  await decideBankTransfer(actor,{id:otherRequest.id,action:"processing",revision:0,key:crypto.randomUUID()});
+  const otherJob=(await query("SELECT o.* FROM push_outbox o JOIN money_bank_audit a ON a.id=o.event_id WHERE a.request_id=$1",[otherRequest.id]))[0];
+  assert.equal(otherJob.user_id,other);assert.equal(otherJob.subscription_id,"other-bank-device");
+  assert(await stillRelevant(otherJob));assert.equal(await stillRelevant({...otherJob,user_id:owner}),false);
   delete process.env.BANK_DETAILS_ENCRYPTION_KEY;
   await assert.rejects(()=>saveBankDetails(owner,bank),/non configuré/);
   assert.equal((await post({action:"paid",id:next.id})).status,400);
   console.log("PASS propriétaire uniquement, CSRF, IBAN FR/BE, pays et clé de contrôle");
   console.log("PASS chiffrement, isolation par propriétaire, réponses masquées, pas de journalisation bancaire");
   console.log("PASS demande dès 0,01 €, concurrence/idempotence, annulation, crédits inchangés");
-  console.log("PASS réservation partagée Stripe/manuelle, remboursement bloqué, aucun virement réel ni statut payé artificiel");
+  console.log("PASS transitions, référence et confirmation de paiement, refus/restitution, migration sans remise à zéro");
+  console.log("PASS concurrence de décisions, audit immuable, révélation bancaire journalisée, notifications isolées et dédupliquées");
+  console.log("PASS anciennes routes Stripe désactivées, activation réelle à trois conditions, statuts de test conservés");
 }finally{
   if(previous===undefined)delete process.env.BANK_DETAILS_ENCRYPTION_KEY;else process.env.BANK_DETAILS_ENCRYPTION_KEY=previous;
+  policyKeys.forEach((k,i)=>{if(previousPolicy[i]===undefined)delete process.env[k];else process.env[k]=previousPolicy[i];});
   const db=database();if("close"in db)db.close();process.chdir(cwd);await rm(dir,{recursive:true,force:true});
 }
