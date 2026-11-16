@@ -28,7 +28,7 @@ export function AdminWithdrawals(){
     {error&&!selected&&<p role="alert">{error}</p>}{!data&&!error&&<p role="status">Chargement…</p>}
     {data&&!data.items.length&&<p>Aucune demande de retrait.</p>}
     <div className="withdrawal-list">{data?.items.map(item=><article className="commerce-card" key={item.id}>
-      <div className="connect-heading"><h2>{item.name}</h2><strong>{euro(Number(item.amount_cents))}</strong></div>
+      <div className="connect-heading"><span className="withdrawal-avatar" aria-hidden="true">{item.name.slice(0,1).toUpperCase()}</span><h2>{item.name}</h2><strong>{euro(Number(item.amount_cents))}</strong></div>
       <p>{withdrawalLabels[item.state]||item.state}{item.mode==="test"?" · test":""} · {new Date(item.created_at).toLocaleString("fr-FR")}</p>
       {item.reference&&<p>Référence : {item.reference}</p>}{item.reason&&<p>Motif : {item.reason}</p>}
       <div className="withdrawal-inline-bank">{banks[item.id]?<><strong>{banks[item.id].bank.holder}</strong><div><code>{banks[item.id].bank.iban.replace(/(.{4})/g,"$1 ").trim()}</code><button className="commerce-icon" aria-label={`Copier l’IBAN de ${item.name}`} onClick={()=>void copy(item.id)}><Copy size={19}/></button></div>{copied===item.id&&<small role="status">IBAN copié</small>}</>:<button className="commerce-row" disabled={busy} onClick={()=>void showBank(item.id)}>Afficher le titulaire et l’IBAN</button>}</div>

@@ -749,7 +749,7 @@ export function AdminMonetization({
           ))}
         </nav>
       )}
-      <div className="money-summary">
+      {!dedicated&&<div className="money-summary">
         <strong>{data.balance} crédits disponibles</strong>
         <span>
           Offre : {data.account.plan} · {data.account.status}
@@ -762,7 +762,7 @@ export function AdminMonetization({
         >
           Actualiser
         </button>
-      </div>
+      </div>}
       {error && (
         <p className="error" role="alert">
           {error}
