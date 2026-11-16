@@ -9,6 +9,7 @@ export function joinOffers() {
     })),
     comparison: pricingProposal.comparison.map((r) => ({
       ...r,
+      values:r.label==="Crédits par mois"?plans.map(p=>String(p.credits)):r.values,
       upcoming: [
         "Historique de progression",
         "Modèles de plans d’action",

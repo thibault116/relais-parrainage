@@ -4,7 +4,7 @@ import { manageSubscription } from "@/lib/monetization/billing";
 import { user, json, guard } from "@/lib/http";
 import { isCrmOwner } from "@/lib/crm";
 import { query } from "@/lib/monetization/db";
-import { plans, packs, maxCustomCredits } from "@/lib/monetization/catalog";
+import { plans, packs, maxCustomCredits, minCustomCredits, currentCheckoutCode } from "@/lib/monetization/catalog";
 import {
   balance,
   saveService,
@@ -28,7 +28,7 @@ export async function GET(r: Request) {
       readiness:billingLive()?liveReadiness():null,
       plans,
       packs,
-      comparison: pricingProposal.comparison,
+      comparison: pricingProposal.comparison.map(r=>({...r,values:r.label==="Crédits par mois"?plans.map(p=>String(p.credits)):r.values})),
       payoutRate: payoutRate(),
       configured:
         billingLive()?liveReadiness().ready:/^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY || "") && !!process.env.STRIPE_WEBHOOK_SECRET,
@@ -121,8 +121,8 @@ export async function POST(r: Request) {
       if (!(billingLive()?process.env.STRIPE_LIVE_WEBHOOK_SECRET:process.env.STRIPE_WEBHOOK_SECRET))
         throw Error("Webhook Stripe non configuré");
       const code = d.credits === undefined
-        ? z.string().parse(d.offer)
-        : `custom-v1-${z.number().int().min(1).max(maxCustomCredits).parse(d.credits)}`;
+        ? currentCheckoutCode(z.string().parse(d.offer))
+        : `custom-v2-${z.number().int().min(minCustomCredits).max(maxCustomCredits).parse(d.credits)}`;
       return json({
         url: await checkout(
           id,

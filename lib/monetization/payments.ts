@@ -2,7 +2,7 @@ import {billingLive,moneyMode} from "./mode";
 import Stripe from "stripe";
 import { query } from "./db";
 import { isCrmOwner } from "../crm";
-import { checkoutOffer, offer, plans } from "./catalog";
+import { checkoutOffer, offer, plans, isSubscriptionOffer } from "./catalog";
 import { lock, entry, moneyTransaction } from "./store";
 import { stripeBilling, returnUrl } from "./stripe";
 export const objectId = (v: unknown): string =>
@@ -36,9 +36,10 @@ export async function checkout(
 ) {
   const item = checkoutOffer(code);
   if (!item || !item.cents) throw Error("Offre inconnue");
+  if(item.cents<50)throw Error("Le paiement doit atteindre 0,50 € minimum (25 crédits au tarif standard).");
   const s = stripeBilling(),
     cid = await customer(owner),
-    subscription = "planId" in item ? item : null;
+    subscription = isSubscriptionOffer(item) ? item : null;
   // Keep one pending/active subscription per owner, including concurrent tabs.
   return moneyTransaction(async (q) => {
     await lock(q, owner);
@@ -114,7 +115,7 @@ export async function checkout(
           },
         ],
         ...(subscription
-          ? { subscription_data: { metadata: { mentora_plan: subscription.planId } } }
+          ? { subscription_data: { metadata: { mentora_plan: subscription.planId,mentora_offer:code } } }
           : { invoice_creation: { enabled: true } }),
         success_url: returnUrl(destination),
         cancel_url: returnUrl(destination),
@@ -276,7 +277,7 @@ export async function handleEvent(event: Stripe.Event) {
         const item = checkoutOffer(String(order.offer));
         if (
           !item ||
-          "planId" in item ||
+          isSubscriptionOffer(item) ||
           session.currency !== "eur" ||
           session.amount_total !== item.cents
         )
@@ -312,8 +313,8 @@ export async function handleEvent(event: Stripe.Event) {
           String(invoice.billing_reason),
         )
       ) {
-        const billedPlan = invoice.parent?.subscription_details?.metadata?.mentora_plan ||
-          sub.metadata.mentora_plan;
+        const billedMetadata = invoice.parent?.subscription_details?.metadata ?? sub.metadata;
+        const billedPlan = billedMetadata.mentora_plan;
         const recurringLine = invoice.lines.data.find(
           (line) => line.parent?.type === "subscription_item_details" &&
             !line.parent.subscription_item_details?.proration,
@@ -322,8 +323,8 @@ export async function handleEvent(event: Stripe.Event) {
         const billedPrice = priceId ? await s.prices.retrieve(objectId(priceId)) : null;
         const interval = billedPrice?.recurring?.interval ??
           sub.items.data[0]?.price.recurring?.interval;
-        const item = checkoutOffer(interval === "year" ? `${billedPlan}-annual` : billedPlan);
-        if (!item || !("planId" in item)) return;
+        const item = checkoutOffer(billedMetadata.mentora_offer || (interval === "year" ? `${billedPlan}-annual` : billedPlan));
+        if (!item || !(isSubscriptionOffer(item))) return;
         if (
           !!invoice.livemode!==billingLive() ||
           invoice.currency !== "eur" ||

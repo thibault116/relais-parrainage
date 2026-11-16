@@ -2,7 +2,7 @@ import {billingLive} from "./mode";
 import { query } from "./db";
 import { stripeBilling } from "./stripe";
 import { objectId } from "./payments";
-import { annualPrice, plans } from "./catalog";
+import { annualPrice, plans, currentCheckoutCode, checkoutOffer, isSubscriptionOffer } from "./catalog";
 import { lock, moneyTransaction } from "./store";
 export async function billingDetails(owner: string) {
   const a = (
@@ -40,7 +40,9 @@ export async function billingDetails(owner: string) {
           p.start_date >= (sub.items.data[0]?.current_period_end || Infinity),
       )?.metadata?.mentora_plan || null;
   }
+  const contracted=sub?checkoutOffer(sub.metadata.mentora_offer || (sub.items.data[0]?.price.recurring?.interval==="year"?`${sub.metadata.mentora_plan}-annual`:sub.metadata.mentora_plan)):null;
   return {
+    creditsPerMonth:isSubscriptionOffer(contracted)?contracted.credits/(contracted.period==="year"?12:1):null,
     card: payment?.card
       ? {
           brand: payment.card.brand,
@@ -115,7 +117,7 @@ export async function manageSubscription(
         recurring: { interval: period },
         product_data: { name: `Mentora ${target.name}${billingLive()?"":" · TEST"}` },
       },
-      { idempotencyKey: `mentora-switch-price-v1:${target.id}:${period}` },
+      { idempotencyKey: `mentora-switch-price-v2:${target.id}:${period}` },
     );
     let schedule = sub.schedule
       ? await s.subscriptionSchedules.retrieve(objectId(sub.schedule))
@@ -139,14 +141,14 @@ export async function manageSubscription(
           start_date: schedule.current_phase.start_date,
           end_date: item.current_period_end,
           items: [{ price: item.price.id, quantity: item.quantity || 1 }],
-          metadata: { mentora_plan: sub.metadata.mentora_plan },
+          metadata: { ...sub.metadata },
           proration_behavior: "none",
         },
         {
           start_date: item.current_period_end,
           duration: { interval: period, interval_count: 1 },
           items: [{ price: price.id, quantity: 1 }],
-          metadata: { mentora_plan: target.id },
+          metadata: { mentora_plan: target.id,mentora_offer:currentCheckoutCode(period==="year"?`${target.id}-annual`:target.id) },
           proration_behavior: "none",
         },
       ],

@@ -22,7 +22,7 @@ import { TestSalesAcceptance } from "./test-sales-acceptance";
 import { testSalesVersion } from "@/lib/legal-versions";
 import type { serviceSchema } from "@/lib/monetization/store";
 import type { z } from "zod";
-import { annualPrice, customCreditsPrice, maxCustomCredits, type plans, type packs } from "@/lib/monetization/catalog";
+import { annualPrice, customCreditsPrice, maxCustomCredits, minCustomCredits, type plans, type packs } from "@/lib/monetization/catalog";
 type Service = z.infer<typeof serviceSchema>;
 type Booking = {
   id: string;
@@ -301,7 +301,7 @@ export function AdminMonetization({
               <ul className="commerce-benefits">
                 <li>
                   <Check />
-                  {annual ? current.credits * 12 : current.credits} crédits par {annual ? "an" : "mois"}
+                  {annual ? (billing?.creditsPerMonth ?? current.credits) * 12 : (billing?.creditsPerMonth ?? current.credits)} crédits par {annual ? "an" : "mois"}
                 </li>
                 {data.comparison
                   .filter((r) =>
@@ -513,6 +513,7 @@ export function AdminMonetization({
               <TestSalesAcceptance live={data.mode==="live"} checked={accepted} onChange={setAccepted} />
               {!data.configured && <p>Le paiement est indisponible.</p>}
               {error && <p role="alert">{error}</p>}
+              <p>100 crédits = 2 €</p>
               <div className="commerce-packs">
                 {data.packs.map((p) => (
                   <button
@@ -522,7 +523,7 @@ export function AdminMonetization({
                     onClick={() => void send({ action: "checkout", offer: p.id, key: crypto.randomUUID() })}
                   >
                     <Coins />
-                    <strong>{p.credits} crédits</strong>
+                    <span className="credit-pack-description"><small>{p.name}</small><strong>{p.credits.toLocaleString("fr-FR")} crédits au total</strong><small>{p.bonusCredits?`+${p.bonusCredits.toLocaleString("fr-FR")} crédits bonus`:"Sans bonus"}</small><small>{p.purchasedCredits.toLocaleString("fr-FR")} achetés{p.bonusCredits?` + ${p.bonusCredits.toLocaleString("fr-FR")} bonus`:""}</small></span>
                     <span>{euro(p.cents)}</span>
                     <ChevronRight size={16} />
                   </button>
@@ -534,11 +535,11 @@ export function AdminMonetization({
                   void send({ action: "checkout", credits: Number(customCredits), key: crypto.randomUUID() });
               }}>
                 <label>
-                  Quantité personnalisée
-                  <input type="number" min={1} max={maxCustomCredits} step={1} required
+                  Quantité personnalisée (25 crédits minimum)
+                  <input type="number" min={minCustomCredits} max={maxCustomCredits} step={1} required
                     value={customCredits} onChange={(event) => setCustomCredits(event.target.value)} />
                 </label>
-                <button className="commerce-primary" disabled={busy || !data.configured || !accepted || customPrice === null}>
+                <button className="commerce-primary" disabled={busy || !data.configured || !accepted || customPrice === null || Number(customCredits)<minCustomCredits}>
                   {customPrice === null ? "Choisir une quantité" : `Payer ${euro(customPrice)}`}
                 </button>
               </form>
@@ -952,7 +953,7 @@ export function AdminMonetization({
           <div className="pricing-pack-grid">
             {data.packs.map((p) => (
               <article key={p.id}>
-                <strong>{p.credits} crédits</strong>
+                <strong>{p.name} · {p.credits.toLocaleString("fr-FR")} crédits</strong><small>{p.purchasedCredits} achetés + {p.bonusCredits} bonus</small>
                 <b>{euro(p.cents)}</b>
                 <button
                   className="btn"
