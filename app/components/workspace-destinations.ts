@@ -70,9 +70,7 @@ export function workspaceGroups(mentor: boolean, moderator: boolean, owner: bool
     if (owner) tabs.push(
       ["crm", "Mon CRM Vinted", TrendingUp],
       ["extension", "Extension Vinted", Layers],
-      ["pricing", "Tarifs · étude privée", Layers],
       ["changelog", "Annonces Discord", MessageCircle],
-      ["monetization", "Monétisation · test privé", Layers],
       ["withdrawals", "Retraits", TrendingUp],
     );
     groups.push({ title: "Administration", items: tabs.map(([adminTab, label, icon]) => ({ label, icon, screen: "admin", adminTab })) });

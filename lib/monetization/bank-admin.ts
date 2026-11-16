@@ -10,10 +10,11 @@ type Actor={id:string;email:string};
 type Row={id:string;owner_id:string;amount_cents:number;bank_snapshot:string;state:string;mode:string;revision:number;reference:string;reason:string;name:string};
 const select=`SELECT r.*,w.state,w.mode,w.revision,w.reference,w.reason,COALESCE(p.name,u.name,'Ancien membre') AS name FROM money_bank_requests r JOIN money_bank_workflow w ON w.request_id=r.id LEFT JOIN "user" u ON u.id=r.owner_id LEFT JOIN profiles p ON p.user_id=r.owner_id`;
 async function authorize(actor:Actor){if(!await isCrmOwner(actor))throw Error("Accès refusé.");}
-export async function adminBankList(actor:Actor,page=0) {
+export async function adminBankList(actor:Actor,page=0,state="") {
   await authorize(actor);z.number().int().min(0).max(10000).parse(page);
-  const rows=await query<Row>(select+" ORDER BY r.created_at DESC,r.id LIMIT 50 OFFSET $1",[page*50]);
-  return {policy:manualPayoutPolicy(),page,items:rows.map(({bank_snapshot,...r})=>r),total:Number((await query("SELECT COUNT(*) AS n FROM money_bank_requests"))[0].n)};
+  z.enum(["","pending","processing","paid","refused","canceled"]).parse(state);
+  const rows=await query<Row>(select+" WHERE ($1='' OR w.state=$1) ORDER BY r.created_at DESC,r.id LIMIT 50 OFFSET $2",[state,page*50]);
+  return {policy:manualPayoutPolicy(),page,items:rows.map(({bank_snapshot,...r})=>r),total:Number((await query("SELECT COUNT(*) AS n FROM money_bank_requests r JOIN money_bank_workflow w ON w.request_id=r.id WHERE ($1='' OR w.state=$1)",[state]))[0].n)};
 }
 export async function adminBankDetails(actor:Actor,id:string) {
   await authorize(actor);z.string().uuid().parse(id);

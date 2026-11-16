@@ -101,6 +101,7 @@ export function AdminMonetization({
   const [simulatedCredits, setSimulatedCredits] = useState(12);
   const [simulationStep, setSimulationStep] = useState(0);
   const [editing, setEditing] = useState(false);
+  const [uploading,setUploading]=useState(false);
   const [serviceMenu, setServiceMenu] = useState<string | null>(null);
   const load = useCallback(async () => {
     try {
@@ -1055,6 +1056,8 @@ export function AdminMonetization({
                 onChange={(e) => field("description", e.target.value)}
               />
             </label>
+            <label>Image (facultatif)<input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading||busy} onChange={async e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>4000000){setError("4 Mo maximum.");return;}setUploading(true);try{const body=new FormData();body.set("file",f);const r=await fetch("/api/admin/prestations",{method:"POST",body}),d=await r.json();if(!r.ok)throw Error(d.error);field("image",d.id);}catch(e){setError((e as Error).message);}finally{setUploading(false);}}}/></label>
+            {form.image&&<div className="service-image-preview"><img src={`/api/admin/prestations?image=${form.image}`} alt="Image de la prestation"/><button type="button" className="text-btn" onClick={()=>field("image","")}>Retirer l’image</button></div>}
             <div className="service-credit-fields">
               <label>
                 Nombre de crédits
@@ -1085,7 +1088,7 @@ export function AdminMonetization({
               </label>
               <small>Un crédit par cran jusqu’à 100. Saisis un montant exact jusqu’à 1 000.</small>
             </div>
-            <button className="btn" disabled={busy}>
+            <button className="btn" disabled={busy||uploading}>
               Enregistrer
             </button>
             {editId && (

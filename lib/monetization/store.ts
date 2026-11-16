@@ -20,6 +20,8 @@ export async function migrateMonetization() {
     `CREATE TABLE IF NOT EXISTS money_ledger(id TEXT PRIMARY KEY,owner_id TEXT NOT NULL,delta INTEGER NOT NULL,kind TEXT NOT NULL,reference TEXT NOT NULL UNIQUE,created_at TEXT NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS money_orders(id TEXT PRIMARY KEY,owner_id TEXT NOT NULL,offer TEXT NOT NULL,session_id TEXT UNIQUE,created_at TEXT NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS money_payments(id TEXT PRIMARY KEY,owner_id TEXT NOT NULL,payment_intent TEXT UNIQUE,amount INTEGER NOT NULL,credits INTEGER NOT NULL,refund_amount INTEGER NOT NULL DEFAULT 0,reversed_credits INTEGER NOT NULL DEFAULT 0,invoice_url TEXT,created_at TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS money_service_requests(booking_id TEXT PRIMARY KEY,reason TEXT NOT NULL DEFAULT '',updated_at TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS money_service_images(id TEXT PRIMARY KEY,owner_id TEXT NOT NULL,stored_path TEXT NOT NULL,mime TEXT NOT NULL,created_at TEXT NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS money_events(id TEXT PRIMARY KEY,created_at TEXT NOT NULL)`,
   ])
     await query(sql);
@@ -81,6 +83,7 @@ export const serviceSchema = z.object({
   credits: z.number().int().min(1).max(1000),
   capacity: z.number().int().min(1).max(100),
   published: z.boolean(),
+  image: z.union([z.string().uuid(),z.literal("")]).optional(),
 });
 export async function saveService(owner: string, raw: unknown, id?: string) {
   const data = serviceSchema.parse(raw);
@@ -113,7 +116,10 @@ export async function book(
         `${owner}:${key}`,
       ])
     )[0];
-    if (previous) return previous.id;
+    if (previous) {
+      if(previous.service_id!==serviceId||previous.notes!==notes||previous.slot!==slot)throw Error("Requête déjà utilisée");
+      return previous.id;
+    }
     const s = (
       await q(
         "SELECT * FROM money_services WHERE id=$1 AND owner_id=$2 AND archived=0",
@@ -155,7 +161,7 @@ export async function book(
     return id;
   });
 }
-export async function bookingAction(owner: string, id: string, action: string) {
+export async function bookingAction(owner: string, id: string, action: string, reason="") {
   return moneyTransaction(async (q) => {
     await lock(q, owner);
     const b = (
@@ -190,5 +196,6 @@ export async function bookingAction(owner: string, id: string, action: string) {
         `restore:${id}`,
       );
     } else throw Error("Transition impossible ou déjà effectuée");
+    if(action==="decline"&&reason) await q("INSERT INTO money_service_requests(booking_id,reason,updated_at) VALUES($1,$2,$3) ON CONFLICT(booking_id) DO UPDATE SET reason=$2,updated_at=$3",[id,reason,new Date().toISOString()]);
   });
 }

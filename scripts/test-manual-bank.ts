@@ -104,6 +104,8 @@ try {
   await decideBankTransfer(actor,{id:next.id,action:"paid",revision:1,key:crypto.randomUUID(),reference:"TEST-TRANSFER-01",confirmed:true});
   assert.equal((await manualBankOverview(owner)).history.find(r=>r.id===next.id)?.status,"paid");
   assert.equal((await manualBankOverview(owner)).availableCents,0);
+  assert((await adminBankList(actor,0,"paid")).items.every(r=>r.state==="paid"));
+  assert.equal((await adminBankList(actor,0,"pending")).items.some(r=>r.id===next.id),false);
   assert.equal(await stillRelevant(processJob),false);
   const payJob=(await query("SELECT * FROM push_outbox WHERE kind='bank_withdrawal' AND event_id<>$1",[String(processJob.event_id)]))[0];
   assert(await stillRelevant(payJob));assert((await pushContent(payJob)).title.includes("test"));

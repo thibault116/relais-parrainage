@@ -35,6 +35,7 @@ import {
   Megaphone,
   NotebookPen,
 } from "lucide-react";
+import { PrivateServiceCatalog } from "./private-services";
 import { AdminMonetization } from "./admin-monetization";
 import { AdminLegalGuide } from "./admin-legal-guide";
 import { JoinOffers } from "./join-offers";
@@ -812,6 +813,7 @@ export function MobileExperience({
                 MessageCircle,
                 "messages",
               )}
+              {administrator&&profile?.role==="mentor"&&<PrivateServiceCatalog profileId={profile.id}/>}
               {tile(
                 "Modifier mon profil",
                 "Photo, présentation et spécialités",

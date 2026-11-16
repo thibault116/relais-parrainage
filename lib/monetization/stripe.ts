@@ -21,5 +21,5 @@ export function appOrigin() {
 }
 export const returnUrl = (page: "admin" | "billing" | "credits" = "admin") =>
   page === "admin"
-    ? `${appOrigin()}/?adminTab=monetization#moderation`
+    ? `${appOrigin()}/?mobile=billing#profile`
     : `${appOrigin()}/?mobile=${page}#profile`;

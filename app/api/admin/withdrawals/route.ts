@@ -8,7 +8,7 @@ export const runtime="nodejs";
 export const maxDuration=60;
 export async function GET(r:Request){
   const actor=await user(r);if(!await isCrmOwner(actor))return json({error:"Accès réservé à l’administrateur principal."},403);
-  try{return json(await adminBankList(actor!,z.coerce.number().int().min(0).max(10000).parse(new URL(r.url).searchParams.get("page")||0)));}
+  try{return json(await adminBankList(actor!,z.coerce.number().int().min(0).max(10000).parse(new URL(r.url).searchParams.get("page")||0),new URL(r.url).searchParams.get("state")||""));}
   catch{return json({error:"Demandes indisponibles."},503);}
 }
 export async function POST(r:Request){

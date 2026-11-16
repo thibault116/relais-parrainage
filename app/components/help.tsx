@@ -120,12 +120,11 @@ const chapters = [
 ];
 const payoutTutorial=[
   "retraits",
-  "Retraits et compte bancaire · test privé",
-  "Dans Rémunération, renseigne le titulaire du compte, le pays de la banque et l’IBAN, puis Enregistrer. Les comptes français, belges et d’autres pays utilisant un IBAN sont acceptés. Le pays et la clé de contrôle de l’IBAN sont vérifiés. Un RIB joint n’est pas nécessaire.",
-  "Demander un retrait réserve les gains disponibles issus de prestations terminées. Mentora n’impose aucun seuil de 50 € : une somme positive, dès un centime, peut faire l’objet d’une demande. Les crédits achetés ne sont pas convertibles en argent. Un gain ne peut être réservé deux fois, y compris s’il est déjà engagé dans un ancien retrait Stripe.",
-  "Ce parcours ne déclenche aucun virement automatique et ne crée aucun compte Stripe. Dans Mes retraits, suis les statuts En attente, En traitement, Payé ou Refusé. Un refus restitue les gains disponibles. Une demande ne peut être annulée par son auteur que tant qu’elle est en attente. Les anciens retraits Stripe restent consultables dans ce même historique.",
-  "L’IBAN et le titulaire sont chiffrés sur le serveur. Le parrain voit seulement un IBAN masqué. L’administrateur principal peut révéler les coordonnées complètes : cette consultation et chaque changement de statut sont journalisés. Une demande conserve un instantané chiffré des coordonnées enregistrées lors de sa création. Les coordonnées ne sont pas envoyées à Stripe par ce formulaire.",
-  "Dans Administration → Retraits, l’administrateur traite les demandes, renseigne la référence du virement puis marque le retrait payé uniquement après vérification de son virement bancaire. Le mode test simule cette confirmation sans déplacer d’argent. Une notification informe le parrain à chaque changement de statut. Tout reste réservé à l’administrateur principal et en mode test. Le fonctionnement réel des versements manuels, leur comptabilité et les obligations applicables devront être validés avant commercialisation. Le refus du parcours Connect ne constitue pas une dispense générale des obligations d’identification ou de facturation.",
+  "La rémunération",
+  "💸 Comment retirer mes gains ? Une fois tes prestations terminées, tes rémunérations sont ajoutées à ton solde disponible.",
+  "1. Va dans l’onglet Mes rémunérations. 2. Renseigne ton nom, prénom et IBAN, puis enregistre tes coordonnées bancaires. 3. Clique sur « Demander un retrait ».",
+  "4. Ta demande sera examinée, puis le virement sera effectué manuellement par l’équipe Mentora sur ton compte bancaire.",
+  "Tu peux suivre l’avancement de ton retrait dans ton historique : En attente → En traitement → Payé. Aucun compte Stripe ou Mangopay n’est nécessaire.",
 ];
 export function Help({privatePayouts=false}:{privatePayouts?:boolean}) {
   const visibleChapters=privatePayouts?[...chapters,payoutTutorial]:chapters;

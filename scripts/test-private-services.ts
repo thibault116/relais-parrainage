@@ -1,0 +1,50 @@
+import assert from "node:assert/strict";
+import {mkdtemp,rm} from "node:fs/promises";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+import {query,database,migrateProfiles,migrateAccompaniments} from "../lib/db";
+import {getAuth} from "../lib/auth";
+import {getMigrations} from "better-auth/db/migration";
+import {migrateMonetization,saveService,entry,balance} from "../lib/monetization/store";
+import {GET,POST} from "../app/api/admin/prestations/route";
+import {POST as save} from "../app/api/admin/monetization/route";
+if(process.env.DATABASE_URL||process.env.VERCEL)throw Error("Local isolated tests only");
+const cwd=process.cwd(),dir=await mkdtemp(join(tmpdir(),"mentora-private-services-"));process.chdir(dir);
+try{
+ await migrateMonetization();await migrateProfiles();await migrateAccompaniments();
+ await query("CREATE TABLE hidden_ratings(accompaniment_id TEXT PRIMARY KEY)");await query("CREATE TABLE moderators(user_id TEXT PRIMARY KEY,email TEXT)");await query("CREATE TABLE member_activity(user_id TEXT PRIMARY KEY,last_active_at TEXT)");
+ const auth=getAuth();await(await getMigrations(auth.options)).runMigrations();
+ async function account(email:string){const r=await auth.api.signUpEmail({body:{email,name:"Service fixture",password:"fixture-password-123456"},asResponse:true});return {id:String((await r.json()).user.id),cookie:r.headers.getSetCookie().map(c=>c.split(";")[0]).join("; ")};}
+ const owner=await account("thibault.cordiez@hotmail.com"),member=await account("service-fixture@example.test");
+ await query("INSERT INTO moderators(user_id,email) VALUES($1,$2)",[owner.id,"thibault.cordiez@hotmail.com"]);
+ await query("INSERT INTO moderators(user_id,email) VALUES($1,$2)",[member.id,"service-fixture@example.test"]);
+ const profile=crypto.randomUUID();await query("INSERT INTO profiles(id,user_id,discord,role,name,details,updated_at) VALUES($1,$2,'fixture','mentor','Parrain fixture','{}',$3)",[profile,owner.id,new Date().toISOString()]);
+ const url="http://localhost:3000/api/admin/prestations",headers=(cookie=owner.cookie,origin="http://localhost:3000")=>({cookie,origin,"Content-Type":"application/json"});
+ const post=(d:unknown,c=owner.cookie,o="http://localhost:3000")=>POST(new Request(url,{method:"POST",headers:headers(c,o),body:JSON.stringify(d)}));
+ for(const cookie of ["",member.cookie]){assert.equal((await GET(new Request(url,{headers:{cookie}}))).status,403);assert.equal((await post({action:"request",id:crypto.randomUUID(),key:crypto.randomUUID()},cookie)).status,403);}
+ assert.equal((await post({},owner.cookie,"https://foreign.example")).status,403);
+ const data={title:"Audit dressing",description:"Audit personnalisé des annonces et des photos.",category:"Autre",duration:0,calls:0,followup:"",availability:"À convenir",credits:5,capacity:5,published:true};
+ const service=await saveService(owner.id,data),hidden=await saveService(owner.id,{...data,published:false}),foreign=await saveService(member.id,data);
+ await entry(query,owner.id,20,"fixture","service-fixture-balance");
+ assert.equal((await post({action:"request",id:hidden,key:crypto.randomUUID()})).status,400);
+ assert.equal((await post({action:"request",id:foreign,key:crypto.randomUUID()})).status,400);
+ const key=crypto.randomUUID(),request={action:"request",id:service,key,notes:""};
+ const [a,b]=await Promise.all([post(request),post(request)]);assert.equal(a.status,200);assert.equal(b.status,200);const id=(await a.json()).id;assert.equal((await b.json()).id,id);assert.equal(await balance(query,owner.id),15);
+ assert.equal((await post({...request,notes:"Different"})).status,400);
+ assert.equal((await post({...request,owner_id:member.id,key:crypto.randomUUID()})).status,400);
+ assert.equal((await post({action:"decision",id,transition:"decline",reason:"court"})).status,400);
+ assert.equal((await save(new Request("http://localhost:3000/api/admin/monetization",{method:"POST",headers:headers(),body:JSON.stringify({action:"booking",id,transition:"decline"})}))).status,400);
+ assert.equal((await post({action:"decision",id,transition:"decline",reason:"Cette prestation ne correspond pas à ton besoin."})).status,200);
+ assert.equal(await balance(query,owner.id),20);assert.equal((await post({action:"decision",id,transition:"decline",reason:"Une deuxième décision ne doit rien restituer."})).status,400);assert.equal(await balance(query,owner.id),20);
+ const next=(await(await post({...request,key:crypto.randomUUID()})).json()).id;
+ for(const transition of ["accept","complete"])assert.equal((await post({action:"decision",id:next,transition})).status,200);
+ const list=await GET(new Request(url,{headers:{cookie:owner.cookie}}));assert.equal(list.headers.get("cache-control"),"private, no-store");const d=await list.json();assert.equal(d.services.length,2);assert.equal(d.requests.length,2);assert.equal(d.requests.find((r:any)=>r.id===id).reason,"Cette prestation ne correspond pas à ton besoin.");assert.equal(d.stats.satisfaction,null);
+ const form=new FormData();form.set("file",new File([Buffer.from("89504e470d0a1a0a","hex")],"fixture.png",{type:"image/png"}));const upload=await POST(new Request(url,{method:"POST",headers:{cookie:owner.cookie,origin:"http://localhost:3000"},body:form}));assert.equal(upload.status,201);const image=(await upload.json()).id;
+ assert.equal((await GET(new Request(url+"?image="+image,{headers:{cookie:member.cookie}}))).status,403);
+ assert.equal((await GET(new Request(url+"?image="+image,{headers:{cookie:owner.cookie}}))).status,200);
+ const otherImage=crypto.randomUUID();await query("INSERT INTO money_service_images(id,owner_id,stored_path,mime,created_at) VALUES($1,$2,'local:fixture','image/png',$3)",[otherImage,member.id,new Date().toISOString()]);
+ assert.equal((await save(new Request("http://localhost:3000/api/admin/monetization",{method:"POST",headers:headers(),body:JSON.stringify({action:"save",id:service,service:{...data,image:otherImage}})}))).status,400);
+ console.log("PASS accès principal seul, autre modérateur et CSRF refusés ; catalogue et images privés");
+ console.log("PASS besoin facultatif, prix figé, publication, crédits réservés une fois, refus motivé et restitution unique");
+ console.log("PASS acceptation/réalisation, historique conservé, statistiques réelles sans faux avis, images isolées");
+}finally{(database() as {close:()=>void}).close();process.chdir(cwd);await rm(dir,{recursive:true,force:true});}

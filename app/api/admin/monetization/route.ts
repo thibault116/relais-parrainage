@@ -74,7 +74,8 @@ export async function POST(r: Request) {
     const d = await r.json(),
       id = u!.id;
     const action = z.string().parse(d.action);
-    if (action === "save")
+    if (action === "save") {
+      if(d.service?.image && !(await query("SELECT id FROM money_service_images WHERE id=$1 AND owner_id=$2",[z.string().uuid().parse(d.service.image),id])).length) throw Error("Image indisponible");
       return json({
         id: await saveService(
           id,
@@ -82,6 +83,7 @@ export async function POST(r: Request) {
           d.id ? z.string().uuid().parse(d.id) : undefined,
         ),
       });
+    }
     if (action === "delete") {
       await query(
         "UPDATE money_services SET archived=1 WHERE id=$1 AND owner_id=$2",
@@ -106,6 +108,7 @@ export async function POST(r: Request) {
         z
           .enum(["accept", "complete", "cancel", "decline", "refund"])
           .parse(d.transition),
+        d.transition === "decline" ? z.string().trim().min(10).max(1000).parse(d.reason) : "",
       );
       return json({ ok: true });
     }

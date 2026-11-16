@@ -1,4 +1,5 @@
 "use client";
+import { PrivateServiceCatalog, PrivateServiceRequests } from "./components/private-services";
 import { useOwnerPreview } from "./components/owner-preview";
 import { PricingPreview } from "./components/pricing-preview";
 import { LegalLinks } from "./components/legal-links";
@@ -318,7 +319,7 @@ export default function App() {
       const section = params.get("settingsSection") || "general";
       setSettingsSection(["general", "security", "notifications", "verification"].includes(section) ? section : "general");
       const admin = params.get("adminTab");
-      if (admin && ["overview", "accounts", "verification", "reports", "ratings", "suggestions", "emails", "settings", "crm", "extension", "pricing", "monetization", "changelog", "withdrawals"].includes(admin))
+      if (admin && ["overview", "accounts", "verification", "reports", "ratings", "suggestions", "emails", "settings", "crm", "extension", "changelog", "withdrawals"].includes(admin))
         setAdminTab(admin);
       else if (desktop && hash === "moderation") setAdminTab("overview");
     };
@@ -1006,6 +1007,7 @@ export default function App() {
           <Directory
             key={preview || "normal"}
             preview={!!preview}
+            privateServices={owner}
             session={!!session}
             onFollowChange={refreshProfile}
             initialTarget={focusMember}
@@ -1255,11 +1257,7 @@ export default function App() {
                   )}
                   {(selectedProfileTab === "accompaniments" ||
                     selectedProfileTab === "requests") && (
-                    <Accompaniments
-                      key={selectedProfileTab}
-                      mode={selectedProfileTab}
-                      onChange={refreshProfile}
-                    />
+                    owner&&selectedProfileTab==="requests" ? <PrivateServiceRequests><Accompaniments key={selectedProfileTab} mode={selectedProfileTab} onChange={refreshProfile}/></PrivateServiceRequests> : <Accompaniments key={selectedProfileTab} mode={selectedProfileTab} onChange={refreshProfile}/>
                   )}
                 </div>
               </>
@@ -2362,6 +2360,7 @@ function ProfileCard({
   );
 }
 function Directory({
+  privateServices=false,
   preview = false,
   onFollowChange,
   initialTarget,
@@ -2372,6 +2371,7 @@ function Directory({
   onProfile,
   notify,
 }: {
+  privateServices?: boolean;
   preview?: boolean;
   onFollowChange: () => Promise<void>;
   initialTarget: PublicProfile | null;
@@ -2383,6 +2383,7 @@ function Directory({
   notify: (s: string) => void;
 }) {
   const [role, setRole] = useState(initialTarget?.role || initialRole);
+  const [showServices,setShowServices]=useState(false);
   const [search, setSearch] = useState("");
   const [specialty, setSpecialty] = useState("");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -2553,8 +2554,9 @@ function Directory({
       </div>
       <div className="directory-tabs">
         <button
-          className={role === "mentor" ? "selected" : ""}
+          className={!showServices && role === "mentor" ? "selected" : ""}
           onClick={() => {
+            setShowServices(false);
             setRole("mentor");
             setPage(0);
           }}
@@ -2562,17 +2564,20 @@ function Directory({
           <Sparkles size={18} />
           {translateUi(" Les parrains")}
         </button>
-        <button
-          className={role === "beginner" ? "selected" : ""}
+        {(!privateServices || own?.role!=="beginner")&&<button
+          className={!showServices && role === "beginner" ? "selected" : ""}
           onClick={() => {
+            setShowServices(false);
             setRole("beginner");
             setPage(0);
           }}
         >
           <Sprout size={18} />
           {translateUi(" Les d\u00E9butants")}
-        </button>
+        </button>}
+        {privateServices&&<button className={showServices?"selected":""} onClick={()=>setShowServices(true)}>Prestations</button>}
       </div>
+      {showServices?<PrivateServiceCatalog/>:<>
       <div
         className={`filters ${showMobileFilters ? "mobile-filters-open" : ""}`}
       >
@@ -2763,6 +2768,7 @@ function Directory({
           </p>
         </div>
       </div>
+      </>}
       {selected && (
         <div
           className="modal-backdrop"
@@ -2774,7 +2780,7 @@ function Directory({
             role="dialog"
             aria-modal="true"
             aria-labelledby="member-title"
-            className="modal member-modal"
+            className={`modal member-modal ${privateServices&&selected.role==="mentor"?"private-mentor-profile":""}`}
             key={selected.id}
             onKeyDown={(e) => {
               if (e.key === "Tab") {
@@ -2959,6 +2965,7 @@ function Directory({
               )}
             </p>
             <MobileProfileActions profileId={selected.id} />
+            {privateServices&&selected.role==="mentor"&&<PrivateServiceCatalog profileId={selected.id}/>}
             {selected.role === "mentor" && (
               <MentorPortfolio profileId={selected.id} />
             )}

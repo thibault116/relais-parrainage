@@ -2,8 +2,6 @@
 import { t as translateUi, locale } from "@/app/components/language";
 import { AdminWithdrawals } from "./admin-withdrawals";
 import { AdminChangelog } from "./admin-changelog";
-import { AdminMonetization } from "./admin-monetization";
-import { AdminPricing } from "./admin-pricing";
 import { AdminCrm } from "./admin-crm";
 import { AdminRetention } from "./admin-retention";
 import { AdminSettings } from "./admin-settings";
@@ -120,8 +118,6 @@ export function AdminDashboard({
                   settings: "Paramètres plateforme",
                   crm: "Mon CRM Vinted",
                   extension: "Extension Vinted",
-                  pricing: "Tarifs · étude privée",
-                  monetization: "Monétisation · test privé",
                   changelog: "Annonces Discord",
                   withdrawals: "Retraits",
                 }[tab] || "Administration"
@@ -144,8 +140,6 @@ export function AdminDashboard({
             ["overview", "Vue d’ensemble"],
             ...(crmOwner
               ? [
-                  ["pricing", "Tarifs · étude privée"],
-                  ["monetization", "Monétisation · test privé"],
                   ["withdrawals", "Retraits"],
                   ["changelog", "Annonces Discord"],
                   ["crm", "Mon CRM Vinted"],
@@ -184,10 +178,6 @@ export function AdminDashboard({
         <AdminWithdrawals />
       ) : tab === "changelog" && crmOwner ? (
         <AdminChangelog />
-      ) : tab === "monetization" && crmOwner ? (
-        <AdminMonetization />
-      ) : tab === "pricing" && crmOwner ? (
-        <AdminPricing />
       ) : (tab === "crm" || tab === "extension") && crmOwner ? (
         <AdminCrm extension={tab === "extension"} />
       ) : tab === "settings" ? (
