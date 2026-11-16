@@ -1,4 +1,5 @@
 "use client";
+import {useOwnerPreview} from "./owner-preview";
 import { AdminOnboarding } from "./onboarding-summary";
 import { t as translateUi, locale } from "@/app/components/language";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -75,6 +76,7 @@ const empty = (): Dossier => ({
   consent: true,
 });
 export function VerificationBadge({ profile }: { profile: PublicProfile }) {
+  const paused=useOwnerPreview();if(paused)return null;
   if (profile.role !== "mentor") return null;
   if (!profile.verification)
     return (

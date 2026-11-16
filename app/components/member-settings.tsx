@@ -49,7 +49,7 @@ export function MemberSettings({
                 general: "Général",
                 security: "Sécurité",
                 notifications: "Notifications",
-                verification: "Finaliser mon profil",
+                verification: ownerPreview?"Paramètres":"Finaliser mon profil",
               }[section] || "Paramètres"
             : "Paramètres",
         )}
@@ -76,7 +76,7 @@ export function MemberSettings({
             ["notifications", "Notifications"],
             ["menus", "Menus et aide"],
             ...(administration ? [["administration", "Administration"]] : []),
-            ...(mentor ? [["verification", "Finaliser mon profil"]] : []),
+            ...(mentor && !ownerPreview ? [["verification", "Finaliser mon profil"]] : []),
           ]
             .filter(
               ([id, label]) =>
@@ -159,7 +159,7 @@ export function MemberSettings({
         </>
       )}
       {!normalized &&
-        section === "verification" &&
+        section === "verification" && !ownerPreview &&
         (mentor ? (
           <MentorPortfolio editing />
         ) : (

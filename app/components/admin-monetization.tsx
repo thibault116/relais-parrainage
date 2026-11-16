@@ -1,4 +1,5 @@
 "use client";
+import {TestWalletUpdate} from "./test-wallet-update";
 import { ManualBankForm, ManualBankHistory } from "./manual-bank";
 import {
   Crown,
@@ -22,7 +23,7 @@ import { TestSalesAcceptance } from "./test-sales-acceptance";
 import { testSalesVersion } from "@/lib/legal-versions";
 import type { serviceSchema } from "@/lib/monetization/store";
 import type { z } from "zod";
-import { annualPrice, customCreditsPrice, maxCustomCredits, minCustomCredits, type plans, type packs } from "@/lib/monetization/catalog";
+import { annualPrice, customCreditsPrice, maxCustomCredits, minCustomCredits, maxServiceCredits, servicePriceCents, sliderCredits, creditsSlider, type plans, type packs } from "@/lib/monetization/catalog";
 type Service = z.infer<typeof serviceSchema>;
 type Booking = {
   id: string;
@@ -463,6 +464,7 @@ export function AdminMonetization({
         )}
         {tab === "wallet" && (
           <>
+            {data.mode==="test"&&<TestWalletUpdate onChange={async()=>{await load();await loadBilling();}}/>}
             <article className="commerce-card commerce-balance">
               <Coins size={38} />
               <strong>{data.balance} crédits</strong>
@@ -665,7 +667,7 @@ export function AdminMonetization({
                         <p>{s.data.description}</p>
                         <p>
                           Rémunération prévue :{" "}
-                          {euro(s.data.credits * data.payoutRate)}
+                          {euro(Math.round(s.data.credits * data.payoutRate))}
                         </p>
                         <button
                           className="commerce-row"
@@ -1061,13 +1063,14 @@ export function AdminMonetization({
             </label>
             <label>Image (facultatif)<input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading||busy} onChange={async e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>4000000){setError("4 Mo maximum.");return;}setUploading(true);try{const body=new FormData();body.set("file",f);const r=await fetch("/api/admin/prestations",{method:"POST",body}),d=await r.json();if(!r.ok)throw Error(d.error);field("image",d.id);}catch(e){setError((e as Error).message);}finally{setUploading(false);}}}/></label>
             {form.image&&<div className="service-image-preview"><img src={`/api/admin/prestations?image=${form.image}`} alt="Image de la prestation"/><button type="button" className="text-btn" onClick={()=>field("image","")}>Retirer l’image</button></div>}
+            <p className="service-euro-preview">Coût indicatif pour le débutant : {euro(servicePriceCents(form.credits))} (base 2 € / 100 crédits).<br/>Ta rémunération prévue : {euro(Math.round(form.credits*data.payoutRate))}.</p>
             <div className="service-credit-fields">
               <label>
                 Nombre de crédits
                 <input
                   type="number"
                   min={1}
-                  max={1000}
+                  max={maxServiceCredits}
                   step={1}
                   required
                   value={form.credits || ""}
@@ -1079,17 +1082,17 @@ export function AdminMonetization({
                 <input
                   type="range"
                   min={1}
-                  max={200}
+                  max={1000}
                   step={1}
-                  value={form.credits <= 100 ? form.credits : 100 + Math.round((form.credits - 100) / 9)}
+                  value={creditsSlider(form.credits)}
                   aria-valuetext={`${form.credits} crédits`}
                   onChange={(e) => {
                     const position = Number(e.target.value);
-                    field("credits", position <= 100 ? position : 100 + (position - 100) * 9);
+                    field("credits", sliderCredits(position));
                   }}
                 />
               </label>
-              <small>Un crédit par cran jusqu’à 100. Saisis un montant exact jusqu’à 1 000.</small>
+              <small>De 10 à 50 000 crédits. Saisis le nombre exact si besoin.</small>
             </div>
             <button className="btn" disabled={busy||uploading}>
               Enregistrer

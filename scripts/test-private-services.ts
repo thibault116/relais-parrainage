@@ -1,3 +1,8 @@
+import {GET as walletGET,POST as walletPOST} from "../app/api/admin/monetization/test-wallet/route";
+import {testWalletPreview,hasCurrentTestCredits} from "../lib/monetization/test-wallet";
+import {recordPaid,recordRefund} from "../lib/monetization/payments";
+import {withMoneyMode} from "../lib/monetization/mode";
+import {workspaceGroups} from "../app/components/workspace-destinations";
 import assert from "node:assert/strict";
 import {mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
@@ -48,6 +53,18 @@ try{
  assert.equal((await GET(new Request(url+"?image="+image,{headers:{cookie:owner.cookie}}))).status,200);
  const otherImage=crypto.randomUUID();await query("INSERT INTO money_service_images(id,owner_id,stored_path,mime,created_at) VALUES($1,$2,'local:fixture','image/png',$3)",[otherImage,member.id,new Date().toISOString()]);
  assert.equal((await save(new Request("http://localhost:3000/api/admin/monetization",{method:"POST",headers:headers(),body:JSON.stringify({action:"save",id:service,service:{...data,image:otherImage}})}))).status,400);
+ const walletURL="http://localhost:3000/api/admin/monetization/test-wallet";
+ const wallet=(c=owner.cookie,body:unknown={action:"reprice"},origin="http://localhost:3000")=>walletPOST(new Request(walletURL,{method:"POST",headers:headers(c,origin),body:JSON.stringify(body)}));
+ assert.equal((await walletGET(new Request(walletURL))).status,403);assert.equal((await wallet(member.cookie)).status,403);assert.equal((await wallet(owner.cookie,{action:"reprice"},"https://foreign.example")).status,403);assert.equal((await wallet(owner.cookie,{action:"reprice",owner_id:member.id})).status,400);
+ await recordPaid(owner.id,"legacy-plus","legacy-plus-pi",2990,22,null);await recordPaid(owner.id,"legacy-pack","legacy-pack-pi",1690,10,null);await recordRefund("legacy-pack-pi",845);
+ const actor={id:owner.id,email:"thibault.cordiez@hotmail.com"},before=await testWalletPreview(actor);assert.equal(before.current,42);assert.equal(before.after,2037);
+ const decisions=await Promise.all([wallet(),wallet()]);for(const r of decisions)assert.equal(r.status,200);const results=await Promise.all(decisions.map(r=>r.json()));assert.equal(results.reduce((sum,r)=>sum+r.added,0),1995);assert.equal(await balance(query,owner.id),2037);assert.equal(await hasCurrentTestCredits(owner.id),true);assert.equal(await withMoneyMode("live",()=>hasCurrentTestCredits(owner.id)),false);
+ assert.equal((await(await wallet()).json()).added,0);assert.equal((await query("SELECT COUNT(*) AS n FROM money_test_reprices"))[0].n,2);await recordRefund("legacy-pack-pi",1690);assert.equal(await balance(query,owner.id),1615);
+ await recordPaid(owner.id,"late-plus","late-plus-pi",2990,22,null);assert.equal(await balance(query,owner.id),3215);assert.equal((await query("SELECT credits FROM money_payments WHERE id='late-plus'"))[0].credits,1600);
+ assert.equal((await query("SELECT old_credits FROM money_test_reprices WHERE payment_id='legacy-plus'"))[0].old_credits,22);assert.equal((await query("SELECT credits FROM money_payments WHERE id='legacy-plus'"))[0].credits,1600);
+ assert(!workspaceGroups(true,true,true,true).flatMap(g=>g.items).some(i=>i.label==="Finaliser mon profil"));assert(workspaceGroups(true,false,false,false).flatMap(g=>g.items).some(i=>i.label==="Finaliser mon profil"));assert(workspaceGroups(true,true,true,true).flatMap(g=>g.items).some(i=>i.adminTab==="verification"));
+ console.log("PASS rattrapage de test calculé sur les paiements, refus des autres modérateurs, concurrence, audit et remboursements après correction");
+ console.log("PASS quota de test actualisé, aucun effet réel et pause de vérification réservée à la vue propriétaire");
  console.log("PASS accès principal seul, autre modérateur et CSRF refusés ; catalogue et images privés");
  console.log("PASS besoin facultatif, prix figé, publication, crédits réservés une fois, refus motivé et restitution unique");
  console.log("PASS acceptation/réalisation, historique conservé, statistiques réelles sans faux avis, images isolées");

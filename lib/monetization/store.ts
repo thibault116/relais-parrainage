@@ -22,6 +22,8 @@ export async function migrateMonetization() {
     `CREATE TABLE IF NOT EXISTS money_payments(id TEXT PRIMARY KEY,owner_id TEXT NOT NULL,payment_intent TEXT UNIQUE,amount INTEGER NOT NULL,credits INTEGER NOT NULL,refund_amount INTEGER NOT NULL DEFAULT 0,reversed_credits INTEGER NOT NULL DEFAULT 0,invoice_url TEXT,created_at TEXT NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS money_service_requests(booking_id TEXT PRIMARY KEY,reason TEXT NOT NULL DEFAULT '',updated_at TEXT NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS money_service_images(id TEXT PRIMARY KEY,owner_id TEXT NOT NULL,stored_path TEXT NOT NULL,mime TEXT NOT NULL,created_at TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS money_test_reprices(payment_id TEXT PRIMARY KEY,owner_id TEXT NOT NULL,old_credits INTEGER NOT NULL,old_reversed INTEGER NOT NULL,new_credits INTEGER NOT NULL,new_reversed INTEGER NOT NULL,delta INTEGER NOT NULL,version TEXT NOT NULL,created_at TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS money_test_wallet_updates(owner_id TEXT PRIMARY KEY,version TEXT NOT NULL,updated_at TEXT NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS money_events(id TEXT PRIMARY KEY,created_at TEXT NOT NULL)`,
   ])
     await query(sql);
@@ -80,7 +82,7 @@ export const serviceSchema = z.object({
   calls: z.number().int().min(0).max(50),
   followup: z.string().trim().max(2000),
   availability: z.string().trim().min(3).max(2000),
-  credits: z.number().int().min(1).max(1000),
+  credits: z.number().int().min(1).max(50000),
   capacity: z.number().int().min(1).max(100),
   published: z.boolean(),
   image: z.union([z.string().uuid(),z.literal("")]).optional(),
@@ -149,7 +151,7 @@ export async function book(
         serviceId,
         JSON.stringify(d),
         d.credits,
-        d.credits * payoutRate(),
+        Math.round(d.credits * payoutRate()),
         "reserved",
         `${owner}:${key}`,
         notes,

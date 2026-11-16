@@ -27,6 +27,7 @@ export const documents: Record<string, React.ReactNode> = {
     <p>Tu peux demander la fermeture de ton compte via {contact}. L’exercice de tes droits sur les données et le traitement d’une éventuelle demande liée à un achat sont distincts de la fermeture du compte. Pour une modification substantielle des conditions, la nouvelle version doit être portée à la connaissance des membres concernés.</p>
   </>,
   cgv: <>
+    <nav id="paiement-confidentialite" aria-label="Paiement et confidentialité"><a href="/juridique/confidentialite">Politique de confidentialité</a> · <a href="/juridique/contrats">Rétractation et résiliation</a></nav>
     <p className="legal-note">Projet à compléter avant commercialisation. Les paiements Mentora sont exclusivement des essais Stripe réservés au compte administrateur. Le public ne peut acheter ni abonnement, ni crédits, ni prestation.</p>
     <h2>Parcours actuellement testés</h2>
     <p>Le plan Free est le plan par défaut. Starter, Plus et Pro sont testés au mois ou à l’année, avec un prix en euros affiché avant Stripe Checkout. L’abonnement se renouvelle selon la période choisie tant qu’il n’est pas résilié. Le portefeuille est crédité après confirmation du paiement. Les crédits annuels sont versés en une fois. Les packs de 5, 10, 20 et 40 crédits et les quantités personnalisées sont des achats ponctuels. Les justificatifs disponibles figurent dans l’historique de facturation ou le portail Stripe.</p>
@@ -39,6 +40,7 @@ export const documents: Record<string, React.ReactNode> = {
     <p><a href="https://entreprendre.service-public.gouv.fr/vosdroits/F33527">Conditions générales de vente · Service Public</a></p>
   </>,
   "conditions-test": <>
+    <nav id="paiement-confidentialite" aria-label="Paiement et confidentialité"><a href="/juridique/confidentialite">Politique de confidentialité</a> · <a href="/juridique/cgv">Conditions de vente</a> · <a href="/juridique/contrats">Rétractation et résiliation</a></nav>
     <p>Version {testSalesVersion}. Les actions de paiement Mentora sont réservées à l’administrateur et exécutées dans le bac à sable Stripe. Elles servent à tester les offres, la facturation, le portefeuille et les réservations, sans encaissement ni versement réel.</p>
     <p>Avant de poursuivre, vérifie la formule, la période ou la quantité, ainsi que le montant simulé. En acceptant ces conditions de test, tu autorises la création d’une session Stripe de test et l’enregistrement de la version acceptée avec la commande. Les crédits de test ne sont ni transférables ni convertibles en argent.</p>
     <p><a href="/juridique/cgv">Projet de CGV pour la commercialisation</a> · <a href="/juridique/confidentialite">Confidentialité</a></p>

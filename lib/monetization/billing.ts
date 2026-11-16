@@ -1,3 +1,4 @@
+import {hasCurrentTestCredits} from "./test-wallet";
 import {billingLive} from "./mode";
 import { query } from "./db";
 import { stripeBilling } from "./stripe";
@@ -42,7 +43,7 @@ export async function billingDetails(owner: string) {
   }
   const contracted=sub?checkoutOffer(sub.metadata.mentora_offer || (sub.items.data[0]?.price.recurring?.interval==="year"?`${sub.metadata.mentora_plan}-annual`:sub.metadata.mentora_plan)):null;
   return {
-    creditsPerMonth:isSubscriptionOffer(contracted)?contracted.credits/(contracted.period==="year"?12:1):null,
+    creditsPerMonth:sub&&["active","trialing"].includes(sub.status)?(await hasCurrentTestCredits(owner)?plans.find(p=>p.id===sub.metadata.mentora_plan)?.credits??null:isSubscriptionOffer(contracted)?contracted.credits/(contracted.period==="year"?12:1):null):0,
     card: payment?.card
       ? {
           brand: payment.card.brand,

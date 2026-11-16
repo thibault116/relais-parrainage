@@ -33,7 +33,7 @@ export function workspaceGroups(mentor: boolean, moderator: boolean, owner: bool
       items: [
         { label: "Accompagnements en cours", icon: Inbox, screen: "pairs" },
         { label: mentor ? "Objectifs à atteindre" : "Mes objectifs", icon: Target, screen: "tasks", keywords: "tâches to-do progression" },
-        { label: "Demandes de parrainage", icon: Inbox, screen: "requests" },
+        { label: owner?"Demandes":"Demandes de parrainage", icon: Inbox, screen: "requests" },
       ],
     },
     {
@@ -55,7 +55,7 @@ export function workspaceGroups(mentor: boolean, moderator: boolean, owner: bool
     );
     if (mentor) groups[1].items.push({ label: "Rémunération", icon: TrendingUp, screen: "payouts" });
   }
-  if (mentor) groups[1].items.push({ label: "Finaliser mon profil", icon: UserRound, screen: "settings", settingsSection: "verification" });
+  if (mentor && !owner) groups[1].items.push({ label: "Finaliser mon profil", icon: UserRound, screen: "settings", settingsSection: "verification" });
   if (moderator || owner) {
     const tabs: [string, string, LucideIcon][] = [
       ["overview", "Vue d’ensemble", Layers],

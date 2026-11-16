@@ -1,3 +1,4 @@
+import {isCrmOwner} from "@/lib/crm";
 import { readPlatformSettings } from "@/lib/platform-settings";
 import { sendEmailsAfterResponse } from "@/lib/email-after";
 import { query, acceptAccompaniment } from "@/lib/db";
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
     if (Number(JSON.parse(String(mentor.details)).capacity) < 1)
       return json({ error: "Ce parrain n’a pas de place disponible." }, 409);
     if (
-      settings.verifiedMentorsOnly &&
+      settings.verifiedMentorsOnly && !await isCrmOwner(u) &&
       !(
         await query(
           "SELECT user_id FROM verifications WHERE user_id=$1 AND status='approved'",

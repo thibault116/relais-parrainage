@@ -6,7 +6,11 @@ export const plans = [
 ];
 export const creditPricingVersion = "v2";
 export const creditPurchaseCents = 2;
-export const creditPayoutCents = 1;
+export const creditPayoutCents = 1.5;
+export const maxServiceCredits=50000;
+export const servicePriceCents=(credits:number)=>Math.round(credits*creditPurchaseCents);
+export function sliderCredits(position:number){return position<=100?Math.max(1,Math.round(position*10)):Math.round(1000*Math.pow(50,(position-100)/900));}
+export function creditsSlider(credits:number){return credits<=1000?credits/10:100+900*Math.log(credits/1000)/Math.log(50);}
 export const minCustomCredits = 25;
 export const packs = [
   { id:"credits-v2-500",name:"Découverte",cents:1000,credits:500,purchasedCredits:500,bonusCredits:0 },

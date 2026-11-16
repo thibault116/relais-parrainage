@@ -1,0 +1,15 @@
+# Ajustements privés administrateur — 16 novembre 2026
+
+Tout reste limité à la vue du propriétaire principal et aux API existantes protégées. Aucun changement de release membre, aucune annonce Discord, aucun encaissement réel activé.
+
+- Portefeuille de test : rattrapage calculé à partir des paiements confirmés et remboursements enregistrés. Anciennes souscriptions reconnues par leur formule/période, anciennes recharges recalculées au tarif standard de 2 centimes/crédit, nouvelles offres v2 conservées avec leurs bonus. Les dépenses passées en crédits restent inchangées. Aucun montant de crédit arbitraire n’est demandé au navigateur.
+- Rattrapage transactionnel sous verrou du compte, avec audit de l’ancien nombre de crédits/reprises et écriture de correction unique par paiement. Les confirmations tardives et futurs renouvellements de test utilisent le nouveau barème après activation de cette révision. Les remboursements ultérieurs reprennent les crédits corrigés. Une seconde exécution ne recrédite pas les mêmes paiements. Les écritures réelles restent isolées et inchangées.
+- Le quota de l’abonnement actif de test reprend la formule actuelle, notamment Plus à 1 600 crédits/mois. Les véritables abonnements gardent leurs données contractuelles Stripe.
+- Nouvelle rémunération : 1,50 € pour 100 crédits. Le taux configurable est 1,5 centime par crédit. Le montant de la réservation est arrondi au centime puis figé ; les anciennes réservations et demandes de retrait ne sont pas réévaluées. L’achat reste à 2 € les 100 crédits au tarif de base, les bonus des packs étant conservés.
+- Prestations : jusqu’à 50 000 crédits, jauge progressive de 10 à 50 000 et saisie exacte, coût indicatif en euros au tarif standard et rémunération prévue. Auteur avec avatar rond et lien vers son profil ; aucune vignette vide si une image n’a pas été choisie.
+- Demandes : libellé raccourci, prestations terminées/remboursées retirées de la liste des demandes, historique et statistiques conservés.
+- Paiement : une seule case « J’accepte les conditions de paiement et de confidentialité ». Les liens de confidentialité, CGV et rétractation restent accessibles sur la page ouverte par ce lien, sans duplication sous la case. Le texte contractuel n’est pas réécrit ni déclaré validé.
+- Vérification : badges, rappels et entrée Finaliser mon profil masqués dans la vue du propriétaire uniquement. Le contrôle réservé aux parrains vérifiés ne bloque plus ses propres demandes. Le fonctionnement des autres membres, les dossiers, leurs états et l’onglet Administration → Dossiers parrains sont conservés.
+- Profils : dates, informations secondaires et questionnaire détaillé regroupés dans des sections fermées par défaut, uniquement dans cette vue privée. Les informations ne sont pas effacées.
+
+Vérifications : test-private-services.ts (droits, rattrapage, concurrence, remboursement et confirmation tardive), test-credit-pricing-v2.ts (tarifs, jauge et rémunération), test-money-modes.ts, test-monetization.ts, build Next.js, contrôle visuel et exécution de la correction sur le portefeuille de test du propriétaire.

@@ -1,8 +1,9 @@
+import {hasCurrentTestCredits,repricedPayment} from "./test-wallet";
 import {billingLive,moneyMode} from "./mode";
 import Stripe from "stripe";
 import { query } from "./db";
 import { isCrmOwner } from "../crm";
-import { checkoutOffer, offer, plans, isSubscriptionOffer } from "./catalog";
+import { checkoutOffer, offer, plans, isSubscriptionOffer, currentCheckoutCode } from "./catalog";
 import { lock, entry, moneyTransaction } from "./store";
 import { stripeBilling, returnUrl } from "./stripe";
 export const objectId = (v: unknown): string =>
@@ -185,14 +186,19 @@ export async function recordPaid(
 ) {
   return moneyTransaction(async (q) => {
     await lock(q, owner);
+    let awarded=credits;
+    if(!billingLive()&&(await q("SELECT owner_id FROM money_test_wallet_updates WHERE owner_id=$1",[owner])).length){
+      const [order]=await q("SELECT offer FROM money_orders WHERE session_id=$1 AND owner_id=$2",[id,owner]);
+      awarded=repricedPayment({id,amount,credits,refund_amount:0,reversed_credits:0,offer:order?String(order.offer):null});
+    }
     await q(
       "INSERT INTO money_payments(id,owner_id,payment_intent,amount,credits,invoice_url,created_at) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(id) DO NOTHING",
-      [id, owner, pi || null, amount, credits, url, new Date().toISOString()],
+      [id, owner, pi || null, amount, awarded, url, new Date().toISOString()],
     );
     await entry(
       q,
       owner,
-      credits,
+      awarded,
       billingLive()?"Paiement Stripe confirmé":"Paiement Stripe test confirmé",
       `payment:${id}`,
     );
@@ -323,7 +329,8 @@ export async function handleEvent(event: Stripe.Event) {
         const billedPrice = priceId ? await s.prices.retrieve(objectId(priceId)) : null;
         const interval = billedPrice?.recurring?.interval ??
           sub.items.data[0]?.price.recurring?.interval;
-        const item = checkoutOffer(billedMetadata.mentora_offer || (interval === "year" ? `${billedPlan}-annual` : billedPlan));
+        const planCode=interval === "year" ? `${billedPlan}-annual` : billedPlan;
+        const item = checkoutOffer(await hasCurrentTestCredits(owner)?currentCheckoutCode(planCode):(billedMetadata.mentora_offer || planCode));
         if (!item || !(isSubscriptionOffer(item))) return;
         if (
           !!invoice.livemode!==billingLive() ||

@@ -15,6 +15,6 @@ export function liveReadiness(){
  if(!process.env.STRIPE_LIVE_WEBHOOK_SECRET?.startsWith("whsec_"))missing.push("Webhook Stripe réel");
  if(process.env.MENTORA_COMMERCIAL_VALIDATED!=="true"||!process.env.MENTORA_COMMERCIAL_VALIDATION_REFERENCE?.trim())missing.push("Validation commerciale et juridique");
  if(!process.env.MENTORA_LIVE_TERMS_VERSION?.trim()||process.env.MENTORA_LIVE_TERMS_VERSION?.startsWith("test"))missing.push("Version des CGV réelles");
- const cents=Number(process.env.MENTORA_LIVE_PAYOUT_CENTS);if(!Number.isInteger(cents)||cents<=0||cents>1000)missing.push("Taux de rémunération réel");
+ const cents=Number(process.env.MENTORA_LIVE_PAYOUT_CENTS);if(!Number.isFinite(cents)||!Number.isInteger(cents*100)||cents<=0||cents>1000)missing.push("Taux de rémunération réel");
  return {ready:missing.length===0,missing};
 }

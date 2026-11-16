@@ -1,4 +1,5 @@
 "use client";
+import {useOwnerPreview} from "./owner-preview";
 import { t as translateUi, locale } from "@/app/components/language";
 import { usePlatformSettings } from "./platform-settings";
 import { useCallback, useEffect, useState } from "react";
@@ -77,6 +78,7 @@ export function RequestAccompaniment({
     [sent, setSent] = useState(false),
     [objective, setObjective] = useState(""),
     [error, setError] = useState("");
+  const privateOwner=useOwnerPreview();
   const settings = usePlatformSettings();
   if (!settings.requestsEnabled)
     return (
@@ -84,7 +86,7 @@ export function RequestAccompaniment({
         {translateUi("Les nouvelles demandes sont temporairement en pause.")}
       </p>
     );
-  if (settings.verifiedMentorsOnly && !verified)
+  if (settings.verifiedMentorsOnly && !verified && !privateOwner)
     return (
       <p>
         {translateUi(

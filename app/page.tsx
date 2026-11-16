@@ -1058,7 +1058,7 @@ export default function App() {
             {!phoneLayout && ["accompaniments", "requests", "tasks", "following"].includes(selectedProfileTab) && (
               <h1 className="compact-page-title">{translateUi(
                 selectedProfileTab === "accompaniments" ? "Accompagnements en cours" :
-                selectedProfileTab === "requests" ? "Demandes de parrainage" :
+                selectedProfileTab === "requests" ? (owner?"Demandes":"Demandes de parrainage") :
                 selectedProfileTab === "following" ? "Abonnés et abonnements" :
                 profile?.role === "mentor" ? "Objectifs à atteindre" : "Mes objectifs",
               )}</h1>
@@ -2259,7 +2259,9 @@ function ProfileCard({
   onOpen,
   own = false,
   canRequest = false,
+  pauseVerification = false,
 }: {
+  pauseVerification?:boolean;
   p: PublicProfile;
   onOpen: () => void;
   own?: boolean;
@@ -2280,8 +2282,8 @@ function ProfileCard({
             {translateUi(
               p.role === "mentor" ? (
                 <>
-                  <ShieldCheck size={17} />
-                  {translateUi(
+                  {!pauseVerification&&<ShieldCheck size={17}/>}
+                  {pauseVerification?"Parrain":translateUi(
                     p.verification ? "Parrain vérifié" : "Parrain non vérifié",
                   )}{" "}
                   · {translateUi(experience)}
@@ -2651,12 +2653,12 @@ function Directory({
               : `${total} ${role === "mentor" ? "parrain" : "débutant"}${total > 1 ? "s" : ""} disponible${total > 1 ? "s" : ""}`,
           )}
         </span>
-        <span>
+        {!privateServices&&<span>
           <ShieldCheck size={14} />
           {translateUi(
             " Badges v\u00E9rifi\u00E9s apr\u00E8s examen \u00B7 autres informations d\u00E9claratives",
           )}
-        </span>
+        </span>}
       </div>
       {error ? (
         <div className="empty">
@@ -2678,6 +2680,7 @@ function Directory({
           {profiles.map((p) => (
             <ProfileCard
               key={p.id}
+              pauseVerification={privateServices}
               p={p}
               onOpen={() => open(p)}
               canRequest={own?.role === "beginner" && p.id !== own.id}
@@ -2854,7 +2857,7 @@ function Directory({
             <h2 id="member-title">{selected.name}</h2>
             <VerificationBadge profile={selected} />
             <FollowCounts profile={selected} />
-            <ProfileDates profile={selected} />
+            {!privateServices&&<ProfileDates profile={selected} />}
             {session && selected.id !== own?.id && (
               <fieldset
                 className="preview-controls"
@@ -2880,7 +2883,7 @@ function Directory({
                 />
               </fieldset>
             )}
-            {selected.role === "mentor" && (
+            {selected.role === "mentor" && (!privateServices || selected.id!==own?.id) && (
               <RatingSummary
                 average={selected.ratingAverage}
                 count={selected.ratingCount}
@@ -2899,7 +2902,7 @@ function Directory({
                 <ReportProfile key={selected.id} profileId={selected.id} />
               </fieldset>
             )}
-            <div className="detail-grid">
+            {privateServices?<details className="profile-extra-details"><summary>Plus d’informations</summary>            <div className="detail-grid">
               <div>
                 <small>{translateUi("Exp\u00E9rience")}</small>
                 <strong>
@@ -2941,6 +2944,49 @@ function Directory({
                   </div>
                 )}
             </div>
+<ProfileDates profile={selected}/></details>:(<>             <div className="detail-grid">
+              <div>
+                <small>{translateUi("Exp\u00E9rience")}</small>
+                <strong>
+                  {selected.experience}
+                  {translateUi(" mois")}
+                </strong>
+              </div>
+
+              <div>
+                <small>{translateUi("Disponibilit\u00E9s")}</small>
+                <strong>{translateUi(selected.availability)}</strong>
+              </div>
+              <div>
+                <small>{translateUi("Dur\u00E9e souhait\u00E9e")}</small>
+                <strong>{translateUi(selected.duration)}</strong>
+              </div>
+              <div>
+                <small>{translateUi("R\u00E9ponses")}</small>
+                <strong>{translateUi(selected.responseTime)}</strong>
+              </div>
+              {selected.age !== "Non précisé" && (
+                <div>
+                  <small>{translateUi("Tranche d\u2019\u00E2ge")}</small>
+                  <strong>{translateUi(selected.age)}</strong>
+                </div>
+              )}
+              {selected.role === "mentor" &&
+                selected.revenue !== "Je préfère ne pas préciser" && (
+                  <div>
+                    <small>{translateUi("CA mensuel d\u00E9clar\u00E9")}</small>
+                    <strong>{translateUi(selected.revenue)}</strong>
+                  </div>
+                )}
+              {selected.role === "beginner" &&
+                selected.budget !== "Non précisé" && (
+                  <div>
+                    <small>{translateUi("Budget de d\u00E9part")}</small>
+                    <strong>{translateUi(selected.budget)}</strong>
+                  </div>
+                )}
+            </div>
+ </>)}
             <h3>
               {translateUi(
                 selected.role === "mentor"
@@ -2959,17 +3005,14 @@ function Directory({
                 <p>{selected.references}</p>
               </>
             )}
-            <p className="small-text">
+            {!privateServices&&<p className="small-text">
               {translateUi(
                 "Informations d\u00E9clar\u00E9es par le membre, non v\u00E9rifi\u00E9es. Aucun r\u00E9sultat financier garanti.",
               )}
-            </p>
+            </p>}
             <MobileProfileActions profileId={selected.id} />
             {privateServices&&selected.role==="mentor"&&<PrivateServiceCatalog profileId={selected.id}/>}
-            {selected.role === "mentor" && (
-              <MentorPortfolio profileId={selected.id} />
-            )}
-            <OnboardingSummary data={selected.resell} profileId={selected.id} />
+            {privateServices?<details className="profile-extra-details"><summary>Parcours et références</summary>{selected.role==="mentor"&&<MentorPortfolio profileId={selected.id}/>}<OnboardingSummary data={selected.resell} profileId={selected.id}/></details>:<>{selected.role==="mentor"&&<MentorPortfolio profileId={selected.id}/>}<OnboardingSummary data={selected.resell} profileId={selected.id}/></>}
             {contact ? (
               <div className="contact-panel">
                 <strong>@{contact.discord}</strong>

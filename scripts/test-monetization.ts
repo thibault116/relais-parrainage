@@ -125,7 +125,7 @@ try {
     (
       await query("SELECT payout_cents FROM money_bookings WHERE id=$1", [id])
     )[0].payout_cents,
-    12,
+    18,
   );
   await bookingAction(owner, id, "refund");
   assert.equal(await balance(query, owner), 20);

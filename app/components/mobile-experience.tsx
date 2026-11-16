@@ -186,7 +186,7 @@ export function MobileExperience({
   onNavigate?: (view: string, tab?: string, section?: string) => void;
   onOpenProfile: (id: string, role: string) => void;
 }) {
-  const completionNeeded = useMentorCompletion(profile?.role === "mentor");
+  const completionNeeded = useMentorCompletion(profile?.role === "mentor" && !administrator) && !administrator;
   const extras = useFeature("mobileExtras"),
     dm = useFeature("privateMessaging"),
     channels = useFeature("communityChannels");
