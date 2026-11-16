@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 import { z } from "zod";
-import { query } from "../db";
+import { query } from "./db";
 import { isCrmOwner } from "../crm";
 import { lock, moneyTransaction, balance as creditBalance } from "./store";
 import { stripeTest, appOrigin } from "./stripe";

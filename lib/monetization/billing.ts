@@ -1,5 +1,6 @@
-import { query } from "../db";
-import { stripeTest } from "./stripe";
+import {billingLive} from "./mode";
+import { query } from "./db";
+import { stripeBilling } from "./stripe";
 import { objectId } from "./payments";
 import { annualPrice, plans } from "./catalog";
 import { lock, moneyTransaction } from "./store";
@@ -9,18 +10,18 @@ export async function billingDetails(owner: string) {
   )[0];
   if (!a?.customer_id)
     return { card: null, renewal: null, invoices: [], pendingPlan: null };
-  const s = stripeTest();
+  const s = stripeBilling();
   const customer = await s.customers.retrieve(String(a.customer_id), {
     expand: ["invoice_settings.default_payment_method"],
   });
-  if (customer.deleted || customer.livemode)
-    throw Error("Client test invalide");
+  if (customer.deleted || !!customer.livemode!==billingLive())
+    throw Error("Client Stripe invalide");
   const sub = a.subscription_id
     ? await s.subscriptions.retrieve(String(a.subscription_id), {
         expand: ["default_payment_method"],
       })
     : null;
-  if (sub && (sub.livemode || objectId(sub.customer) !== customer.id))
+  if (sub && (!!sub.livemode!==billingLive() || objectId(sub.customer) !== customer.id))
     throw Error("Abonnement invalide");
   const pm =
     sub?.default_payment_method ||
@@ -73,10 +74,10 @@ export async function manageSubscription(
     const a = await lock(q, owner);
     if (!a.subscription_id || !a.customer_id)
       throw Error("Aucun abonnement actif");
-    const s = stripeTest();
+    const s = stripeBilling();
     let sub = await s.subscriptions.retrieve(String(a.subscription_id));
     if (
-      sub.livemode ||
+      !!sub.livemode!==billingLive() ||
       objectId(sub.customer) !== a.customer_id ||
       !["active", "trialing"].includes(sub.status)
     )
@@ -112,7 +113,7 @@ export async function manageSubscription(
         currency: "eur",
         unit_amount: period === "year" ? annualPrice(target.cents) : target.cents,
         recurring: { interval: period },
-        product_data: { name: `Mentora ${target.name} · TEST` },
+        product_data: { name: `Mentora ${target.name}${billingLive()?"":" · TEST"}` },
       },
       { idempotencyKey: `mentora-switch-price-v1:${target.id}:${period}` },
     );

@@ -1,7 +1,7 @@
 import {z} from "zod";
 import {user,json,guard,sameOrigin} from "@/lib/http";
 import {isCrmOwner} from "@/lib/crm";
-import {query} from "@/lib/db";
+import {query} from "@/lib/monetization/db";
 import {book,bookingAction,moneyTransaction,lock} from "@/lib/monetization/store";
 import {saveProof,readProof,deleteProof,detectProofType} from "@/lib/proof-storage";
 export const runtime="nodejs";

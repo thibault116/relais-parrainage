@@ -7,6 +7,7 @@ import {getAuth} from "../lib/auth";
 import {getMigrations} from "better-auth/db/migration";
 import {migrateMonetization,saveService,entry,balance} from "../lib/monetization/store";
 import {GET,POST} from "../app/api/admin/prestations/route";
+import {GET as offers} from "../app/api/offers/route";
 import {POST as save} from "../app/api/admin/monetization/route";
 if(process.env.DATABASE_URL||process.env.VERCEL)throw Error("Local isolated tests only");
 const cwd=process.cwd(),dir=await mkdtemp(join(tmpdir(),"mentora-private-services-"));process.chdir(dir);
@@ -20,6 +21,9 @@ try{
  await query("INSERT INTO moderators(user_id,email) VALUES($1,$2)",[member.id,"service-fixture@example.test"]);
  const profile=crypto.randomUUID();await query("INSERT INTO profiles(id,user_id,discord,role,name,details,updated_at) VALUES($1,$2,'fixture','mentor','Parrain fixture','{}',$3)",[profile,owner.id,new Date().toISOString()]);
  const url="http://localhost:3000/api/admin/prestations",headers=(cookie=owner.cookie,origin="http://localhost:3000")=>({cookie,origin,"Content-Type":"application/json"});
+ assert.equal((await offers(new Request("http://localhost:3000/api/offers"))).status,401);
+ assert.equal((await offers(new Request("http://localhost:3000/api/offers",{headers:{cookie:member.cookie}}))).status,403);
+ const offerResult=await offers(new Request("http://localhost:3000/api/offers",{headers:{cookie:owner.cookie}}));assert.equal(offerResult.status,200);assert.equal((await offerResult.json()).mode,"test");
  const post=(d:unknown,c=owner.cookie,o="http://localhost:3000")=>POST(new Request(url,{method:"POST",headers:headers(c,o),body:JSON.stringify(d)}));
  for(const cookie of ["",member.cookie]){assert.equal((await GET(new Request(url,{headers:{cookie}}))).status,403);assert.equal((await post({action:"request",id:crypto.randomUUID(),key:crypto.randomUUID()},cookie)).status,403);}
  assert.equal((await post({},owner.cookie,"https://foreign.example")).status,403);

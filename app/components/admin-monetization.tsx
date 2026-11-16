@@ -34,6 +34,8 @@ type Booking = {
   slot: string;
 };
 type Data = {
+  mode:"test"|"live";
+  salesVersion:string;
   plans: typeof plans;
   packs: typeof packs;
   comparison: { label: string; values: string[] }[];
@@ -142,7 +144,7 @@ export function AdminMonetization({
   async function send(body: Record<string, unknown>) {
     if (busy) return false;
     if (body.action === "checkout" && !accepted) {
-      setError("Accepte les conditions des paiements de test avant de continuer.");
+      setError("Accepte les conditions de vente avant de continuer.");
       return false;
     }
     setBusy(true);
@@ -154,7 +156,7 @@ export function AdminMonetization({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...body,
-            ...(body.action === "checkout" ? { acceptedTermsVersion: testSalesVersion } : {}),
+            ...(body.action === "checkout" ? { acceptedTermsVersion: data?.salesVersion || testSalesVersion } : {}),
             returnTo: dedicated
               ? tab === "wallet"
                 ? "credits"
@@ -168,7 +170,7 @@ export function AdminMonetization({
         window.location.assign(d.url);
         return true;
       }
-      setMessage(d.message || "Enregistré dans ton espace de test.");
+      setMessage(d.message || "Enregistré.");
       await load();
       if (tab === "plans") await loadBilling();
       return true;
@@ -270,7 +272,7 @@ export function AdminMonetization({
             }
           </p>}
         </header>
-        <span className="commerce-test">TEST PRIVÉ · Aucun paiement réel</span>
+        <span className="commerce-test">{data.mode==="live"?"PRIVÉ · Paiements réels":"TEST PRIVÉ · Aucun paiement réel"}</span>
         {error && (
           <p role="alert" className="error">
             {error}
@@ -349,7 +351,7 @@ export function AdminMonetization({
                 <p>
                   Formules {annual ? "annuelles" : "mensuelles"} · changement au prochain renouvellement.
                 </p>
-                {current.id === "free" && <TestSalesAcceptance checked={accepted} onChange={setAccepted} />}
+                {current.id === "free" && <TestSalesAcceptance live={data.mode==="live"} checked={accepted} onChange={setAccepted} />}
                 {data.plans.map((p) => (
                   <article
                     className={`commerce-card ${current.id === p.id ? "chosen" : ""}`}
@@ -440,7 +442,7 @@ export function AdminMonetization({
                     if (
                       window.confirm(
                         data.account.cancel_at_end
-                          ? "Reprendre le renouvellement test ?"
+                          ? "Reprendre le renouvellement ?"
                           : "Résilier à la fin de la période et annuler tout changement programmé ?",
                       )
                     )
@@ -507,9 +509,9 @@ export function AdminMonetization({
                   <CircleX />
                 </button>
               </div>
-              <p>Paiement Stripe en mode test</p>
-              <TestSalesAcceptance checked={accepted} onChange={setAccepted} />
-              {!data.configured && <p>Stripe test est indisponible.</p>}
+              <p>{data.mode==="live"?"Paiement Stripe réel":"Paiement Stripe en mode test"}</p>
+              <TestSalesAcceptance live={data.mode==="live"} checked={accepted} onChange={setAccepted} />
+              {!data.configured && <p>Le paiement est indisponible.</p>}
               {error && <p role="alert">{error}</p>}
               <div className="commerce-packs">
                 {data.packs.map((p) => (
@@ -714,8 +716,8 @@ export function AdminMonetization({
         </button>
       )}
       <div className="pricing-private">
-        <strong>Monétisation · TEST · toi uniquement</strong>
-        <span>Aucun encaissement ni versement réel</span>
+        <strong>{data.mode==="live"?"Monétisation · privée":"Monétisation · TEST · toi uniquement"}</strong>
+        <span>{data.mode==="live"?"Paiements réels · compte principal uniquement":"Aucun encaissement ni versement réel"}</span>
       </div>
       {!dedicated && (
         <p>
@@ -810,7 +812,7 @@ export function AdminMonetization({
                   if (
                     window.confirm(
                       data.account.cancel_at_end
-                        ? "Reprendre le renouvellement de cet abonnement test ?"
+                        ? "Reprendre le renouvellement de cet abonnement ?"
                         : "Résilier à la fin de la période et annuler tout changement d’offre programmé ?",
                     )
                   )
@@ -828,7 +830,7 @@ export function AdminMonetization({
             )}
           </section>
 
-          {data.account.plan === "free" && <TestSalesAcceptance checked={accepted} onChange={setAccepted} />}
+          {data.account.plan === "free" && <TestSalesAcceptance live={data.mode==="live"} checked={accepted} onChange={setAccepted} />}
           <div className="pricing-cards">
             {data.plans.map((p, i) => (
               <article className="pricing-card" key={p.id}>
@@ -946,7 +948,7 @@ export function AdminMonetization({
       {tab === "wallet" && (
         <>
           <h3>Recharger avec Stripe test</h3>
-          <TestSalesAcceptance checked={accepted} onChange={setAccepted} />
+          <TestSalesAcceptance live={data.mode==="live"} checked={accepted} onChange={setAccepted} />
           <div className="pricing-pack-grid">
             {data.packs.map((p) => (
               <article key={p.id}>

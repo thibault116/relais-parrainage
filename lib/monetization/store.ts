@@ -1,7 +1,7 @@
-import { query, inTransaction, database } from "../db";
+import { query, inTransaction, database } from "./db";
 import { Pool } from "pg";
 import { z } from "zod";
-import { payoutRate } from "./catalog";
+import { payoutRate } from "./payout-rate";
 import { migrateConnect } from "./connect-schema";
 let queue: Promise<unknown> = Promise.resolve();
 export function moneyTransaction<T>(

@@ -26,7 +26,7 @@ export async function POST(request:Request) {
   } catch(error) {
     // No Stripe calls, no real banking API, no raw request/IBAN in responses or logs.
     if(error instanceof z.ZodError)return json({error:"Vérifie le titulaire, le pays et l’IBAN."},400);
-    const allowed=["Enregistrement bancaire non configuré.","Coordonnées bancaires illisibles.","Enregistre ton IBAN avant la demande.","Solde de crédits à régulariser.","Aucun gain disponible.","Demande introuvable.","Cette demande ne peut plus être annulée."];
+    const allowed=["Les versements réels sont désactivés.","Enregistrement bancaire non configuré.","Coordonnées bancaires illisibles.","Enregistre ton IBAN avant la demande.","Solde de crédits à régulariser.","Aucun gain disponible.","Demande introuvable.","Cette demande ne peut plus être annulée."];
     return json({error:allowed.includes((error as Error).message)?(error as Error).message:"Opération non confirmée."},400);
   }
 }

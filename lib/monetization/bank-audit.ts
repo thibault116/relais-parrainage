@@ -1,4 +1,4 @@
-import {query} from "../db";
+import {query} from "./db";
 type Audit={requestId:string;owner:string;actor:string;action:string;from:string;to:string;revision:number;reference?:string;reason?:string;key?:string};
 export async function auditBank(q:typeof query,a:Audit) {
   const id=crypto.randomUUID();

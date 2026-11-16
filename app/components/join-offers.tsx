@@ -15,7 +15,7 @@ import { TestSalesAcceptance } from "./test-sales-acceptance";
 import { testSalesVersion } from "@/lib/legal-versions";
 import type { joinOffers } from "@/lib/join-offers";
 type OfferData = ReturnType<typeof joinOffers>;
-type Data = OfferData & { currentPlan: string; subscriptionStatus: string };
+type Data = OfferData & { mode:"test"|"live";salesVersion:string;currentPlan: string; subscriptionStatus: string };
 type Props =
   | { onManage: () => void; previewOffers?: never }
   | { previewOffers: OfferData; onManage?: never };
@@ -59,7 +59,7 @@ export function JoinOffers({ onManage, previewOffers }: Props) {
           offer: annual ? `${id}-annual` : id,
           key: crypto.randomUUID(),
           returnTo: "billing",
-          acceptedTermsVersion: testSalesVersion,
+          acceptedTermsVersion: accountOffers?.salesVersion || testSalesVersion,
         }),
       });
       const result = await response.json();
@@ -97,7 +97,7 @@ export function JoinOffers({ onManage, previewOffers }: Props) {
           Mentora.
         </p>
         <small>
-          {previewOffers ? "Aperçu des offres" : "Espace privé · Paiements Stripe en mode test."}
+          {previewOffers ? "Aperçu des offres" : accountOffers?.mode==="live"?"Espace privé · Paiements réels.":"Espace privé · Paiements Stripe en mode test."}
         </small>
       </header>
       <div
@@ -112,7 +112,7 @@ export function JoinOffers({ onManage, previewOffers }: Props) {
           Annuel <span>−{data.discount} %</span>
         </button>
       </div>
-      {!previewOffers && !hasSubscription && <TestSalesAcceptance checked={accepted} onChange={setAccepted} />}
+      {!previewOffers && !hasSubscription && <TestSalesAcceptance live={accountOffers?.mode==="live"} checked={accepted} onChange={setAccepted} />}
       {checkoutError && <p role="alert">{checkoutError}</p>}
       <div className="join-cards">
         {data.plans.map((p, i) => {

@@ -1,9 +1,10 @@
-import { testSalesVersion } from "@/lib/legal-versions";
+import {payoutRate} from "@/lib/monetization/payout-rate";
+import {salesVersion,moneyMode,billingLive,liveReadiness} from "@/lib/monetization/mode";
 import { manageSubscription } from "@/lib/monetization/billing";
 import { user, json, guard } from "@/lib/http";
 import { isCrmOwner } from "@/lib/crm";
-import { query } from "@/lib/db";
-import { plans, packs, payoutRate, maxCustomCredits } from "@/lib/monetization/catalog";
+import { query } from "@/lib/monetization/db";
+import { plans, packs, maxCustomCredits } from "@/lib/monetization/catalog";
 import {
   balance,
   saveService,
@@ -11,7 +12,7 @@ import {
   bookingAction,
 } from "@/lib/monetization/store";
 import { checkout, portal, objectId } from "@/lib/monetization/payments";
-import { stripeTest } from "@/lib/monetization/stripe";
+import { stripeBilling } from "@/lib/monetization/stripe";
 import { pricingProposal } from "@/lib/pricing-proposal";
 import { z } from "zod";
 export const runtime = "nodejs";
@@ -22,13 +23,15 @@ export async function GET(r: Request) {
   try {
     const id = u!.id;
     return json({
+      mode:moneyMode(),
+      salesVersion:salesVersion(),
+      readiness:billingLive()?liveReadiness():null,
       plans,
       packs,
       comparison: pricingProposal.comparison,
       payoutRate: payoutRate(),
       configured:
-        /^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY || "") &&
-        !!process.env.STRIPE_WEBHOOK_SECRET,
+        billingLive()?liveReadiness().ready:/^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY || "") && !!process.env.STRIPE_WEBHOOK_SECRET,
       balance: await balance(query, id),
       account: (
         await query(
@@ -113,9 +116,9 @@ export async function POST(r: Request) {
       return json({ ok: true });
     }
     if (action === "checkout") {
-      if (d.acceptedTermsVersion !== testSalesVersion)
-        return json({ error: "Accepte les conditions des paiements de test avant de continuer." }, 400);
-      if (!process.env.STRIPE_WEBHOOK_SECRET)
+      if (d.acceptedTermsVersion !== salesVersion())
+        return json({ error: "Accepte les conditions de vente avant de continuer." }, 400);
+      if (!(billingLive()?process.env.STRIPE_LIVE_WEBHOOK_SECRET:process.env.STRIPE_WEBHOOK_SECRET))
         throw Error("Webhook Stripe non configuré");
       const code = d.credits === undefined
         ? z.string().parse(d.offer)
@@ -129,7 +132,7 @@ export async function POST(r: Request) {
             .enum(["admin", "billing", "credits"])
             .default("admin")
             .parse(d.returnTo),
-          testSalesVersion,
+          salesVersion(),
         ),
       });
     }
@@ -175,9 +178,9 @@ export async function POST(r: Request) {
         )
       )[0];
       if (!p?.payment_intent) throw Error("Paiement introuvable");
-      const s = stripeTest();
+      const s = stripeBilling();
       const pi = await s.paymentIntents.retrieve(String(p.payment_intent));
-      if (pi.livemode) throw Error("Mode réel refusé");
+      if (!!pi.livemode!==billingLive()) throw Error("Mode réel refusé");
       const account = (
         await query(
           "SELECT customer_id FROM money_accounts WHERE owner_id=$1",
@@ -193,7 +196,7 @@ export async function POST(r: Request) {
       return json({
         ok: true,
         message:
-          "Remboursement test demandé. Solde actualisé après confirmation Stripe.",
+          "Remboursement demandé. Solde actualisé après confirmation Stripe.",
       });
     }
     return json({ error: "Action inconnue" }, 400);

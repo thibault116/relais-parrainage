@@ -13,12 +13,6 @@ export const packs = [
 export function offer(id: string) {
   return [...plans, ...packs].find((p) => p.id === id);
 }
-export function payoutRate() {
-  const n = Number(process.env.MENTORA_TEST_PAYOUT_CENTS || 150);
-  if (!Number.isInteger(n) || n < 0 || n > 1000)
-    throw Error("Taux de rémunération test invalide");
-  return n;
-}
 
 export const annualDiscount = 20;
 export const maxCustomCredits = 1000;

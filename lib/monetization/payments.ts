@@ -1,9 +1,10 @@
+import {billingLive,moneyMode} from "./mode";
 import Stripe from "stripe";
-import { query } from "../db";
+import { query } from "./db";
 import { isCrmOwner } from "../crm";
 import { checkoutOffer, offer, plans } from "./catalog";
 import { lock, entry, moneyTransaction } from "./store";
-import { stripeTest, returnUrl } from "./stripe";
+import { stripeBilling, returnUrl } from "./stripe";
 export const objectId = (v: unknown): string =>
   typeof v === "string"
     ? v
@@ -15,11 +16,11 @@ export async function customer(owner: string) {
     await query("SELECT * FROM money_accounts WHERE owner_id=$1", [owner])
   )[0];
   if (a?.customer_id) return String(a.customer_id);
-  const c = await stripeTest().customers.create(
-    { name: "Mentora · essai administrateur" },
-    { idempotencyKey: `mentora-test-customer:${owner}` },
+  const c = await stripeBilling().customers.create(
+    { name: billingLive()?"Mentora · compte administrateur":"Mentora · essai administrateur" },
+    { idempotencyKey: `mentora-${moneyMode()}-customer:${owner}` },
   );
-  if (c.livemode) throw Error("Mode réel refusé");
+  if (!!c.livemode!==billingLive()) throw Error("Mode réel refusé");
   await query(
     "INSERT INTO money_accounts(owner_id,customer_id) VALUES($1,$2) ON CONFLICT(owner_id) DO UPDATE SET customer_id=excluded.customer_id",
     [owner, c.id],
@@ -35,13 +36,13 @@ export async function checkout(
 ) {
   const item = checkoutOffer(code);
   if (!item || !item.cents) throw Error("Offre inconnue");
-  const s = stripeTest(),
+  const s = stripeBilling(),
     cid = await customer(owner),
     subscription = "planId" in item ? item : null;
   // Keep one pending/active subscription per owner, including concurrent tabs.
   return moneyTransaction(async (q) => {
     await lock(q, owner);
-    const id = `${owner}:${key}`;
+    const id = `${billingLive()?"live:":""}${owner}:${key}`;
     const prior = (await q("SELECT * FROM money_orders WHERE id=$1", [id]))[0];
     if (prior) {
       if (prior.offer !== code) throw Error("Requête déjà utilisée");
@@ -105,7 +106,7 @@ export async function checkout(
             price_data: {
               currency: "eur",
               unit_amount: item.cents,
-              product_data: { name: `Mentora ${item.name} · TEST` },
+              product_data: { name: `Mentora ${item.name}${billingLive()?"":" · TEST"}` },
               ...(subscription
                 ? { recurring: { interval: subscription.period } }
                 : {}),
@@ -120,7 +121,7 @@ export async function checkout(
       },
       { idempotencyKey: `checkout:${id}` },
     );
-    if (session.livemode) throw Error("Mode réel refusé");
+    if (!!session.livemode!==billingLive()) throw Error("Mode réel refusé");
     await q(
       "INSERT INTO money_orders(id,owner_id,offer,session_id,created_at) VALUES($1,$2,$3,$4,$5)",
       [id, owner, code, session.id, new Date().toISOString()],
@@ -132,7 +133,7 @@ export async function syncSubscription(
   owner: string,
   sub: Stripe.Subscription,
 ) {
-  if (sub.livemode) throw Error("Mode réel refusé");
+  if (!!sub.livemode!==billingLive()) throw Error("Mode réel refusé");
   const plan = offer(sub.metadata.mentora_plan);
   if (!plan || !plans.some((p) => p.id === plan.id)) return;
   const account = (
@@ -142,7 +143,7 @@ export async function syncSubscription(
     )
   )[0];
   if (account?.subscription_id && account.subscription_id !== sub.id) {
-    const current = await stripeTest().subscriptions.retrieve(
+    const current = await stripeBilling().subscriptions.retrieve(
       String(account.subscription_id),
     );
     if (current.created > sub.created) return;
@@ -191,7 +192,7 @@ export async function recordPaid(
       q,
       owner,
       credits,
-      "Paiement Stripe test confirmé",
+      billingLive()?"Paiement Stripe confirmé":"Paiement Stripe test confirmé",
       `payment:${id}`,
     );
   });
@@ -220,7 +221,7 @@ export async function recordRefund(pi: string, amount: number) {
         q,
         String(p.owner_id),
         -delta,
-        "Remboursement Stripe test",
+        billingLive()?"Remboursement Stripe":"Remboursement Stripe test",
         `refund:${p.id}:${refunded}`,
       );
     await q(
@@ -232,7 +233,7 @@ export async function recordRefund(pi: string, amount: number) {
 }
 export async function reconcileRefund(pi: string) {
   if (!pi) return;
-  const intent = await stripeTest().paymentIntents.retrieve(pi, {
+  const intent = await stripeBilling().paymentIntents.retrieve(pi, {
     expand: ["latest_charge"],
   });
   const charge = intent.latest_charge;
@@ -240,12 +241,12 @@ export async function reconcileRefund(pi: string) {
     await recordRefund(pi, charge.amount_refunded);
 }
 export async function handleEvent(event: Stripe.Event) {
-  if (event.livemode) throw Error("Événement réel refusé");
+  if (!!event.livemode!==billingLive()) throw Error("Événement réel refusé");
   if (
     (await query("SELECT id FROM money_events WHERE id=$1", [event.id])).length
   )
     return;
-  const s = stripeTest();
+  const s = stripeBilling();
   if (
     [
       "checkout.session.completed",
@@ -256,7 +257,7 @@ export async function handleEvent(event: Stripe.Event) {
     const session = await s.checkout.sessions.retrieve(
       objectId(event.data.object),
     );
-    if (session.livemode) throw Error("Mode réel refusé");
+    if (!!session.livemode!==billingLive()) throw Error("Mode réel refusé");
     const owner = await ownerOf(objectId(session.customer));
     if (owner) {
       const order = (
@@ -324,7 +325,7 @@ export async function handleEvent(event: Stripe.Event) {
         const item = checkoutOffer(interval === "year" ? `${billedPlan}-annual` : billedPlan);
         if (!item || !("planId" in item)) return;
         if (
-          invoice.livemode ||
+          !!invoice.livemode!==billingLive() ||
           invoice.currency !== "eur" ||
           invoice.amount_paid !== item.cents
         )
@@ -375,17 +376,17 @@ export async function portal(
   destination: "admin" | "billing" | "credits" = "admin",
 ) {
   const cid = await customer(owner),
-    s = stripeTest();
+    s = stripeBilling();
   const config = await s.billingPortal.configurations.create(
     {
-      business_profile: { headline: "Mentora · environnement de test privé" },
+      business_profile: { headline: billingLive()?"Mentora · abonnement et facturation":"Mentora · environnement de test privé" },
       features: {
         invoice_history: { enabled: true },
         payment_method_update: { enabled: true },
         subscription_cancel: { enabled: true, mode: "at_period_end" },
       },
     },
-    { idempotencyKey: "mentora-test-portal-v1" },
+    { idempotencyKey: `mentora-${moneyMode()}-portal-v1` },
   );
   return (
     await s.billingPortal.sessions.create({

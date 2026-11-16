@@ -1,3 +1,4 @@
+import {query as moneyQuery} from "./monetization/db";
 import { randomUUID, createHash } from "node:crypto";
 import { query, inTransaction } from "./db";
 import { canUseFeature } from "./beta";
@@ -239,7 +240,7 @@ export async function mobileNotices(userId: string) {
         });
     }
   }
-  for(const event of await query("SELECT a.id,a.to_state,a.created_at,w.mode FROM money_bank_audit a JOIN money_bank_workflow w ON w.request_id=a.request_id WHERE a.owner_id=$1 AND a.action IN ('processing','paid','refused') ORDER BY a.created_at DESC LIMIT 30",[userId]))notices.push({
+  for(const event of await moneyQuery("SELECT a.id,a.to_state,a.created_at,w.mode FROM money_bank_audit a JOIN money_bank_workflow w ON w.request_id=a.request_id WHERE a.owner_id=$1 AND a.action IN ('processing','paid','refused') ORDER BY a.created_at DESC LIMIT 30",[userId]))notices.push({
     id:`bank:${event.id}`,title:`Retrait : ${withdrawalLabels[String(event.to_state)]||"mis à jour"}${event.mode==="test"?" · test":""}`,date:String(event.created_at),destination:"payouts",
   });
   const reads = new Set(

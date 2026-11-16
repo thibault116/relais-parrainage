@@ -1,7 +1,8 @@
+import {billingLive} from "./mode";
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { isValidIBAN } from "ibantools";
 import { z } from "zod";
-import { query } from "../db";
+import { query } from "./db";
 import { balance, lock, moneyTransaction } from "./store";
 import { eligibleSql } from "./earnings";
 import {manualPayoutPolicy} from "./manual-payout-policy";
@@ -55,12 +56,13 @@ export async function manualBankOverview(owner:string) {
     query<RequestRow>("SELECT id,amount_cents,status,created_at FROM money_connect_withdrawals WHERE owner_id=$1 ORDER BY created_at DESC",[owner]),
   ]);
   // Return a masked bank only, never the IBAN or encrypted snapshots.
-  return {testMode:!manualPayoutPolicy().liveEnabled,configured:bankStorageConfigured(),bank:saved[0]?summary(decryptBankSnapshot(owner,"saved",saved[0].payload)):null,
+  return {testMode:!billingLive(),withdrawalsEnabled:!billingLive()||manualPayoutPolicy().liveEnabled,configured:bankStorageConfigured(),bank:saved[0]?summary(decryptBankSnapshot(owner,"saved",saved[0].payload)):null,
     availableCents:earnings.reduce((n,e)=>n+Number(e.payout_cents),0),
     history:[...requests.map(r=>({...r,kind:"manual"})),...connect.map(r=>({...r,kind:"stripe"}))].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))),
   };
 }
 export async function requestBankTransfer(owner:string,requestKey:unknown) {
+  if(billingLive()&&!manualPayoutPolicy().liveEnabled)throw Error("Les versements réels sont désactivés.");
   const reference=`${owner}:${uuid.parse(requestKey)}`;
   return moneyTransaction(async q=>{
     await lock(q,owner);

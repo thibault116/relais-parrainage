@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 import { z } from "zod";
-import { query, database } from "../db";
+import { query, database } from "./db";
 import { Pool } from "pg";
 import { testPayoutCents } from "./payout-config";
 import { stripeTest } from "./stripe";

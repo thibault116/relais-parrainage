@@ -132,7 +132,7 @@ try {
   assert.equal(manualPayoutPolicy().liveEnabled,false);
   process.env.MENTORA_MANUAL_PAYOUTS_LIVE_ENABLED="true";assert.equal(manualPayoutPolicy().liveEnabled,false);
   process.env.MENTORA_MANUAL_PAYOUTS_LEGAL_VALIDATED="true";assert.equal(manualPayoutPolicy().liveEnabled,false);
-  process.env.MENTORA_MANUAL_PAYOUTS_LEGAL_VALIDATION_REFERENCE="fixture-legal-only";assert.equal(manualPayoutPolicy().liveEnabled,true);
+  process.env.MENTORA_MANUAL_PAYOUTS_LEGAL_VALIDATION_REFERENCE="fixture-legal-only";assert.equal(manualPayoutPolicy().liveEnabled,false); // test earnings never become real
   assert.equal((await manualBankOverview(owner)).history.find(r=>r.id===next.id)?.mode,"test");
   for(const k of policyKeys)delete process.env[k];
   const otherService=await saveService(other,{title:"Test autre parrain",description:"Prestation du deuxième parrain pour tester l’isolation.",category:"Conseil",duration:0,calls:0,followup:"",availability:"Messages",credits:1,capacity:10,published:true});

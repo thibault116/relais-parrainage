@@ -1,29 +1,18 @@
-import { stripeTest } from "@/lib/monetization/stripe";
-import { handleEvent } from "@/lib/monetization/payments";
-import { handleConnectEvent } from "@/lib/monetization/connect";
-export const runtime = "nodejs";
-export async function POST(request: Request) {
-  const secrets = [process.env.STRIPE_WEBHOOK_SECRET,process.env.STRIPE_CONNECT_WEBHOOK_SECRET].filter((value):value is string=>!!value);
-  if (!secrets.length) return new Response("Webhook non configuré", { status: 503 });
-  const raw = await request.text();
-  if (raw.length > 1000000)
-    return new Response("Payload trop volumineux", { status: 413 });
-  let event;
-  try {
-    for(const secret of secrets) {
-      try {event = stripeTest().webhooks.constructEvent(raw,request.headers.get("stripe-signature") || "",secret);break;} catch {}
-    }
-    if(!event) return new Response("Signature invalide", { status: 400 });
-    if (event.livemode)
-      return new Response("Mode réel refusé", { status: 400 });
-  } catch {
-    return new Response("Signature invalide", { status: 400 });
-  }
-  try {
-    if(event.account) await handleConnectEvent(event);
-    else await handleEvent(event);
-    return Response.json({ received: true });
-  } catch {
-    return new Response("Traitement différé, réessayer", { status: 500 });
-  }
+import {stripeBilling} from "@/lib/monetization/stripe";
+import {withMoneyMode,type MoneyMode} from "@/lib/monetization/mode";
+import {handleEvent} from "@/lib/monetization/payments";
+import {handleConnectEvent} from "@/lib/monetization/connect";
+export const runtime="nodejs";
+export async function POST(request:Request){
+ const raw=await request.text();if(raw.length>1000000)return new Response("Payload trop volumineux",{status:413});
+ const candidates:{mode:MoneyMode;secret:string}[]=[];
+ for(const [mode,secret] of [["test",process.env.STRIPE_WEBHOOK_SECRET],["test",process.env.STRIPE_CONNECT_WEBHOOK_SECRET],["live",process.env.STRIPE_LIVE_WEBHOOK_SECRET]] as const)if(secret)candidates.push({mode,secret});
+ if(!candidates.length)return new Response("Webhook non configuré",{status:503});
+ for(const candidate of candidates){
+ let event;try{event=withMoneyMode(candidate.mode,()=>stripeBilling().webhooks.constructEvent(raw,request.headers.get("stripe-signature")||"",candidate.secret));}catch{continue;}
+ if(!!event.livemode!==(candidate.mode==="live"))return new Response("Mode Stripe invalide",{status:400});
+ if(candidate.mode==="live"&&event.account)return new Response("Connect désactivé",{status:400});
+ try{await withMoneyMode(candidate.mode,()=>event.account?handleConnectEvent(event):handleEvent(event));return Response.json({received:true});}catch{return new Response("Traitement différé, réessayer",{status:500});}
+ }
+ return new Response("Signature invalide",{status:400});
 }

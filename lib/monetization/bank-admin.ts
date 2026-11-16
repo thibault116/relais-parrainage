@@ -1,6 +1,6 @@
 import {createHash} from "node:crypto";
 import {z} from "zod";
-import {query} from "../db";
+import {query} from "./db";
 import {isCrmOwner} from "../crm";
 import {lock,moneyTransaction} from "./store";
 import {decryptBankSnapshot} from "./manual-bank";

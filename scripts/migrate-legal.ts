@@ -1,5 +1,6 @@
+import {withMoneyMode} from "../lib/monetization/mode";
+import {migrateMonetization} from "../lib/monetization/store";
 import { migratePayoutTests } from "../lib/monetization/payout-tests";
-import { migrateConnect } from "../lib/monetization/connect-schema";
 import { migrateChangelog } from "../lib/changelog/store";
 import { migrateLegal } from "../lib/legal-requests";
 import { database } from "../lib/db";
@@ -9,7 +10,8 @@ try {
   await migrateLegal();
   await migrateChangelog();
   await migratePayoutTests();
-  await migrateConnect();
+  await withMoneyMode("test",()=>migrateMonetization());
+  await withMoneyMode("live",()=>migrateMonetization());
   console.log("Tables de l’espace juridique privé initialisées.");
 } finally {
   const connection = database();
