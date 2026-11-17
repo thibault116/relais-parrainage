@@ -56,6 +56,7 @@ export const legacyV2Packs = [
   },
 ];
 export type CreditSeason = "launch" | "black-friday" | "standard";
+export const defaultCreditSeason:CreditSeason="black-friday";
 export const creditSeasons: {
   id: CreditSeason;
   label: string;
@@ -90,12 +91,13 @@ export const rechargeOffers = creditSeasons.flatMap((season) => {
     name: rechargeNames[i],
     tag: rechargeTags[i],
     cents: prices[i],
+    referenceCents:[1299,2499,4999,10999][i],
     credits: amount,
     purchasedCredits: amount - bonus[i],
     bonusCredits: bonus[i],
   }));
 });
-export const packs = rechargeOffers.filter((p) => p.season === "launch");
+export const packs = rechargeOffers.filter((p) => p.season === defaultCreditSeason);
 export const isRechargeCode = (code: string) =>
   rechargeOffers.some((p) => p.id === code);
 // Immutable legacy offers: used only to reconcile payments opened before v2.

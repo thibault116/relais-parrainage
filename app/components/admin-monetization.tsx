@@ -3,10 +3,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus, FileText, ArrowLeft, Check, MessageCircle } from "lucide-react";
 import { ManualBankForm, ManualBankHistory } from "./manual-bank";
 import { TestSalesAcceptance } from "./test-sales-acceptance";
+import {CreditPromotion} from "./credit-promotion";
 import { CreditCoin } from "./credit-coin";
 import { openServiceChat } from "./service-conversations";
 import {
   creditSeasons,
+  defaultCreditSeason,
   rechargeOffers,
   creditsSlider,
   sliderCredits,
@@ -77,7 +79,7 @@ export function AdminMonetization({
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [season, setSeason] = useState<CreditSeason>("launch"),
+    [season, setSeason] = useState<CreditSeason>(defaultCreditSeason),
     [accepted, setAccepted] = useState(false),
     [panel, setPanel] = useState(""),
     [editing, setEditing] = useState(false),
@@ -256,16 +258,7 @@ export function AdminMonetization({
               </button>
             ))}
           </nav>
-          <div className={`credit-offers-heading ${season}`}>
-            <h2>{creditSeasons.find((s) => s.id === season)?.title}</h2>
-            <p>
-              {season === "launch"
-                ? "Profite de nos tarifs pour le début de l’aventure Mentora !"
-                : season === "black-friday"
-                  ? "Les packs Black Friday et leurs crédits bonus."
-                  : "Choisis le pack adapté à tes besoins."}
-            </p>
-          </div>
+          <CreditPromotion season={season}/>
           <div className={`credit-offers ${season}`}>
             {offers.map((p) => (
               <button
@@ -281,16 +274,13 @@ export function AdminMonetization({
                 <CreditCoin small />
                 <span>
                   <strong>Pack {p.name}</strong>
-                  <small className="credit-offer-tag">{p.tag}</small>
-                  <b>{p.credits.toLocaleString("fr-FR")} crédits</b>
-                  {p.bonusCredits > 0 && (
-                    <small>+{p.bonusCredits} bonus inclus</small>
-                  )}
+                  {season!=="black-friday"&&<small className="credit-offer-tag">{p.tag}</small>}
+                  <span className="credit-amount-row"><b>{p.credits.toLocaleString("fr-FR")} crédits</b>{p.bonusCredits>0&&<small className="credit-bonus-pill">+{p.bonusCredits} bonus</small>}</span>
                   <small>
                     {euro((p.cents * 100) / p.credits)} / 100 crédits
                   </small>
                 </span>
-                <b className="credit-offer-price">{euro(p.cents)}</b>
+                <span className="credit-price-stack">{season!=="standard"&&<del aria-label={`Prix de référence ${euro(p.referenceCents)}`}>{euro(p.referenceCents)}</del>}<b className="credit-offer-price">{euro(p.cents)}</b></span>
               </button>
             ))}
           </div>
