@@ -3,7 +3,7 @@ import {GET as chatGET,POST as chatPOST} from "../app/api/admin/prestations/chat
 import {eligibleSql} from "../lib/monetization/earnings";
 import {GET as walletGET,POST as walletPOST} from "../app/api/admin/monetization/test-wallet/route";
 import {testWalletPreview,hasCurrentTestCredits} from "../lib/monetization/test-wallet";
-import {recordPaid,recordRefund} from "../lib/monetization/payments";
+import {recordPaid,recordRefund,checkout} from "../lib/monetization/payments";
 import {withMoneyMode} from "../lib/monetization/mode";
 import {workspaceGroups} from "../app/components/workspace-destinations";
 import assert from "node:assert/strict";
@@ -79,6 +79,7 @@ try{
  const wallet=(c=owner.cookie,body:unknown={action:"reprice"},origin="http://localhost:3000")=>walletPOST(new Request(walletURL,{method:"POST",headers:headers(c,origin),body:JSON.stringify(body)}));
  assert.equal((await walletGET(new Request(walletURL))).status,403);assert.equal((await wallet(member.cookie)).status,403);assert.equal((await wallet(owner.cookie,{action:"reprice"},"https://foreign.example")).status,403);assert.equal((await wallet(owner.cookie,{action:"reprice",owner_id:member.id})).status,400);
  await recordPaid(owner.id,"legacy-plus","legacy-plus-pi",2990,22,null);await recordPaid(owner.id,"legacy-pack","legacy-pack-pi",1690,10,null);await recordRefund("legacy-pack-pi",845);
+ await assert.rejects(()=>withMoneyMode("live",()=>checkout(member.id,"credits-v3-black-friday-510",crypto.randomUUID())),/réservé au compte principal/);
  const actor={id:owner.id,email:"thibault.cordiez@hotmail.com"},before=await testWalletPreview(actor);assert.equal(before.current,42);assert.equal(before.after,2037);
  const decisions=await Promise.all([wallet(),wallet()]);for(const r of decisions)assert.equal(r.status,200);const results=await Promise.all(decisions.map(r=>r.json()));assert.equal(results.reduce((sum,r)=>sum+r.added,0),1995);assert.equal(await balance(query,owner.id),2037);assert.equal(await hasCurrentTestCredits(owner.id),true);assert.equal(await withMoneyMode("live",()=>hasCurrentTestCredits(owner.id)),false);
  assert.equal((await(await wallet()).json()).added,0);assert.equal((await query("SELECT COUNT(*) AS n FROM money_test_reprices"))[0].n,2);await recordRefund("legacy-pack-pi",1690);assert.equal(await balance(query,owner.id),1615);

@@ -30,6 +30,7 @@ type Data = {
   mode: "test" | "live";
   salesVersion: string;
   configured: boolean;
+  provider?:{ready:boolean;message:string}|null;
   balance: number;
   payoutRate: number;
   needsCreditTransition: boolean;
@@ -222,9 +223,10 @@ export function AdminMonetization({
         <small>
           {data.mode === "test"
             ? "TEST PRIVÉ · Aucun paiement réel"
-            : "ESPACE PRIVÉ"}
+            : "PAIEMENTS RÉELS · Compte admin uniquement"}
         </small>
       </header>
+      {data.mode==="live"&&data.provider&&!data.provider.ready&&<p role="status">{data.provider.message}</p>}
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {view === "wallet" && (
@@ -241,7 +243,7 @@ export function AdminMonetization({
           <article className="commerce-card commerce-balance">
             <CreditCoin />
             <strong>{data.balance.toLocaleString("fr-FR")} crédits</strong>
-            <span>Solde disponible</span>
+            <span>{data.mode==="live"?"Solde réel":"Solde disponible"}</span>
           </article>
           <nav className="credit-seasons" aria-label="Grille tarifaire privée">
             {creditSeasons.map((s) => (
@@ -371,7 +373,7 @@ export function AdminMonetization({
                   <p>
                     {data.mode === "test"
                       ? "Paiement Stripe en mode test"
-                      : "Paiement sécurisé"}
+                      : "Paiement réel sécurisé"}
                   </p>
                   <TestSalesAcceptance
                     live={data.mode === "live"}

@@ -35,6 +35,10 @@ export async function checkout(
   destination: "admin" | "billing" | "credits" = "admin",
   acceptedTermsVersion?: string,
 ) {
+  if(billingLive()){
+    const [u]=await query('SELECT id,email FROM "user" WHERE id=$1',[owner]);
+    if(!u||!await isCrmOwner({id:String(u.id),email:String(u.email)}))throw Error("Encaissement réel réservé au compte principal.");
+  }
   const item = checkoutOffer(code);
   if (!item || !item.cents) throw Error("Offre inconnue");
   if(isSubscriptionOffer(item))throw Error("Les nouveaux abonnements ne sont plus disponibles.");

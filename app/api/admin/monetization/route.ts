@@ -1,3 +1,4 @@
+import {liveProviderStatus} from "@/lib/monetization/live-status";
 import {switchToCredits} from "@/lib/monetization/credit-transition";
 import {payoutRate} from "@/lib/monetization/payout-rate";
 import {salesVersion,moneyMode,billingLive,liveReadiness} from "@/lib/monetization/mode";
@@ -23,8 +24,10 @@ export async function GET(r: Request) {
     return json({ error: "Accès propriétaire uniquement" }, 403);
   try {
     const id = u!.id;
+    const provider=await liveProviderStatus();
     return json({
       mode:moneyMode(),
+      provider,
       salesVersion:salesVersion(),
       readiness:billingLive()?liveReadiness():null,
       plans:[],
@@ -33,7 +36,7 @@ export async function GET(r: Request) {
       needsCreditTransition:!!(await query("SELECT subscription_id FROM money_accounts WHERE owner_id=$1 AND subscription_id IS NOT NULL AND status IN ('active','trialing','past_due','unpaid','incomplete')",[id])).length,
       payoutRate: payoutRate(),
       configured:
-        billingLive()?liveReadiness().ready:/^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY || "") && !!process.env.STRIPE_WEBHOOK_SECRET,
+        billingLive()?!!provider?.ready:/^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY || "") && !!process.env.STRIPE_WEBHOOK_SECRET,
       balance: await balance(query, id),
       account: (
         await query(
@@ -119,6 +122,7 @@ export async function POST(r: Request) {
       return json({ ok: true });
     }
     if (action === "checkout") {
+      if(billingLive()&&!(await liveProviderStatus())?.ready)return json({error:"Stripe réel n’est pas encore prêt pour l’encaissement."},409);
       if (d.acceptedTermsVersion !== salesVersion())
         return json({ error: "Accepte les conditions de vente avant de continuer." }, 400);
       if (!(billingLive()?process.env.STRIPE_LIVE_WEBHOOK_SECRET:process.env.STRIPE_WEBHOOK_SECRET))

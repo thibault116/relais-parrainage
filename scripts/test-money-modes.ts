@@ -1,3 +1,6 @@
+import type Stripe from "stripe";
+import {liveProviderStatus} from "../lib/monetization/live-status";
+import {appOrigin} from "../lib/monetization/stripe";
 import assert from "node:assert/strict";
 import {mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
@@ -5,7 +8,7 @@ import {join} from "node:path";
 import {randomBytes} from "node:crypto";
 import {database,query as raw} from "../lib/db";
 import {query,moneySQL} from "../lib/monetization/db";
-import {moneyMode,withMoneyMode,liveReadiness,salesVersion} from "../lib/monetization/mode";
+import {moneyMode,withMoneyMode,liveReadiness,salesVersion,privateAdminLiveAuthorized} from "../lib/monetization/mode";
 import {migrateMonetization,entry,balance,saveService,book,bookingAction,confirmService} from "../lib/monetization/store";
 import {stripeBilling} from "../lib/monetization/stripe";
 import {POST as webhook} from "../app/api/stripe/webhook/route";
@@ -22,9 +25,17 @@ try{
  await withMoneyMode("live",async()=>{assert.equal(await balance(query,"owner"),0);assert(!liveReadiness().ready);assert.throws(()=>stripeBilling(),/non configurés/);assert.throws(()=>salesVersion(),/non configurées/);await assert.rejects(()=>requestBankTransfer("owner",crypto.randomUUID()),/désactivés/);});
  process.env.STRIPE_LIVE_SECRET_KEY="sk_live_local_fixture_not_a_real_key";process.env.STRIPE_LIVE_WEBHOOK_SECRET="whsec_live_fixture";
  process.env.MENTORA_COMMERCIAL_VALIDATED="true";process.env.MENTORA_COMMERCIAL_VALIDATION_REFERENCE="fixture-only";process.env.MENTORA_LIVE_TERMS_VERSION="live-fixture-v1";process.env.MENTORA_LIVE_PAYOUT_CENTS="100";
+ delete process.env.MENTORA_COMMERCIAL_VALIDATED;delete process.env.MENTORA_COMMERCIAL_VALIDATION_REFERENCE;
+ process.env.MENTORA_PRIVATE_ADMIN_LIVE_ENABLED="true";assert.equal(privateAdminLiveAuthorized(),false);assert.equal(liveReadiness().ready,false);
+ process.env.MENTORA_PRIVATE_ADMIN_LIVE_AUTHORIZATION_REFERENCE="owner-request-fixture";assert.equal(privateAdminLiveAuthorized(),true);assert.equal(liveReadiness().ready,true);assert.equal(manualPayoutPolicy().liveEnabled,false);
+ delete process.env.MENTORA_PRIVATE_ADMIN_LIVE_ENABLED;delete process.env.MENTORA_PRIVATE_ADMIN_LIVE_AUTHORIZATION_REFERENCE;process.env.MENTORA_COMMERCIAL_VALIDATED="true";process.env.MENTORA_COMMERCIAL_VALIDATION_REFERENCE="fixture-only";
  const service=await saveService("owner",{title:"Audit fixture",description:"Prestation de contrôle des écritures séparées.",category:"Autre",duration:0,calls:0,followup:"",availability:"À convenir",credits:5,capacity:5,published:true});
  await withMoneyMode("live",async()=>{
- assert(liveReadiness().ready);assert.equal(salesVersion(),"live-fixture-v1");await entry(query,"owner",10,"fixture","initial");assert.equal(await balance(query,"owner"),10);
+ assert(liveReadiness().ready);
+ const endpoint={livemode:true,status:"enabled",url:appOrigin()+"/api/stripe/webhook",enabled_events:["*"]};
+ const fake=(charges:boolean,entry=endpoint)=>()=>({accounts:{retrieve:async()=>({charges_enabled:charges})},webhookEndpoints:{list:async()=>({data:[entry]})}} as unknown as Stripe);
+ assert.equal((await liveProviderStatus(fake(true)))?.ready,true);assert.equal((await liveProviderStatus(fake(false)))?.ready,false);assert.equal((await liveProviderStatus(fake(true,{...endpoint,url:"https://wrong.example/webhook"})))?.ready,false);assert.equal((await liveProviderStatus(fake(true,{...endpoint,livemode:false})))?.ready,false);
+assert.equal(salesVersion(),"live-fixture-v1");await entry(query,"owner",10,"fixture","initial");assert.equal(await balance(query,"owner"),10);
  assert.equal((await query("SELECT * FROM money_services")).length,1);
  const b=await book("owner",service,crypto.randomUUID(),"","À convenir");await bookingAction("owner",String(b),"accept");await bookingAction("owner",String(b),"complete");await assert.rejects(()=>confirmService("owner",String(b),1,true),/propre parrain/);await query("UPDATE money_bookings SET status='completed' WHERE id=$1",[String(b)]);assert.equal(await balance(query,"owner"),5);
  process.env.MENTORA_MANUAL_PAYOUTS_LIVE_ENABLED="true";process.env.MENTORA_MANUAL_PAYOUTS_LEGAL_VALIDATED="true";process.env.MENTORA_MANUAL_PAYOUTS_LEGAL_VALIDATION_REFERENCE="fixture-only";assert(manualPayoutPolicy().liveEnabled);
