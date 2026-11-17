@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   Home,
+  Layers,
   Menu,
   AlertCircle,
   Hand,
@@ -188,7 +189,7 @@ export function MobileExperience({
   onNavigate?: (view: string, tab?: string, section?: string) => void;
   onOpenProfile: (id: string, role: string) => void;
 }) {
-  const completionNeeded = useMentorCompletion(profile?.role === "mentor" && !administrator) && !administrator;
+  const completionNeeded = useMentorCompletion(false) && false;
   const extras = useFeature("mobileExtras"),
     dm = useFeature("privateMessaging"),
     channels = useFeature("communityChannels");
@@ -347,6 +348,7 @@ export function MobileExperience({
       else onNavigate(next === "community" ? "community" : "profile");
       const url = new URL(window.location.href);
       url.searchParams.set("mobile", next);
+      url.searchParams.delete("services");
       url.hash =
         routes[next]?.[0] || (next === "community" ? "community" : "profile");
       url.searchParams.delete("chat");
@@ -443,7 +445,7 @@ export function MobileExperience({
   ) {
     const Icon = icon;
     return (
-      <button className="mobile-tile" onClick={() => go(next)}>
+      <button className="mobile-tile" onClick={() => go(next==="discoverServices"?"discover":next,next==="discoverServices"?{services:"1"}:{})}>
         <Icon />
         <span>
           <strong>{t(label)}</strong>
@@ -522,7 +524,7 @@ export function MobileExperience({
       value={{ ids: bookmarks.map((p) => p.id), refresh: () => void load() }}
     >
       <div
-        className={`mobile-app ${administrator?"owner-mobile-preview":""} ${desktopScreen ? "desktop-experience" : ""} ${screen === "community" && channel !== null ? "mobile-chat-view" : ""}`}
+        className={`mobile-app owner-mobile-preview ${desktopScreen ? "desktop-experience" : ""} ${screen === "community" && channel !== null ? "mobile-chat-view" : ""}`}
       >
         {toast && (
           <aside className="in-app-message" role="status">
@@ -553,7 +555,7 @@ export function MobileExperience({
           >
             <BrandLogo />
             <strong>Mentora</strong>
-            <OwnerPlanBadge enabled={administrator} />
+            <OwnerPlanBadge enabled={true} />
           </button>
           <button
             className="mobile-icon"
@@ -624,8 +626,7 @@ export function MobileExperience({
                 <ChevronLeft size={18} />
                 Retour
               </button>
-              {administrator &&
-              (!["services", "payouts"].includes(screen) ||
+              {(!["services", "payouts"].includes(screen) ||
                 profile?.role === "mentor") ? (
                 <AdminMonetization
                   key={screen}
@@ -648,101 +649,12 @@ export function MobileExperience({
               <h1>
                 Bonjour {name.split(" ")[0]} <span>👋</span>
               </h1>
-              <p className="mobile-subtitle">
-                {profile?.role === "mentor"
-                  ? "Tes accompagnements et les prochaines étapes de tes binômes."
-                  : "Voici ton activité et tes prochaines étapes."}
-              </p>
-              <button
-                className="mobile-progress-card"
-                onClick={() =>
-                  go(total ? "tasks" : active.length ? "pairs" : "discover")
-                }
-              >
-                <Target size={42} />
-                <span>
-                  <strong>
-                    {!total
-                      ? active.length
-                        ? "Reprendre mon accompagnement"
-                        : "Trouver mon prochain binôme"
-                      : profile?.role === "mentor"
-                        ? "La progression de tes binômes"
-                        : "Ma progression"}
-                  </strong>
-                  <small>
-                    {total
-                      ? `${done}/${total} objectifs complétés`
-                      : "Une prochaine étape à construire ensemble"}
-                  </small>
-                  {total > 0 && <progress max={100} value={percent} />}
-                </span>
-                <ChevronRight size={20} />
-              </button>
-              {active.length > 0 && <h2>En cours</h2>}
-              {active.map((pair) => {
-                const list = lists.find((l) => l.id === pair.id);
-                return (
-                  <button
-                    key={pair.id}
-                    className="refonte-pair-card"
-                    onClick={() => go("pairs")}
-                  >
-                    <span className="refonte-pair-top">
-                      <span className="mobile-role">Accompagnement actif</span>
-                      <ChevronRight size={18} />
-                    </span>
-                    <strong>{pair.partner_name}</strong>
-                    <span>
-                      {profile?.role === "mentor"
-                        ? "Accompagner sa progression"
-                        : "Reprendre mon accompagnement"}
-                    </span>
-                    <span className="refonte-pair-bottom">
-                      {list?.total
-                        ? `${list.completed}/${list.total} tâches terminées`
-                        : "Voir les prochaines étapes"}
-                      <span>{list?.total ? `${list.progress}%` : "→"}</span>
-                    </span>
-                    {Boolean(list?.total) && (
-                      <progress max={100} value={list?.progress ?? 0} />
-                    )}
-                  </button>
-                );
-              })}
-              <h2>À retrouver</h2>
-              {!active.length &&
-                tile(
-                  profile?.role === "mentor"
-                    ? "Mes accompagnements"
-                    : "Mon accompagnement",
-                  active.length
-                    ? active.map((a) => a.partner_name).join(", ")
-                    : "Trouve ton prochain binôme",
-                  Inbox,
-                  "pairs",
-                  active.length,
-                )}
-              {tile(
-                "Mes demandes",
-                `${pending.length} en attente de réponse`,
-                MessageCircle,
-                "requests",
-                pending.length,
-              )}
-              {tile(
-                "Objectifs",
-                "Continue ta progression",
-                CheckCircle2,
-                "tasks",
-              )}
-              {!active.length &&
-                tile(
-                  "Trouver mon binôme",
-                  "Parcours les profils de la communauté",
-                  Search,
-                  "discover",
-                )}
+              <div className="home-actions">
+                {tile("Mes demandes","Consulter mes demandes",MessageCircle,"requests")}
+                {tile("Acheter des crédits","Mon portefeuille Mentora",Layers,"credits")}
+                {profile?.role==="mentor" ? tile("Mes prestations","Créer et gérer mes prestations",Layers,"services") : tile("Prestations disponibles","Trouver une aide adaptée",Search,"discoverServices")}
+                {tile("Gérer mon profil","Modifier mes informations",UserRound,"edit")}
+              </div>
               {loading && <p role="status">Chargement…</p>}
             </>
           )}
@@ -767,7 +679,7 @@ export function MobileExperience({
                   </button>
                 </div>
                 <h1>{name}</h1>
-                <OwnerPlanBadge enabled={administrator} />
+                <OwnerPlanBadge enabled={true} />
                 <span className="mobile-role">
                   {profile?.role === "mentor" ? "Parrain" : "Débutant"}
                 </span>
@@ -815,7 +727,7 @@ export function MobileExperience({
                 MessageCircle,
                 "messages",
               )}
-              {administrator&&profile?.role==="mentor"&&<PrivateServiceCatalog profileId={profile.id}/>}
+              {profile?.role==="mentor"&&<PrivateServiceCatalog profileId={profile.id}/>}
               {tile(
                 "Modifier mon profil",
                 "Photo, présentation et spécialités",
@@ -919,9 +831,7 @@ export function MobileExperience({
                   ))}
                 {!notices.length && <p>Aucune notification pour le moment.</p>}
               </>
-            ) : (
-              beta
-            ))}
+            ) : beta)}
           {screen === "saved" &&
             (extras ? (
               <>
@@ -968,9 +878,7 @@ export function MobileExperience({
                   </div>
                 ))}
               </>
-            ) : (
-              beta
-            ))}
+            ) : beta)}
           {screen === "community" &&
             (channel === null ? (
               <>
@@ -1006,11 +914,11 @@ export function MobileExperience({
               </>
             ))}
           {screen === "messages" &&
-            (administrator&&chat.startsWith("service:") ? <ServiceConversation key={chat} id={chat.slice(8)} onBack={()=>setChat("")}/> : (dm||administrator) ? (
+            (chat.startsWith("service:") ? <ServiceConversation key={chat} id={chat.slice(8)} onBack={()=>setChat("")}/> : (
               <>
-              {administrator&&!chat&&<ServiceConversationList onOpen={setChat}/>}
+              {!chat&&<ServiceConversationList onOpen={setChat}/>}
               {dm&&<PrivateMessages
-                ownerPreview={administrator}
+                ownerPreview={true}
                 userId={userId}
                 chatId={chat}
                 setChatId={setChat}
@@ -1021,8 +929,6 @@ export function MobileExperience({
                 }}
               />}
               </>
-            ) : (
-              beta
             ))}
           {legacyMode && (
             <>

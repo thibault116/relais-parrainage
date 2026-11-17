@@ -76,7 +76,7 @@ export function MemberSettings({
             ["notifications", "Notifications"],
             ["menus", "Menus et aide"],
             ...(administration ? [["administration", "Administration"]] : []),
-            ...(mentor && !ownerPreview ? [["verification", "Finaliser mon profil"]] : []),
+            ...(false ? [["verification", "Finaliser mon profil"]] : []),
           ]
             .filter(
               ([id, label]) =>
@@ -145,7 +145,7 @@ export function MemberSettings({
           <BetaSettings />
           <AppearanceSettings />
           <InstallMentora />
-          {ownerPreview && <section className="verification-panel">
+          {<section className="verification-panel">
             <h2>Informations légales et droits</h2>
             <LegalLinks />
           </section>}

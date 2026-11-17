@@ -28,12 +28,12 @@ export async function POST(request: Request) {
   if (blocked) return blocked;
   try {
     const reviewer = await user(request);
-    if (!reviewer || !(await isCrmOwner(reviewer)))
-      return json({ error: "Accès réservé au compte administrateur principal." }, 403);
+
     const raw = await request.text();
     if (Buffer.byteLength(raw) > 20000) return json({ error: "Formulaire trop volumineux." }, 413);
     const input = JSON.parse(raw);
     if (input?.action === "resolve") {
+      if(!reviewer||!await isCrmOwner(reviewer))return json({error:"Accès refusé."},403);
       const parsed = decisionSchema.safeParse(input);
       if (!parsed.success) return json({ error: "Indique une décision motivée." }, 400);
       const ok = await resolveLegalRequest(parsed.data.id, reviewer.id, parsed.data.decision);

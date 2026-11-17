@@ -54,7 +54,7 @@ export async function manualBankOverview(owner:string) {
     query<SavedBank>("SELECT * FROM money_bank_details WHERE owner_id=$1",[owner]),query(eligibleSql,[owner]),
     query<RequestRow>("SELECT r.id,r.amount_cents,COALESCE(w.state,r.status) AS status,r.created_at,COALESCE(w.mode,'test') AS mode,w.reason,w.reference FROM money_bank_requests r LEFT JOIN money_bank_workflow w ON w.request_id=r.id WHERE r.owner_id=$1 ORDER BY r.created_at DESC",[owner]),
     query<RequestRow>("SELECT id,amount_cents,status,created_at FROM money_connect_withdrawals WHERE owner_id=$1 ORDER BY created_at DESC",[owner]),
-    query("SELECT COALESCE(SUM(b.payout_cents),0) AS amount FROM money_bookings b JOIN money_services s ON s.id=b.service_id WHERE s.owner_id=$1 AND b.status IN ('accepted','completion_pending')",[owner]),
+    query("SELECT COALESCE(SUM(b.payout_cents),0) AS amount FROM money_bookings b JOIN money_services s ON s.id=b.service_id WHERE s.owner_id=$1 AND b.owner_id<>s.owner_id AND b.test_booking=0 AND b.status IN ('accepted','completion_pending')",[owner]),
   ]);
   // Return a masked bank only, never the IBAN or encrypted snapshots.
   return {testMode:!billingLive(),withdrawalsEnabled:!billingLive()||manualPayoutPolicy().liveEnabled,configured:bankStorageConfigured(),bank:saved[0]?summary(decryptBankSnapshot(owner,"saved",saved[0].payload)):null,

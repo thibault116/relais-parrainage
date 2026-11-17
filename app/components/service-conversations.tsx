@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {useMobileChatViewport} from "./use-mobile-chat-viewport";
 import { ArrowLeft, Send, MessageCircle } from "lucide-react";
 type Message = {
   id: string;
@@ -12,6 +13,7 @@ type Message = {
 type Thread = { id: string; snapshot: { title: string }; status: string };
 type Detail = {
   mode: "test" | "live";
+  viewerRole:"mentor"|"buyer";selfTest:boolean;canConfirm:boolean;
   booking: {
     id: string;
     title: string;
@@ -109,31 +111,9 @@ export function ServiceConversation({
   const feed = useRef<HTMLDivElement>(null),
     key = useRef<string | null>(null);
   const load = useCallback(async () => setData(await api(id)), [id]);
+  useEffect(()=>{if(data&&!data.selfTest)setRole(data.viewerRole);},[data?.viewerRole,data?.selfTest]);
   const container = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const el = container.current,
-      app = el?.closest<HTMLElement>(".mobile-app"),
-      baseline = window.innerHeight;
-    const resize = () => {
-      const v = window.visualViewport,
-        h = v?.height || window.innerHeight;
-      el?.style.setProperty("--service-visible-height", h + "px");
-      document.body.classList.toggle("private-keyboard", h < baseline - 120);
-      app?.style.setProperty("--mobile-visible-height", h + "px");
-      app?.style.setProperty(
-        "--mobile-visible-top",
-        (v?.offsetTop || 0) + "px",
-      );
-    };
-    resize();
-    window.visualViewport?.addEventListener("resize", resize);
-    return () => {
-      window.visualViewport?.removeEventListener("resize", resize);
-      document.body.classList.remove("private-keyboard");
-      app?.style.removeProperty("--mobile-visible-height");
-      app?.style.removeProperty("--mobile-visible-top");
-    };
-  }, []);
+  useMobileChatViewport(container,true);
 
   useEffect(() => {
     let live = true;
@@ -184,7 +164,8 @@ export function ServiceConversation({
         </button>
         <strong>{data?.booking.title || "Prestation"}</strong>
       </header>
-      {data?.mode === "test" && (
+      {data?.selfTest&&<small>Essai administrateur · rémunération non retirable</small>}
+      {data?.selfTest && (
         <nav className="service-request-tabs" aria-label="Rôle du test privé">
           <button
             className={role === "mentor" ? "selected" : ""}
@@ -217,7 +198,7 @@ export function ServiceConversation({
             {m.kind === "completion" &&
               data.booking.status === "completion_pending" &&
               m.revision === data.booking.revision &&
-              (role === "buyer" || data.mode === "live") && (
+              data.canConfirm && (role === "buyer" || !data.selfTest) && (
                 <div className="service-confirm-actions">
                   <button
                     className="commerce-primary"

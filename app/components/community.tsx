@@ -59,7 +59,7 @@ export function Community({
   channel?: string;
   onOpenProfile?: (id: string, role: string) => void;
 } = {}) {
-  const ownerPreview=useOwnerPreview();
+  const ownerPreview=true;
   const repliesEnabled = useFeature("communityReplies"),
     editingEnabled = useFeature("communityEditing");
   const [reply, setReply] = useState<Message | null>(null),

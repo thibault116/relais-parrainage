@@ -25,10 +25,12 @@ type Booking = {
   snapshot: Service;
   credits: number;
   payout_cents: number;
+  test_booking?:number;
   status: string;
 };
 type Data = {
   mode: "test" | "live";
+  owner:boolean;
   salesVersion: string;
   configured: boolean;
   provider?:{ready:boolean;message:string;canRepairWebhook?:boolean}|null;
@@ -98,7 +100,7 @@ export function AdminMonetization({
   }, []);
   useEffect(() => setTab(initialTab), [initialTab]);
   useEffect(()=>{
-    if(!data||view!=="wallet")return;
+    if(!data?.owner||view!=="wallet")return;
     const url=new URL(window.location.href);
     if(url.searchParams.get("creditOffer")!==adminCreditOffer.id)return;
     setPanel(adminCreditOffer.id);setAccepted(false);dialog.current?.showModal();
@@ -189,13 +191,13 @@ export function AdminMonetization({
     finally {setBusy(false);}
   }
   if (!data)
-    return <p role="status">{error || "Chargement du système privé…"}</p>;
-  const completed = data.bookings.filter((b) => b.status === "completed"),
+    return <p role="status">{error || "Chargement…"}</p>;
+  const completed = data.bookings.filter((b) => b.status === "completed"&&!b.test_booking),
     ongoing = data.bookings.filter((b) =>
       ["accepted", "completion_pending"].includes(b.status),
     );
-  const purchaseOffers=[...rechargeOffers,adminCreditOffer];
-  const offers = rechargeOffers.filter((p) => p.season === season);
+  const purchaseOffers=data.owner?[...rechargeOffers,adminCreditOffer]:rechargeOffers.filter(p=>p.season==="launch");
+  const offers = rechargeOffers.filter((p) => p.season === (data.owner?season:"launch"));
   return (
     <section className="commerce-screen private-credit-system">
       {!dedicated && (
@@ -233,11 +235,11 @@ export function AdminMonetization({
         <small>
           {data.mode === "test"
             ? "TEST PRIVÉ · Aucun paiement réel"
-            : "PAIEMENTS RÉELS · Compte admin uniquement"}
+            : data.owner?"PAIEMENTS RÉELS · Compte admin":"Paiement sécurisé"}
         </small>
       </header>
       {data.mode==="live"&&data.provider&&!data.provider.ready&&<p role="status">{data.provider.message}</p>}
-      {data.mode==="live"&&data.provider?.canRepairWebhook&&<button className="commerce-row" disabled={busy} onClick={()=>void send({action:"configure-live-webhook"})}>Compléter le webhook Stripe réel</button>}
+      {data.owner&&data.mode==="live"&&data.provider?.canRepairWebhook&&<button className="commerce-row" disabled={busy} onClick={()=>void send({action:"configure-live-webhook"})}>Compléter le webhook Stripe réel</button>}
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {view === "wallet" && (
@@ -256,8 +258,8 @@ export function AdminMonetization({
             <strong>{data.balance.toLocaleString("fr-FR")} crédits</strong>
             <span>{data.mode==="live"?"Solde réel":"Solde disponible"}</span>
           </article>
-          <article className="commerce-card admin-credit-control"><h2>Crédits pour tes essais privés</h2><p>10 000 crédits · 1,00 € par achat</p><small>Paiement réel, réservé à ton compte administrateur.</small><button className="commerce-primary" onClick={()=>{setPanel(adminCreditOffer.id);setAccepted(false);setError("");dialog.current?.showModal();}}>Acheter 10 000 crédits · 1,00 €</button></article>
-          <nav className="credit-seasons" aria-label="Grille tarifaire privée">
+          {data.owner&&<article className="commerce-card admin-credit-control"><h2>Crédits pour tes essais privés</h2><p>10 000 crédits · 1,00 € par achat</p><small>Paiement réel, réservé à ton compte administrateur.</small><button className="commerce-primary" onClick={()=>{setPanel(adminCreditOffer.id);setAccepted(false);setError("");dialog.current?.showModal();}}>Acheter 10 000 crédits · 1,00 €</button></article>}
+          {data.owner&&<nav className="credit-seasons" aria-label="Grille tarifaire privée">
             {creditSeasons.map((s) => (
               <button
                 key={s.id}
@@ -271,8 +273,8 @@ export function AdminMonetization({
                 {s.label}
               </button>
             ))}
-          </nav>
-          <CreditPromotion season={season}/>
+          </nav>}
+          <CreditPromotion season={data.owner?season:"launch"}/>
           <div className={`credit-offers ${season}`}>
             {offers.map((p) => (
               <button
@@ -339,7 +341,7 @@ export function AdminMonetization({
                       Reçu
                     </a>
                   )}
-                  <button
+                  {data.owner&&<button
                     className="commerce-row"
                     disabled={busy}
                     onClick={() => {
@@ -352,7 +354,7 @@ export function AdminMonetization({
                     }}
                   >
                     Demander un remboursement
-                  </button>
+                  </button>}
                 </article>
               ))}
             </div>

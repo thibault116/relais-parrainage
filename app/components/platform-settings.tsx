@@ -63,14 +63,14 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
             <summary>
               <span>
                 {/b[êeé]ta/i.test(settings.announcement)
-                  ? translateUi(owner?"Mentora en bêta":"Mentora en bêta · 100 % gratuit")
+                  ? translateUi("Mentora en bêta")
                   : translateUi("Actualité Mentora")}
               </span>
               <span className="announcement-more">
                 {translateUi("En savoir plus")}
               </span>
             </summary>
-            <p>{owner&&/b[êeé]ta/i.test(settings.announcement)?"Mentora est en bêta. Tes retours nous aident à améliorer la plateforme.":settings.announcement}</p>
+            <p>{/b[êeé]ta/i.test(settings.announcement)?"Mentora est en bêta. Tes retours nous aident à améliorer la plateforme.":settings.announcement}</p>
           </details>
         </aside>
       )}

@@ -3,6 +3,7 @@ import {billingLive,moneyMode} from "./mode";
 import Stripe from "stripe";
 import { query } from "./db";
 import { isCrmOwner } from "../crm";
+import {commerceActor,allowedPurchase} from "./access";
 import { checkoutOffer, offer, plans, isSubscriptionOffer, currentCheckoutCode } from "./catalog";
 import { lock, entry, moneyTransaction } from "./store";
 import { stripeBilling, returnUrl } from "./stripe";
@@ -12,13 +13,13 @@ export const objectId = (v: unknown): string =>
     : v && typeof v === "object" && "id" in v
       ? String(v.id)
       : "";
-export async function customer(owner: string) {
+export async function customer(owner: string, provider:()=>Stripe=stripeBilling) {
   const a = (
     await query("SELECT * FROM money_accounts WHERE owner_id=$1", [owner])
   )[0];
   if (a?.customer_id) return String(a.customer_id);
-  const c = await stripeBilling().customers.create(
-    { name: billingLive()?"Mentora · compte administrateur":"Mentora · essai administrateur" },
+  const c = await provider().customers.create(
+    { name: billingLive()?"Membre Mentora":"Mentora · essai administrateur" },
     { idempotencyKey: `mentora-${moneyMode()}-customer:${owner}` },
   );
   if (!!c.livemode!==billingLive()) throw Error("Mode réel refusé");
@@ -34,17 +35,17 @@ export async function checkout(
   key: string,
   destination: "admin" | "billing" | "credits" = "admin",
   acceptedTermsVersion?: string,
+  provider:()=>Stripe=stripeBilling,
 ) {
-  if(billingLive()){
-    const [u]=await query('SELECT id,email FROM "user" WHERE id=$1',[owner]);
-    if(!u||!await isCrmOwner({id:String(u.id),email:String(u.email)}))throw Error("Encaissement réel réservé au compte principal.");
-  }
+  const [accountUser]=await query('SELECT id,email FROM "user" WHERE id=$1',[owner]);
+  const actor=await commerceActor(accountUser?{id:String(accountUser.id),email:String(accountUser.email)}:null);
+  if(!actor||!allowedPurchase(code,actor.owner))throw Error("Offre indisponible pour ce compte.");
   const item = checkoutOffer(code);
   if (!item || !item.cents) throw Error("Offre inconnue");
   if(isSubscriptionOffer(item))throw Error("Les nouveaux abonnements ne sont plus disponibles.");
   if(item.cents<50)throw Error("Le paiement doit atteindre 0,50 € minimum (25 crédits au tarif standard).");
-  const s = stripeBilling(),
-    cid = await customer(owner),
+  const s = provider(),
+    cid = await customer(owner,provider),
     subscription = isSubscriptionOffer(item) ? item : null;
   // Keep one pending/active subscription per owner, including concurrent tabs.
   return moneyTransaction(async (q) => {
@@ -178,8 +179,8 @@ async function ownerOf(customerId: string) {
   const u = (
     await query('SELECT id,email FROM "user" WHERE id=$1', [String(a.owner_id)])
   )[0];
-  if (!u || !(await isCrmOwner({ id: String(u.id), email: String(u.email) })))
-    return null;
+  // A signed payment remains reconcilable even if the member later opts out or is blocked.
+  if (!u || (!billingLive() && !(await isCrmOwner({id:String(u.id),email:String(u.email)})))) return null;
   return String(a.owner_id);
 }
 export async function recordPaid(
@@ -244,22 +245,22 @@ export async function recordRefund(pi: string, amount: number) {
     return true;
   });
 }
-export async function reconcileRefund(pi: string) {
+export async function reconcileRefund(pi: string,provider:()=>Stripe=stripeBilling) {
   if (!pi) return;
-  const intent = await stripeBilling().paymentIntents.retrieve(pi, {
+  const intent = await provider().paymentIntents.retrieve(pi, {
     expand: ["latest_charge"],
   });
   const charge = intent.latest_charge;
   if (charge && typeof charge !== "string" && charge.amount_refunded)
     await recordRefund(pi, charge.amount_refunded);
 }
-export async function handleEvent(event: Stripe.Event) {
+export async function handleEvent(event: Stripe.Event,provider:()=>Stripe=stripeBilling) {
   if (!!event.livemode!==billingLive()) throw Error("Événement réel refusé");
   if (
     (await query("SELECT id FROM money_events WHERE id=$1", [event.id])).length
   )
     return;
-  const s = stripeBilling();
+  const s = provider();
   if (
     [
       "checkout.session.completed",
@@ -305,7 +306,7 @@ export async function handleEvent(event: Stripe.Event) {
           item.credits,
           invoice?.hosted_invoice_url ?? null,
         );
-        await reconcileRefund(objectId(session.payment_intent));
+        await reconcileRefund(objectId(session.payment_intent),provider);
       }
     }
   } else if (

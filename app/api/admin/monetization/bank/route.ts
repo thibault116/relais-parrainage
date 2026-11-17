@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { user,guard,json } from "@/lib/http";
 import { isCrmOwner } from "@/lib/crm";
+import {commerceActor} from "@/lib/monetization/access";
 import { bankDetailsSchema,cancelBankTransfer,manualBankOverview,requestBankTransfer,saveBankDetails } from "@/lib/monetization/manual-bank";
 export const runtime="nodejs";
 export async function GET(request:Request) {
   const actor=await user(request);
-  if(!await isCrmOwner(actor))return json({error:"Accès réservé au compte administrateur principal."},403);
+  if((await commerceActor(actor))?.profile?.role!=="mentor")return json({error:"Accès réservé au compte administrateur principal."},403);
   try{return json(await manualBankOverview(actor!.id));}
   catch{return json({error:"Coordonnées bancaires indisponibles."},503);}
 }
@@ -16,7 +17,7 @@ const mutation=z.discriminatedUnion("action",[
 ]);
 export async function POST(request:Request) {
   const actor=await user(request);
-  if(!await isCrmOwner(actor))return json({error:"Accès réservé au compte administrateur principal."},403);
+  if((await commerceActor(actor))?.profile?.role!=="mentor")return json({error:"Accès réservé au compte administrateur principal."},403);
   const denied=await guard(request);if(denied)return denied;
   try {
     const data=mutation.parse(await request.json());

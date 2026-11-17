@@ -26,5 +26,6 @@ export async function isBetaTester(userId: string) {
   return Number(row?.enabled) === 1;
 }
 export async function canUseFeature(userId: string, feature: string) {
+  if(featureAvailable(feature,false))return true;
   return featureAvailable(feature, await isBetaTester(userId));
 }

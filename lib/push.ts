@@ -160,6 +160,11 @@ export const preview = (value: unknown, limit = 150) => {
 };
 export async function pushContent(job: Record<string, unknown>) {
   const kind = String(job.kind);
+  if(kind==="service_message"){
+    const [m]=await moneyQuery("SELECT kind,body FROM money_service_messages WHERE id=$1",[String(job.event_id)]);
+    const titles:Record<string,string>={request:"Nouvelle demande",accepted:"Demande acceptée",completion:"Prestation terminée ?",confirmation:"Prestation mise à jour",text:"Nouveau message",decline:"Demande refusée",cancel:"Demande annulée",refund:"Crédits restitués"};
+    return {title:titles[String(m?.kind)]||"Prestation mise à jour",body:preview(m?.body)};
+  }
   if(kind==="bank_withdrawal"){
     const [event]=await moneyQuery("SELECT a.to_state,w.mode FROM money_bank_audit a JOIN money_bank_workflow w ON w.request_id=a.request_id WHERE a.id=$1 AND a.owner_id=$2",[String(job.event_id),String(job.user_id)]);
     const titles:Record<string,string>={processing:"Retrait en traitement",paid:"Retrait payé",refused:"Retrait refusé"};
@@ -263,6 +268,10 @@ export async function enqueuePush(
   }
 }
 export async function stillRelevant(job: Record<string, unknown>) {
+  if(job.kind==="service_message"){
+    const [m]=await moneyQuery("SELECT b.owner_id,s.owner_id AS mentor,m.role FROM money_service_messages m JOIN money_bookings b ON b.id=m.booking_id JOIN money_services s ON s.id=b.service_id WHERE m.id=$1 AND (b.owner_id=$2 OR s.owner_id=$2) AND NOT EXISTS(SELECT 1 FROM profile_blocks p WHERE p.user_id IN(b.owner_id,s.owner_id))",[String(job.event_id),String(job.user_id)]);
+    return !!m && (m.role==="buyer"?m.mentor:m.owner_id)===job.user_id;
+  }
   if(job.kind==="bank_withdrawal"){
     const [event]=await moneyQuery("SELECT a.id FROM money_bank_audit a JOIN money_bank_workflow w ON w.request_id=a.request_id JOIN money_bank_requests r ON r.id=a.request_id WHERE a.id=$1 AND a.owner_id=$2 AND r.owner_id=$2 AND a.to_state=w.state AND a.revision=w.revision AND a.action IN ('processing','paid','refused')",[String(job.event_id),String(job.user_id)]);
     return !!event;

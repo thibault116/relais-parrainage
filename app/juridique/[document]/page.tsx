@@ -18,21 +18,21 @@ titles["conditions-test"] = "Conditions des paiements de test";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: PageProps<"/juridique/[document]">): Promise<Metadata> {
-  if (!(await ownerPreviewEnabled())) notFound();
+
   const { document } = await params;
   const title = Object.hasOwn(forms, document) ? forms[document].title : titles[document];
   return { title: `${typeof title === "string" ? title : "Informations légales"} · Mentora` };
 }
 
 export default async function LegalDocument({ params }: PageProps<"/juridique/[document]">) {
-  if (!(await ownerPreviewEnabled())) notFound();
+
   const { document } = await params;
   const form = Object.hasOwn(forms, document) ? forms[document] : undefined;
   if (!form && !Object.hasOwn(documents, document)) notFound();
   return (
     <main className="wrap legal-page">
       <a className="legal-home" href="/">← Accueil Mentora</a>
-      <p className="legal-note">Aperçu réservé au compte administrateur · Textes à compléter et à faire relire avant publication.</p>
+      <p className="legal-note">Textes à compléter et à faire relire par un professionnel.</p>
       <h1>{form?.title || titles[document]}</h1>
       {form ? <LegalRequestForm kind={form.kind} /> : <article className="legal-document">{documents[document]}</article>}
       <LegalLinks />

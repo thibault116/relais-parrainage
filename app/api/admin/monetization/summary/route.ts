@@ -1,11 +1,12 @@
 import {moneyMode} from "@/lib/monetization/mode";
 import { user, json } from "@/lib/http";
 import { isCrmOwner } from "@/lib/crm";
+import {commerceActor} from "@/lib/monetization/access";
 import { query } from "@/lib/monetization/db";
 import { balance } from "@/lib/monetization/store";
 export async function GET(r: Request) {
   const u = await user(r);
-  if (!(await isCrmOwner(u)))
+  if (!(await commerceActor(u)))
     return json({ error: "Accès propriétaire uniquement" }, 403);
   const a = (
     await query(

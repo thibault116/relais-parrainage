@@ -3,6 +3,7 @@ import { Pool } from "pg";
 import { z } from "zod";
 import { payoutRate } from "./payout-rate";
 import {billingLive} from "./mode";
+import {principalAccount} from "./access";
 import { migrateConnect } from "./connect-schema";
 let queue: Promise<unknown> = Promise.resolve();
 export function moneyTransaction<T>(
@@ -30,6 +31,8 @@ export async function migrateMonetization() {
     `CREATE TABLE IF NOT EXISTS money_events(id TEXT PRIMARY KEY,created_at TEXT NOT NULL)`,
   ])
     await query(sql);
+  if(database() instanceof Pool)await query("ALTER TABLE money_bookings ADD COLUMN IF NOT EXISTS test_booking INTEGER NOT NULL DEFAULT 0");
+  else if(!(await query("PRAGMA table_info(money_bookings)")).some(c=>c.name==="test_booking"))await query("ALTER TABLE money_bookings ADD COLUMN test_booking INTEGER NOT NULL DEFAULT 0");
   await migrateConnect();
 }
 export async function lock(q: typeof query, owner: string) {
@@ -114,8 +117,14 @@ export async function book(
   notes: string,
   slot: string,
 ) {
+  const [service]=await query("SELECT owner_id FROM money_services WHERE id=$1 AND archived=0",[serviceId]);
+  if(!service)throw Error("Prestation introuvable");
+  const mentor=String(service.owner_id),simulation=await principalAccount(owner);
+  if((await query("SELECT user_id FROM profile_blocks WHERE user_id=$1 OR user_id=$2",[owner,mentor])).length)throw Error("Prestation indisponible");
+  if(!(await query("SELECT id FROM profiles WHERE user_id=$1 AND role='mentor'",[mentor])).length)throw Error("Prestation indisponible");
+  if(owner===mentor&&!simulation)throw Error("Tu ne peux pas réserver ta propre prestation.");
   return moneyTransaction(async (q) => {
-    await lock(q, owner);
+    for(const id of [...new Set([owner,mentor])].sort())await lock(q,id);
     const previous = (
       await q("SELECT * FROM money_bookings WHERE request_key=$1", [
         `${owner}:${key}`,
@@ -128,12 +137,12 @@ export async function book(
         previous.slot !== slot
       )
         throw Error("Requête déjà utilisée");
-      return previous.id;
+      return String(previous.id);
     }
     const s = (
       await q(
         "SELECT * FROM money_services WHERE id=$1 AND owner_id=$2 AND archived=0",
-        [serviceId, owner],
+        [serviceId, mentor],
       )
     )[0];
     if (!s) throw Error("Prestation introuvable");
@@ -167,7 +176,9 @@ export async function book(
         new Date().toISOString(),
       ],
     );
+    if(simulation)await q("UPDATE money_bookings SET test_booking=1 WHERE id=$1",[id]);
     await entry(q, owner, -d.credits, "Réservation", `booking:${id}`);
+    await serviceMessage(q,owner,id,"buyer","request","Nouvelle demande de prestation. Les crédits sont réservés en attendant la réponse du parrain.",0,`request:${id}`);
     return id;
   });
 }
@@ -178,19 +189,19 @@ export async function bookingAction(
   reason = "",
 ) {
   return moneyTransaction(async (q) => {
-    await lock(q, owner);
-    const b = (
-      await q("SELECT * FROM money_bookings WHERE id=$1 AND owner_id=$2", [
-        id,
-        owner,
-      ])
-    )[0];
-    if (!b) throw Error("Réservation introuvable");
+    const [initial]=await q("SELECT b.*,s.owner_id AS mentor FROM money_bookings b JOIN money_services s ON s.id=b.service_id WHERE b.id=$1",[id]);
+    if(!initial||![initial.owner_id,initial.mentor].includes(owner))throw Error("Réservation introuvable");
+    for(const id of [...new Set([String(initial.owner_id),String(initial.mentor)])].sort())await lock(q,id);
+    const [b]=await q("SELECT b.*,s.owner_id AS mentor FROM money_bookings b JOIN money_services s ON s.id=b.service_id WHERE b.id=$1",[id]);
+    if(["accept","complete","decline"].includes(action)&&b.mentor!==owner)throw Error("Action réservée au parrain.");
+    if(action==="cancel"&&b.owner_id!==owner)throw Error("Action réservée à l’acheteur.");
+    if(action==="refund"&&!await principalAccount(owner))throw Error("Action réservée à l’administration.");
+    const buyer=String(b.owner_id);
     if (action === "accept" && b.status === "reserved") {
       await q("UPDATE money_bookings SET status='accepted' WHERE id=$1", [id]);
       await serviceMessage(
         q,
-        owner,
+        buyer,
         id,
         "system",
         "accepted",
@@ -214,7 +225,7 @@ export async function bookingAction(
       );
       await serviceMessage(
         q,
-        owner,
+        buyer,
         id,
         "system",
         "completion",
@@ -230,7 +241,7 @@ export async function bookingAction(
         action === "cancel" ? "cancelled" : "declined",
         id,
       ]);
-      await entry(q, owner, Number(b.credits), "Restitution", `restore:${id}`);
+      await entry(q, buyer, Number(b.credits), "Restitution", `restore:${id}`);
     } else if (action === "refund" && b.status === "completed") {
       if (
         (
@@ -246,12 +257,13 @@ export async function bookingAction(
       await q("UPDATE money_bookings SET status='refunded' WHERE id=$1", [id]);
       await entry(
         q,
-        owner,
+        buyer,
         Number(b.credits),
         "Restitution après prestation",
         `restore:${id}`,
       );
     } else throw Error("Transition impossible ou déjà effectuée");
+    if(["decline","cancel","refund"].includes(action))await serviceMessage(q,buyer,id,action==="cancel"?"buyer":"system",action,action==="decline"?`La demande a été refusée : ${reason}`:action==="cancel"?"La demande a été annulée. Les crédits ont été restitués.":"La prestation a été remboursée en crédits.",0,`${action}:${id}`);
     if (action === "decline" && reason)
       await q(
         "INSERT INTO money_service_requests(booking_id,reason,updated_at) VALUES($1,$2,$3) ON CONFLICT(booking_id) DO UPDATE SET reason=$2,updated_at=$3",
@@ -270,8 +282,8 @@ export async function serviceMessage(
   revision: number,
   event: string,
 ) {
-  await q(
-    "INSERT INTO money_service_messages(id,booking_id,owner_id,role,kind,body,revision,event_key,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(event_key) DO NOTHING",
+  const inserted=await q(
+    "INSERT INTO money_service_messages(id,booking_id,owner_id,role,kind,body,revision,event_key,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(event_key) DO NOTHING RETURNING id",
     [
       crypto.randomUUID(),
       booking,
@@ -284,6 +296,14 @@ export async function serviceMessage(
       new Date().toISOString(),
     ],
   );
+  if(inserted.length){
+    const [b]=await q("SELECT b.owner_id,s.owner_id AS mentor FROM money_bookings b JOIN money_services s ON s.id=b.service_id WHERE b.id=$1",[booking]);
+    const recipient=role==="buyer"?String(b.mentor):String(b.owner_id);
+    if(b.mentor!==b.owner_id){
+      const now=new Date().toISOString();
+      for(const sub of await q("SELECT id FROM push_subscriptions WHERE user_id=$1",[recipient]))await q("INSERT INTO push_outbox(id,subscription_id,user_id,event_id,kind,url,created_at) VALUES($1,$2,$3,$4,'service_message',$5,$6) ON CONFLICT(id) DO NOTHING",[crypto.randomUUID(),String(sub.id),recipient,String(inserted[0].id),`/?mobile=messages&chat=service:${booking}#profile`,now]);
+    }
+  }
 }
 export async function confirmService(
   owner: string,
@@ -292,7 +312,9 @@ export async function confirmService(
   yes: boolean,
 ) {
   return moneyTransaction(async (q) => {
-    await lock(q, owner);
+    const [initial]=await q("SELECT b.owner_id,s.owner_id AS mentor FROM money_bookings b JOIN money_services s ON s.id=b.service_id WHERE b.id=$1",[id]);
+    if(!initial||initial.owner_id!==owner)throw Error("Confirmation réservée à l’acheteur.");
+    for(const id of [...new Set([owner,String(initial.mentor)])].sort())await lock(q,id);
     const [b] = await q(
       "SELECT b.*,s.owner_id AS mentor FROM money_bookings b JOIN money_services s ON s.id=b.service_id WHERE b.id=$1 AND b.owner_id=$2",
       [id, owner],
@@ -307,8 +329,9 @@ export async function confirmService(
       Number(c?.revision) !== revision
     )
       throw Error("Cette demande de confirmation n’est plus active.");
-    // Only the buyer can confirm; the principal can simulate the buyer on a self-booking in test.
-    if (b.mentor === owner && billingLive())
+    if(b.mentor===owner)await q("UPDATE money_bookings SET test_booking=1 WHERE id=$1",[id]);
+    // Principal self-tests are permitted but never create withdrawable earnings.
+    if (b.mentor === owner && !await principalAccount(owner))
       throw Error(
         "Une prestation réelle ne peut pas être confirmée par son propre parrain.",
       );

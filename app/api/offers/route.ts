@@ -1,16 +1,13 @@
 import {moneyMode,salesVersion} from "@/lib/monetization/mode";
 import { user, json } from "@/lib/http";
-import { isCrmOwner } from "@/lib/crm";
+import {commerceActor} from "@/lib/monetization/access";
 import { query } from "@/lib/monetization/db";
 import {rechargeOffers,creditSeasons} from "@/lib/monetization/catalog";
 export async function GET(r: Request) {
   const u = await user(r);
   if (!u)
     return json({ error: "Connecte-toi pour consulter les offres." }, 401);
-  if (!(await isCrmOwner(u)))
-    return json(
-      { error: "Accès réservé au compte administrateur principal." },
-      403,
-    );
-  return json({offers:rechargeOffers,seasons:creditSeasons,mode:moneyMode(),salesVersion:salesVersion()});
+  const actor=await commerceActor(u);
+  if(!actor)return json({error:"Offres indisponibles."},403);
+  return json({offers:rechargeOffers.filter(p=>actor.owner||p.season==="launch"),seasons:creditSeasons.filter(s=>actor.owner||s.id==="launch"),mode:moneyMode(),salesVersion:salesVersion()});
 }

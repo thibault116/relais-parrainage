@@ -56,7 +56,7 @@ export const legacyV2Packs = [
   },
 ];
 export type CreditSeason = "launch" | "black-friday" | "standard";
-export const defaultCreditSeason:CreditSeason="black-friday";
+export const defaultCreditSeason:CreditSeason="launch";
 export const creditSeasons: {
   id: CreditSeason;
   label: string;

@@ -5,6 +5,7 @@ import {salesVersion,moneyMode,billingLive,liveReadiness} from "@/lib/monetizati
 import { manageSubscription } from "@/lib/monetization/billing";
 import { user, json, guard } from "@/lib/http";
 import { isCrmOwner } from "@/lib/crm";
+import {commerceActor,allowedPurchase} from "@/lib/monetization/access";
 import { query } from "@/lib/monetization/db";
 import { plans, packs, maxCustomCredits, minCustomCredits, currentCheckoutCode, isRechargeCode } from "@/lib/monetization/catalog";
 import {
@@ -20,18 +21,19 @@ import { z } from "zod";
 export const runtime = "nodejs";
 export async function GET(r: Request) {
   const u = await user(r);
-  if (!(await isCrmOwner(u)))
-    return json({ error: "Accès propriétaire uniquement" }, 403);
+  const actor=await commerceActor(u);
+  if(!actor)return json({error:"Accès réservé aux membres."},403);
   try {
     const id = u!.id;
     const provider=await liveProviderStatus();
     return json({
       mode:moneyMode(),
+      owner:actor.owner,
       provider,
       salesVersion:salesVersion(),
       readiness:billingLive()?liveReadiness():null,
       plans:[],
-      packs,
+      packs:packs.filter(p=>actor.owner||p.season==="launch"),
       comparison:[],
       needsCreditTransition:!!(await query("SELECT subscription_id FROM money_accounts WHERE owner_id=$1 AND subscription_id IS NOT NULL AND status IN ('active','trialing','past_due','unpaid','incomplete')",[id])).length,
       payoutRate: payoutRate(),
@@ -52,7 +54,7 @@ export async function GET(r: Request) {
       ).map((s) => ({ ...s, data: JSON.parse(String(s.data)) })),
       bookings: (
         await query(
-          "SELECT * FROM money_bookings WHERE owner_id=$1 ORDER BY created_at DESC",
+          "SELECT b.* FROM money_bookings b JOIN money_services s ON s.id=b.service_id WHERE s.owner_id=$1 ORDER BY b.created_at DESC",
           [id],
         )
       ).map((b) => ({ ...b, snapshot: JSON.parse(String(b.snapshot)) })),
@@ -74,14 +76,16 @@ export async function GET(r: Request) {
 }
 export async function POST(r: Request) {
   const u = await user(r);
-  if (!(await isCrmOwner(u)))
-    return json({ error: "Accès propriétaire uniquement" }, 403);
+  const actor=await commerceActor(u);
+  if(!actor)return json({error:"Accès réservé aux membres."},403);
   const blocked = await guard(r);
   if (blocked) return blocked;
   try {
     const d = await r.json(),
       id = u!.id;
     const action = z.string().parse(d.action);
+    if(!actor.owner&&!["save","delete","checkout"].includes(action))return json({error:"Action réservée à l’administration."},403);
+    if(["save","delete"].includes(action)&&actor.profile?.role!=="mentor")return json({error:"Action réservée aux parrains."},403);
     if(action==="configure-live-webhook")return json(await completeLiveWebhook());
     if(action==="credits-only")return json(await switchToCredits(id));
     if (action === "save") {
@@ -131,7 +135,7 @@ export async function POST(r: Request) {
       const code = d.credits === undefined
         ? currentCheckoutCode(z.string().parse(d.offer))
         : `custom-v2-${z.number().int().min(minCustomCredits).max(maxCustomCredits).parse(d.credits)}`;
-      if(!isRechargeCode(code))return json({error:"Seuls les packs de crédits sont disponibles."},400);
+      if(!allowedPurchase(code,actor.owner))return json({error:"Seuls les packs de crédits sont disponibles."},400);
       return json({
         url: await checkout(
           id,

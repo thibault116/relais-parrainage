@@ -1007,7 +1007,7 @@ export default function App() {
           <Directory
             key={preview || "normal"}
             preview={!!preview}
-            privateServices={owner}
+            privateServices={!!session}
             session={!!session}
             onFollowChange={refreshProfile}
             initialTarget={focusMember}
@@ -1058,7 +1058,7 @@ export default function App() {
             {!phoneLayout && ["accompaniments", "requests", "tasks", "following"].includes(selectedProfileTab) && (
               <h1 className="compact-page-title">{translateUi(
                 selectedProfileTab === "accompaniments" ? "Accompagnements en cours" :
-                selectedProfileTab === "requests" ? (owner?"Demandes":"Demandes de parrainage") :
+                selectedProfileTab === "requests" ? "Demandes" :
                 selectedProfileTab === "following" ? "Abonnés et abonnements" :
                 profile?.role === "mentor" ? "Objectifs à atteindre" : "Mes objectifs",
               )}</h1>
@@ -1257,7 +1257,7 @@ export default function App() {
                   )}
                   {(selectedProfileTab === "accompaniments" ||
                     selectedProfileTab === "requests") && (
-                    owner&&selectedProfileTab==="requests" ? <PrivateServiceRequests><Accompaniments key={selectedProfileTab} mode={selectedProfileTab} onChange={refreshProfile}/></PrivateServiceRequests> : <Accompaniments key={selectedProfileTab} mode={selectedProfileTab} onChange={refreshProfile}/>
+                    selectedProfileTab==="requests" ? <PrivateServiceRequests><Accompaniments key={selectedProfileTab} mode={selectedProfileTab} onChange={refreshProfile}/></PrivateServiceRequests> : <Accompaniments key={selectedProfileTab} mode={selectedProfileTab} onChange={refreshProfile}/>
                   )}
                 </div>
               </>
@@ -2385,7 +2385,8 @@ function Directory({
   notify: (s: string) => void;
 }) {
   const [role, setRole] = useState(initialTarget?.role || initialRole);
-  const [showServices,setShowServices]=useState(false);
+  const [showServices,setShowServices]=useState(()=>typeof window!=="undefined"&&new URLSearchParams(window.location.search).get("services")==="1");
+  useEffect(()=>{if(new URLSearchParams(window.location.search).get("services")==="1")setShowServices(true);});
   const [search, setSearch] = useState("");
   const [specialty, setSpecialty] = useState("");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
