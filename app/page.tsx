@@ -2386,7 +2386,6 @@ function Directory({
 }) {
   const [role, setRole] = useState(initialTarget?.role || initialRole);
   const [showServices,setShowServices]=useState(()=>typeof window!=="undefined"&&new URLSearchParams(window.location.search).get("services")==="1");
-  useEffect(()=>{if(new URLSearchParams(window.location.search).get("services")==="1")setShowServices(true);});
   const [search, setSearch] = useState("");
   const [specialty, setSpecialty] = useState("");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
