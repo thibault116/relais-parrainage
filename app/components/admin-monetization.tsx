@@ -30,7 +30,7 @@ type Data = {
   mode: "test" | "live";
   salesVersion: string;
   configured: boolean;
-  provider?:{ready:boolean;message:string}|null;
+  provider?:{ready:boolean;message:string;canRepairWebhook?:boolean}|null;
   balance: number;
   payoutRate: number;
   needsCreditTransition: boolean;
@@ -227,6 +227,7 @@ export function AdminMonetization({
         </small>
       </header>
       {data.mode==="live"&&data.provider&&!data.provider.ready&&<p role="status">{data.provider.message}</p>}
+      {data.mode==="live"&&data.provider?.canRepairWebhook&&<button className="commerce-row" disabled={busy} onClick={()=>void send({action:"configure-live-webhook"})}>Compléter le webhook Stripe réel</button>}
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {view === "wallet" && (

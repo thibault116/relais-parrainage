@@ -1,4 +1,4 @@
-import {liveProviderStatus} from "@/lib/monetization/live-status";
+import {liveProviderStatus,completeLiveWebhook} from "@/lib/monetization/live-status";
 import {switchToCredits} from "@/lib/monetization/credit-transition";
 import {payoutRate} from "@/lib/monetization/payout-rate";
 import {salesVersion,moneyMode,billingLive,liveReadiness} from "@/lib/monetization/mode";
@@ -82,6 +82,7 @@ export async function POST(r: Request) {
     const d = await r.json(),
       id = u!.id;
     const action = z.string().parse(d.action);
+    if(action==="configure-live-webhook")return json(await completeLiveWebhook());
     if(action==="credits-only")return json(await switchToCredits(id));
     if (action === "save") {
       if(d.service?.image && !(await query("SELECT id FROM money_service_images WHERE id=$1 AND owner_id=$2",[z.string().uuid().parse(d.service.image),id])).length) throw Error("Image indisponible");

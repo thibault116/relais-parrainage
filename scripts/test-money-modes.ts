@@ -1,5 +1,5 @@
 import type Stripe from "stripe";
-import {liveProviderStatus} from "../lib/monetization/live-status";
+import {liveProviderStatus,completeLiveWebhook} from "../lib/monetization/live-status";
 import {appOrigin} from "../lib/monetization/stripe";
 import assert from "node:assert/strict";
 import {mkdtemp,rm} from "node:fs/promises";
@@ -34,6 +34,7 @@ try{
  assert(liveReadiness().ready);
  const endpoint={livemode:true,status:"enabled",url:appOrigin()+"/api/stripe/webhook",enabled_events:["*"]};
  const fake=(charges:boolean,entry=endpoint)=>()=>({accounts:{retrieve:async()=>({charges_enabled:charges})},webhookEndpoints:{list:async()=>({data:[entry]})}} as unknown as Stripe);
+ const changed:unknown[]=[];const repair=()=>({webhookEndpoints:{list:async()=>({data:[{...endpoint,id:"we_fixture",status:"disabled",url:"https://mentora-resell.vercel.app/api/stripe/webhook",enabled_events:["invoice.paid"]}]}),update:async(id:string,params:unknown)=>{changed.push({id,params});}}} as unknown as Stripe);await completeLiveWebhook(repair);assert.equal(changed.length,1);assert.deepEqual(changed[0],{id:"we_fixture",params:{disabled:false,enabled_events:["invoice.paid","checkout.session.completed","checkout.session.async_payment_succeeded","checkout.session.async_payment_failed","charge.refunded"]}});await assert.rejects(()=>completeLiveWebhook(()=>({webhookEndpoints:{list:async()=>({data:[{...endpoint,url:"https://foreign.example/webhook"}]})}} as unknown as Stripe)),/Aucun webhook/);
  assert.equal((await liveProviderStatus(fake(true)))?.ready,true);assert.equal((await liveProviderStatus(fake(false)))?.ready,false);assert.equal((await liveProviderStatus(fake(true,{...endpoint,url:"https://wrong.example/webhook"})))?.ready,false);assert.equal((await liveProviderStatus(fake(true,{...endpoint,livemode:false})))?.ready,false);
 assert.equal(salesVersion(),"live-fixture-v1");await entry(query,"owner",10,"fixture","initial");assert.equal(await balance(query,"owner"),10);
  assert.equal((await query("SELECT * FROM money_services")).length,1);
