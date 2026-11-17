@@ -887,3 +887,4 @@
 .owner-chat-keyboard .owner-mobile-preview .mobile-app-content{padding-top:2px!important;padding-bottom:env(safe-area-inset-bottom)!important}
 .owner-mobile-preview:has(:is(.mobile-dm.open,.community-page,.service-chat))~.suggestion-launcher,body:has(.owner-mobile-preview :is(.mobile-dm.open,.community-page,.service-chat)) .suggestion-launcher{display:none!important}
 }
+@media(max-width:900px){body.owner-chat-keyboard .owner-mobile-preview:has(:is(.mobile-dm.open,.community-page,.service-chat)) .mobile-app-content{padding-top:2px!important;padding-bottom:env(safe-area-inset-bottom)!important}}
