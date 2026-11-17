@@ -647,7 +647,7 @@ export function AdminMonetization({
                     {b.snapshot.title}
                     <small>{statuses[b.status] || b.status}</small>
                   </span>
-                  <strong>{b.credits} crédits</strong>
+                  <strong>{b.credits} crédits</strong>{data.mode==="test"&&b.status==="completed"&&<button className="commerce-row" disabled={busy} onClick={()=>void send({action:"booking",id:b.id,transition:"refund"})}>Restituer les crédits de test</button>}
                 </article>
               ))}
             </div>
