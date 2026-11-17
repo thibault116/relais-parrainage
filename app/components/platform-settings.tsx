@@ -1,4 +1,5 @@
 "use client";
+import {useOwnerPreview} from "./owner-preview";
 import { t as translateUi } from "@/app/components/language";
 import {
   createContext,
@@ -12,6 +13,7 @@ import { defaultSettings, publicSettings } from "@/lib/platform-config";
 const SettingsContext = createContext(publicSettings(defaultSettings));
 export const usePlatformSettings = () => useContext(SettingsContext);
 export function PlatformProvider({ children }: { children: ReactNode }) {
+  const owner=useOwnerPreview();
   const announcement = useRef<HTMLElement>(null);
   const [settings, setSettings] = useState(publicSettings(defaultSettings));
   useEffect(() => {
@@ -61,14 +63,14 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
             <summary>
               <span>
                 {/b[êeé]ta/i.test(settings.announcement)
-                  ? translateUi("Mentora en bêta · 100 % gratuit")
+                  ? translateUi(owner?"Mentora en bêta":"Mentora en bêta · 100 % gratuit")
                   : translateUi("Actualité Mentora")}
               </span>
               <span className="announcement-more">
                 {translateUi("En savoir plus")}
               </span>
             </summary>
-            <p>{settings.announcement}</p>
+            <p>{owner&&/b[êeé]ta/i.test(settings.announcement)?"Mentora est en bêta. Tes retours nous aident à améliorer la plateforme.":settings.announcement}</p>
           </details>
         </aside>
       )}

@@ -29,7 +29,7 @@ export const workspaceMain: WorkspaceItem[] = [
 export function workspaceGroups(mentor: boolean, moderator: boolean, owner: boolean, extras: boolean) {
   const groups: { title: string; items: WorkspaceItem[] }[] = [
     {
-      title: "Gestion des accompagnements",
+      title: owner?"Général":"Gestion des accompagnements",
       items: [
         { label: "Accompagnements en cours", icon: Inbox, screen: "pairs" },
         { label: mentor ? "Objectifs à atteindre" : "Mes objectifs", icon: Target, screen: "tasks", keywords: "tâches to-do progression" },
@@ -45,12 +45,11 @@ export function workspaceGroups(mentor: boolean, moderator: boolean, owner: bool
       ],
     },
   ];
-  if (extras) groups[0].items.push({ label: "Notes partagées", icon: NotebookPen, screen: "notes" });
+  if (extras && !owner) groups[0].items.push({ label: "Notes partagées", icon: NotebookPen, screen: "notes" });
   if (owner && mentor) groups[0].items.push({ label: "Prestations", icon: Layers, screen: "services" });
   if (owner) {
-    groups[1].items.push(
-      { label: "Crédits", icon: Layers, screen: "credits" },
-    );
+    groups[0].items=groups[0].items.filter(i=>!["pairs","tasks"].includes(i.screen));
+    groups[0].items.push({label:"Crédits",icon:Layers,screen:"credits"},{label:"Gérer mon profil",icon:UserRound,screen:"edit"});
     if (mentor) groups[1].items.push({ label: "Rémunération", icon: TrendingUp, screen: "payouts" });
   }
   if (mentor && !owner) groups[1].items.push({ label: "Finaliser mon profil", icon: UserRound, screen: "settings", settingsSection: "verification" });

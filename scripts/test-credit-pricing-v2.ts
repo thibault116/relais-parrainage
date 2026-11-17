@@ -3,7 +3,7 @@ import {mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {database,query} from "../lib/db";
-import {plans,legacyV2Packs as packs,rechargeOffers,defaultCreditSeason,currentCheckoutCode,checkoutOffer,customCreditsPrice,sliderCredits,creditsSlider,maxServiceCredits,servicePriceCents} from "../lib/monetization/catalog";
+import {plans,legacyV2Packs as packs,rechargeOffers,adminCreditOffer,defaultCreditSeason,currentCheckoutCode,checkoutOffer,customCreditsPrice,sliderCredits,creditsSlider,maxServiceCredits,servicePriceCents} from "../lib/monetization/catalog";
 import {payoutRate} from "../lib/monetization/payout-rate";
 import {migrateMonetization,saveService,book,entry,balance} from "../lib/monetization/store";
 import {recordPaid,recordRefund,checkout} from "../lib/monetization/payments";
@@ -12,6 +12,7 @@ if(process.env.DATABASE_URL||process.env.VERCEL)throw Error("Local isolated test
 const cwd=process.cwd(),dir=await mkdtemp(join(tmpdir(),"mentora-credits-v2-")),old=process.env.MENTORA_TEST_PAYOUT_CENTS;process.chdir(dir);
 try{
  await migrateMonetization();
+ assert.equal(checkoutOffer(adminCreditOffer.id)?.cents,100);assert.equal(checkoutOffer(adminCreditOffer.id)?.credits,10000);assert.equal(currentCheckoutCode(adminCreditOffer.id),adminCreditOffer.id);
  assert.equal(defaultCreditSeason,"black-friday");for(const season of ["launch","black-friday","standard"])assert.deepEqual(rechargeOffers.filter(p=>p.season===season).map(p=>p.referenceCents),[1299,2499,4999,10999]);
  assert.deepEqual(plans.map(p=>[p.cents,p.credits]),[[0,0],[1490,700],[2990,1600],[4990,2800]]);
  assert.deepEqual(joinOffers().comparison.find(r=>r.label==="Crédits par mois")?.values,["0","700","1600","2800"]);

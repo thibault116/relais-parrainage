@@ -104,6 +104,7 @@ export async function checkout(
       {
         customer: cid,
         mode: subscription ? "subscription" : "payment",
+        branding_settings:{display_name:"Mentora"},
         integration_identifier: "mentora_private_abcdwxyz",
         client_reference_id: id,
         expires_at: Math.floor(Date.now() / 1000) + 1800,

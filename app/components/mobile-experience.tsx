@@ -40,6 +40,7 @@ import { AdminMonetization } from "./admin-monetization";
 import { AdminLegalGuide } from "./admin-legal-guide";
 import {ServiceConversation,ServiceConversationList} from "./service-conversations";
 import { JoinOffers } from "./join-offers";
+import {useMobileChatViewport} from "./use-mobile-chat-viewport";
 import { OwnerPlanBadge } from "./owner-billing";
 import { BrandLogo } from "./brand-logo";
 import { useFeature } from "./beta";
@@ -521,7 +522,7 @@ export function MobileExperience({
       value={{ ids: bookmarks.map((p) => p.id), refresh: () => void load() }}
     >
       <div
-        className={`mobile-app ${desktopScreen ? "desktop-experience" : ""} ${screen === "community" && channel !== null ? "mobile-chat-view" : ""}`}
+        className={`mobile-app ${administrator?"owner-mobile-preview":""} ${desktopScreen ? "desktop-experience" : ""} ${screen === "community" && channel !== null ? "mobile-chat-view" : ""}`}
       >
         {toast && (
           <aside className="in-app-message" role="status">
@@ -1009,6 +1010,7 @@ export function MobileExperience({
               <>
               {administrator&&!chat&&<ServiceConversationList onOpen={setChat}/>}
               {dm&&<PrivateMessages
+                ownerPreview={administrator}
                 userId={userId}
                 chatId={chat}
                 setChatId={setChat}
@@ -1219,12 +1221,14 @@ function PairNotes({ pairs }: { pairs: Row[] }) {
   );
 }
 function PrivateMessages({
+  ownerPreview=false,
   userId,
   chatId,
   setChatId,
   pairs,
   onProfile,
 }: {
+  ownerPreview?:boolean;
   userId: string;
   chatId: string;
   setChatId: (s: string) => void;
@@ -1250,7 +1254,7 @@ function PrivateMessages({
     generation = useRef(0),
     archived = useRef(false);
   useEffect(() => {
-    if (!chatId) return;
+    if (!chatId||ownerPreview) return;
     const app = dmContainer.current?.closest<HTMLElement>(".mobile-app");
     const baseline = window.innerHeight;
     const resize = () => {
@@ -1278,7 +1282,8 @@ function PrivateMessages({
       app?.style.removeProperty("--mobile-visible-height");
       app?.style.removeProperty("--mobile-visible-top");
     };
-  }, [chatId]);
+  }, [chatId,ownerPreview]);
+  useMobileChatViewport(dmContainer,ownerPreview&&!!chatId);
   const refresh = useCallback(async () => {
     const ticket = ++generation.current;
     try {
@@ -1658,7 +1663,7 @@ function PrivateMessages({
           {canSend ? (
             <form className="mobile-dm-compose" onSubmit={send}>
               {file && (
-                <button type="button" onClick={() => setFile(null)}>
+                <button className="mobile-dm-attachment-preview" type="button" onClick={() => setFile(null)}>
                   {file.name} ×
                 </button>
               )}

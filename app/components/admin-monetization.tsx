@@ -8,6 +8,7 @@ import { CreditCoin } from "./credit-coin";
 import { openServiceChat } from "./service-conversations";
 import {
   creditSeasons,
+  adminCreditOffer,
   defaultCreditSeason,
   rechargeOffers,
   creditsSlider,
@@ -96,6 +97,14 @@ export function AdminMonetization({
     setData(d);
   }, []);
   useEffect(() => setTab(initialTab), [initialTab]);
+  useEffect(()=>{
+    if(!data||view!=="wallet")return;
+    const url=new URL(window.location.href);
+    if(url.searchParams.get("creditOffer")!==adminCreditOffer.id)return;
+    setPanel(adminCreditOffer.id);setAccepted(false);dialog.current?.showModal();
+    url.searchParams.delete("creditOffer");window.history.replaceState(window.history.state,"",url);
+  },[data,view]);
+
   useEffect(() => {
     let active = true;
     void load().catch((e) => {
@@ -185,6 +194,7 @@ export function AdminMonetization({
     ongoing = data.bookings.filter((b) =>
       ["accepted", "completion_pending"].includes(b.status),
     );
+  const purchaseOffers=[...rechargeOffers,adminCreditOffer];
   const offers = rechargeOffers.filter((p) => p.season === season);
   return (
     <section className="commerce-screen private-credit-system">
@@ -246,6 +256,7 @@ export function AdminMonetization({
             <strong>{data.balance.toLocaleString("fr-FR")} crédits</strong>
             <span>{data.mode==="live"?"Solde réel":"Solde disponible"}</span>
           </article>
+          <article className="commerce-card admin-credit-control"><h2>Crédits pour tes essais privés</h2><p>10 000 crédits · 1,00 € par achat</p><small>Paiement réel, réservé à ton compte administrateur.</small><button className="commerce-primary" onClick={()=>{setPanel(adminCreditOffer.id);setAccepted(false);setError("");dialog.current?.showModal();}}>Acheter 10 000 crédits · 1,00 €</button></article>
           <nav className="credit-seasons" aria-label="Grille tarifaire privée">
             {creditSeasons.map((s) => (
               <button
@@ -362,7 +373,7 @@ export function AdminMonetization({
               </button>
             </header>
             {(() => {
-              const p = rechargeOffers.find((o) => o.id === panel);
+              const p = purchaseOffers.find((o) => o.id === panel);
               return p ? (
                 <>
                   <CreditCoin />
@@ -491,14 +502,7 @@ export function AdminMonetization({
                     }
                   />
                 </label>
-                <p className="service-euro-preview">
-                  Coût indicatif pour le débutant :{" "}
-                  {euro(servicePriceCents(form.credits))} (base 2 € / 100
-                  crédits).
-                  <br />
-                  Ta rémunération prévue :{" "}
-                  {euro(Math.round(form.credits * data.payoutRate))}.
-                </p>
+                <p className="service-euro-preview">Ta rémunération prévue : {euro(Math.round(form.credits*data.payoutRate))}.</p>
                 <label className="commerce-check">
                   <input
                     type="checkbox"

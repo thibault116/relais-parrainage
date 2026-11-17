@@ -18,6 +18,8 @@ import {
   Bell,
 } from "lucide-react";
 import { useFeature } from "./beta";
+import {useOwnerPreview} from "./owner-preview";
+import {useMobileChatViewport} from "./use-mobile-chat-viewport";
 import { t } from "./language";
 type Member = { user_id: string; name: string };
 type Message = {
@@ -57,6 +59,7 @@ export function Community({
   channel?: string;
   onOpenProfile?: (id: string, role: string) => void;
 } = {}) {
+  const ownerPreview=useOwnerPreview();
   const repliesEnabled = useFeature("communityReplies"),
     editingEnabled = useFeature("communityEditing");
   const [reply, setReply] = useState<Message | null>(null),
@@ -75,7 +78,9 @@ export function Community({
     top?: number;
   }>({ bottom: true });
   const swipe = useRef<{ id: string; x: number; y: number } | null>(null);
+  useMobileChatViewport(container,ownerPreview);
   useEffect(() => {
+    if(ownerPreview)return;
     window.scrollTo({ top: 0, behavior: "instant" });
     const baseline = window.innerHeight;
     const resize = () => {
@@ -122,7 +127,7 @@ export function Community({
       window.visualViewport?.removeEventListener("scroll", resize);
       document.body.classList.remove("community-keyboard");
     };
-  }, []);
+  }, [ownerPreview]);
 
   const [messages, setMessages] = useState<Message[]>([]),
     [role, setRole] = useState(""),
@@ -315,7 +320,7 @@ export function Community({
     }
   }
   return (
-    <section ref={container} className="wrap community-page">
+    <section ref={container} className={`wrap community-page ${ownerPreview?"owner-chat-preview":""}`}>
       <div className="community-intro">
         <ShieldCheck size={21} />
         <div>

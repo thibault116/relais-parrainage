@@ -85,6 +85,17 @@ try{
  assert.equal((await(await wallet()).json()).added,0);assert.equal((await query("SELECT COUNT(*) AS n FROM money_test_reprices"))[0].n,2);await recordRefund("legacy-pack-pi",1690);assert.equal(await balance(query,owner.id),1615);
  await recordPaid(owner.id,"late-plus","late-plus-pi",2990,22,null);assert.equal(await balance(query,owner.id),3215);assert.equal((await query("SELECT credits FROM money_payments WHERE id='late-plus'"))[0].credits,1600);
  await query("INSERT INTO money_orders(id,owner_id,offer,session_id,created_at) VALUES('v3-fixture-order',$1,'credits-v3-black-friday-1050','v3-fixture-payment',$2)",[owner.id,new Date().toISOString()]);await recordPaid(owner.id,"v3-fixture-payment","v3-fixture-pi",1790,1050,null);assert.equal(await balance(query,owner.id),4265);await recordRefund("v3-fixture-pi",1790);assert.equal(await balance(query,owner.id),3215);
+
+ const base=await balance(query,owner.id);
+ for(const [id,key] of [["admin-eur1-first","pi-admin-eur1-first"],["admin-eur1-repeat","pi-admin-eur1-repeat"]]){
+ await query("INSERT INTO money_orders(id,owner_id,offer,session_id,created_at) VALUES($1,$2,'credits-admin-v1-10000-eur1',$1,$3)",[id,owner.id,new Date().toISOString()]);
+ await recordPaid(owner.id,id,key,100,10000,null);await recordPaid(owner.id,id,key,100,10000,null);
+ }
+ assert.equal(await balance(query,owner.id),base+20000);
+ await recordRefund("pi-admin-eur1-first",50);assert.equal(await balance(query,owner.id),base+15000);
+ await recordRefund("pi-admin-eur1-first",100);await recordRefund("pi-admin-eur1-first",100);await recordRefund("pi-admin-eur1-repeat",100);assert.equal(await balance(query,owner.id),base);
+ console.log("PASS pack admin 10 000 crédits / 1 €, achats répétés, doublons, remboursement partiel et total, ancien rattrapage sans perte du quota");
+ const privateMenu=workspaceGroups(true,true,true,true);assert.equal(privateMenu[0].title,"Général");assert(!privateMenu[0].items.some(i=>["pairs","tasks","notes"].includes(i.screen)));assert(privateMenu[0].items.some(i=>i.screen==="credits"));assert(privateMenu[0].items.some(i=>i.screen==="edit"));assert(!privateMenu[1].items.some(i=>i.screen==="credits"));
  assert.equal((await query("SELECT old_credits FROM money_test_reprices WHERE payment_id='legacy-plus'"))[0].old_credits,22);assert.equal((await query("SELECT credits FROM money_payments WHERE id='legacy-plus'"))[0].credits,1600);
  assert(!workspaceGroups(true,true,true,true).flatMap(g=>g.items).some(i=>i.label==="Finaliser mon profil"));assert(workspaceGroups(true,false,false,false).flatMap(g=>g.items).some(i=>i.label==="Finaliser mon profil"));assert(workspaceGroups(true,true,true,true).flatMap(g=>g.items).some(i=>i.adminTab==="verification"));
  console.log("PASS rattrapage de test calculé sur les paiements, refus des autres modérateurs, concurrence, audit et remboursements après correction");

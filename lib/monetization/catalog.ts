@@ -97,9 +97,10 @@ export const rechargeOffers = creditSeasons.flatMap((season) => {
     bonusCredits: bonus[i],
   }));
 });
+export const adminCreditOffer={id:"credits-admin-v1-10000-eur1",name:"Contrôle privé administrateur",cents:100,credits:10000,adminOnly:true};
 export const packs = rechargeOffers.filter((p) => p.season === defaultCreditSeason);
 export const isRechargeCode = (code: string) =>
-  rechargeOffers.some((p) => p.id === code);
+  code===adminCreditOffer.id||rechargeOffers.some((p) => p.id === code);
 // Immutable legacy offers: used only to reconcile payments opened before v2.
 const legacyPlanCredits: Record<string, number> = {
   free: 0,
@@ -174,6 +175,7 @@ export function isSubscriptionOffer(
 export function checkoutOffer(
   code: string,
 ): RechargeOffer | SubscriptionOffer | null | undefined {
+  if(code===adminCreditOffer.id)return adminCreditOffer;
   const custom = /^custom-v([12])-(\d{1,5})$/.exec(code);
   if (custom) {
     const credits = Number(custom[2]);
