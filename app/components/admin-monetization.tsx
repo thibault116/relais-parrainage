@@ -132,6 +132,7 @@ export function AdminMonetization({
       }
       await load();
       window.dispatchEvent(new Event("mentora-billing-updated"));
+      window.dispatchEvent(new Event("mentora-bank-changed"));
       setMessage(d.message || "Enregistré.");
       return true;
     } catch (e) {
@@ -165,17 +166,15 @@ export function AdminMonetization({
   const field = <K extends keyof Service>(key: K, value: Service[K]) =>
     setForm((v) => ({ ...v, [key]: value }));
   async function decision(id: string, transition: string) {
-    const r = await fetch("/api/admin/prestations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "decision", id, transition }),
-      }),
-      d = await r.json();
-    if (!r.ok) {
-      setError(d.error);
-      return;
-    }
-    openServiceChat(id);
+    if(busy)return;
+    setBusy(true);setError("");
+    try {
+      const r=await fetch("/api/admin/prestations",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"decision",id,transition})});
+      const d=await r.json();
+      if(!r.ok)throw Error(d.error);
+      openServiceChat(id);
+    } catch(e) { setError((e as Error).message); }
+    finally {setBusy(false);}
   }
   if (!data)
     return <p role="status">{error || "Chargement du système privé…"}</p>;
