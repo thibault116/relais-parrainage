@@ -1,29 +1,21 @@
 "use client";
-import {TestWalletUpdate} from "./test-wallet-update";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Plus, FileText, ArrowLeft, Check, MessageCircle } from "lucide-react";
 import { ManualBankForm, ManualBankHistory } from "./manual-bank";
-import {
-  Crown,
-  Coins,
-  Wallet,
-  BarChart3,
-  ClipboardList,
-  Plus,
-  ChevronRight,
-  CreditCard,
-  FileText,
-  CircleX,
-  ArrowDownToLine,
-  Check,
-  MoreHorizontal,
-  Rocket,
-  ArrowLeft,
-} from "lucide-react";
-import { useEffect, useState, useCallback, useRef } from "react";
 import { TestSalesAcceptance } from "./test-sales-acceptance";
-import { testSalesVersion } from "@/lib/legal-versions";
+import { CreditCoin } from "./credit-coin";
+import { openServiceChat } from "./service-conversations";
+import {
+  creditSeasons,
+  rechargeOffers,
+  creditsSlider,
+  sliderCredits,
+  maxServiceCredits,
+  servicePriceCents,
+  type CreditSeason,
+} from "@/lib/monetization/catalog";
 import type { serviceSchema } from "@/lib/monetization/store";
 import type { z } from "zod";
-import { annualPrice, customCreditsPrice, maxCustomCredits, minCustomCredits, maxServiceCredits, servicePriceCents, sliderCredits, creditsSlider, type plans, type packs } from "@/lib/monetization/catalog";
 type Service = z.infer<typeof serviceSchema>;
 type Booking = {
   id: string;
@@ -31,19 +23,14 @@ type Booking = {
   credits: number;
   payout_cents: number;
   status: string;
-  notes: string;
-  slot: string;
 };
 type Data = {
-  mode:"test"|"live";
-  salesVersion:string;
-  plans: typeof plans;
-  packs: typeof packs;
-  comparison: { label: string; values: string[] }[];
+  mode: "test" | "live";
+  salesVersion: string;
   configured: boolean;
-  payoutRate: number;
   balance: number;
-  account: { plan: string; status: string; cancel_at_end: number };
+  payoutRate: number;
+  needsCreditTransition: boolean;
   services: { id: string; data: Service }[];
   bookings: Booking[];
   ledger: { delta: number; kind: string; created_at: string }[];
@@ -51,7 +38,6 @@ type Data = {
     id: string;
     amount: number;
     credits: number;
-    refund_amount: number;
     invoice_url: string | null;
     created_at: string;
   }[];
@@ -66,20 +52,21 @@ const blank: Service = {
   calls: 0,
   followup: "",
   availability: "À convenir",
-  credits: 12,
+  credits: 500,
   capacity: 5,
   published: false,
 };
-const status: Record<string, string> = {
-  reserved: "À accepter",
-  accepted: "Acceptée",
-  completed: "Terminée · rémunération due",
-  cancelled: "Annulée",
+const statuses: Record<string, string> = {
+  reserved: "En attente",
+  accepted: "En cours",
+  completion_pending: "Confirmation du débutant attendue",
+  completed: "Terminée",
+  refunded: "Remboursée",
   declined: "Refusée",
-  refunded: "Crédits restitués",
+  cancelled: "Annulée",
 };
 export function AdminMonetization({
-  initialTab = "plans",
+  initialTab = "wallet",
   dedicated = false,
 }: {
   initialTab?: string;
@@ -87,67 +74,41 @@ export function AdminMonetization({
 }) {
   const [data, setData] = useState<Data | null>(null),
     [tab, setTab] = useState(initialTab),
-    [busy, setBusy] = useState(false),
-    [message, setMessage] = useState(""),
     [error, setError] = useState(""),
+    [message, setMessage] = useState(""),
+    [busy, setBusy] = useState(false),
+    [season, setSeason] = useState<CreditSeason>("launch"),
+    [accepted, setAccepted] = useState(false),
+    [panel, setPanel] = useState(""),
+    [editing, setEditing] = useState(false),
     [form, setForm] = useState<Service>(blank),
     [editId, setEditId] = useState<string | undefined>(),
-    [selected, setSelected] = useState<string | null>(null),
-    [notes, setNotes] = useState(""),
-    [slot, setSlot] = useState("");
-  const [billing, setBilling] = useState<any>(null);
-  useEffect(() => setTab(initialTab), [initialTab]);
-  const [accepted, setAccepted] = useState(false);
-  const [panel, setPanel] = useState("");
-  const creditDialog = useRef<HTMLDialogElement>(null);
-  const [customCredits, setCustomCredits] = useState("");
-  const [simulatedCredits, setSimulatedCredits] = useState(12);
-  const [simulationStep, setSimulationStep] = useState(0);
-  const [editing, setEditing] = useState(false);
-  const [uploading,setUploading]=useState(false);
-  const [serviceMenu, setServiceMenu] = useState<string | null>(null);
+    [uploading, setUploading] = useState(false);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const view = ["plans", "billing", "pricing"].includes(tab) ? "wallet" : tab;
   const load = useCallback(async () => {
-    try {
-      const r = await fetch("/api/admin/monetization", { cache: "no-store" }),
-        d = await r.json();
-      if (!r.ok) throw Error(d.error);
-      setData(d);
-      window.dispatchEvent(new Event("mentora-billing-updated"));
-    } catch (e) {
-      setError((e as Error).message);
-    }
+    const r = await fetch("/api/admin/monetization", { cache: "no-store" }),
+      d = await r.json();
+    if (!r.ok) throw Error(d.error);
+    setData(d);
   }, []);
+  useEffect(() => setTab(initialTab), [initialTab]);
   useEffect(() => {
-    void load();
-    const onFocus = () => void load();
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [load]);
-  const loadBilling = useCallback(async () => {
-    try {
-      const r = await fetch("/api/admin/monetization/billing", {
-        cache: "no-store",
-      });
-      const d = await r.json();
-      if (!r.ok) throw Error(d.error);
-      setBilling(d);
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }, []);
-  useEffect(() => {
-    if (tab !== "plans") return;
-    void loadBilling();
-    const refresh = () => void loadBilling();
+    let active = true;
+    void load().catch((e) => {
+      if (active) setError(e.message);
+    });
+    const refresh = () => void load().catch(() => {});
     window.addEventListener("focus", refresh);
-    return () => window.removeEventListener("focus", refresh);
-  }, [tab, loadBilling]);
+    window.addEventListener("mentora-bank-changed", refresh);
+    return () => {
+      active = false;
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("mentora-bank-changed", refresh);
+    };
+  }, [load]);
   async function send(body: Record<string, unknown>) {
     if (busy) return false;
-    if (body.action === "checkout" && !accepted) {
-      setError("Accepte les conditions de vente avant de continuer.");
-      return false;
-    }
     setBusy(true);
     setError("");
     setMessage("");
@@ -157,12 +118,10 @@ export function AdminMonetization({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...body,
-            ...(body.action === "checkout" ? { acceptedTermsVersion: data?.salesVersion || testSalesVersion } : {}),
-            returnTo: dedicated
-              ? tab === "wallet"
-                ? "credits"
-                : "billing"
-              : "admin",
+            returnTo: "credits",
+            ...(body.action === "checkout"
+              ? { acceptedTermsVersion: data?.salesVersion }
+              : {}),
           }),
         }),
         d = await r.json();
@@ -171,9 +130,9 @@ export function AdminMonetization({
         window.location.assign(d.url);
         return true;
       }
-      setMessage(d.message || "Enregistré.");
       await load();
-      if (tab === "plans") await loadBilling();
+      window.dispatchEvent(new Event("mentora-billing-updated"));
+      setMessage(d.message || "Enregistré.");
       return true;
     } catch (e) {
       setError((e as Error).message);
@@ -182,709 +141,258 @@ export function AdminMonetization({
       setBusy(false);
     }
   }
-  function field<K extends keyof Service>(key: K, value: Service[K]) {
-    setForm((f) => ({ ...f, [key]: value }));
+  async function upload(file?: File) {
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    try {
+      const f = new FormData();
+      f.set("file", file);
+      const r = await fetch("/api/admin/prestations", {
+          method: "POST",
+          body: f,
+        }),
+        d = await r.json();
+      if (!r.ok) throw Error(d.error);
+      setForm((v) => ({ ...v, image: d.id }));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  }
+  const toggle = (p: string) => setPanel((v) => (v === p ? "" : p));
+  const field = <K extends keyof Service>(key: K, value: Service[K]) =>
+    setForm((v) => ({ ...v, [key]: value }));
+  async function decision(id: string, transition: string) {
+    const r = await fetch("/api/admin/prestations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "decision", id, transition }),
+      }),
+      d = await r.json();
+    if (!r.ok) {
+      setError(d.error);
+      return;
+    }
+    openServiceChat(id);
   }
   if (!data)
     return <p role="status">{error || "Chargement du système privé…"}</p>;
-  const annual = billing?.period === "year";
-  if (
-    dedicated &&
-    !editing &&
-    ["plans", "wallet", "payouts", "services"].includes(tab)
-  ) {
-    const current =
-      data.plans.find((p) => p.id === data.account.plan) || data.plans[0];
-    const completed = data.bookings.filter((b) => b.status === "completed");
-    const customPrice = customCreditsPrice(Number(customCredits));
-    const due = completed.reduce((n, b) => n + b.payout_cents, 0);
-    const toggle = (name: string) => setPanel(panel === name ? "" : name);
-    const row = (
-      label: string,
-      Icon: typeof Crown,
-      action: () => void,
-      danger = false,
-    ) => (
-      <button
-        type="button"
-        className={`commerce-row ${danger ? "danger" : ""}`}
-        onClick={action}
-        disabled={busy}
-      >
-        <Icon size={21} />
-        <span>{label}</span>
-        <ChevronRight size={17} />
-      </button>
+  const completed = data.bookings.filter((b) => b.status === "completed"),
+    ongoing = data.bookings.filter((b) =>
+      ["accepted", "completion_pending"].includes(b.status),
     );
-    const portal = () => void send({ action: "portal" });
-    const invoices = (
-      <div className="commerce-history">
-        {billing?.invoices?.length ? (
-          billing.invoices.map((i: any) => (
-            <article key={i.id}>
-              <span>
-                {i.number || "Facture"}
-                <small>
-                  {new Date(i.date * 1000).toLocaleDateString("fr-FR")}
-                </small>
-              </span>
-              <strong>{euro(i.amount)}</strong>
-              {i.url && (
-                <a href={i.url} target="_blank" rel="noreferrer">
-                  Voir
-                </a>
-              )}
-              {i.pdf && (
-                <a href={i.pdf} target="_blank" rel="noreferrer">
-                  PDF
-                </a>
-              )}
-            </article>
-          ))
-        ) : (
-          <p>Aucune facture disponible.</p>
-        )}
-        {row("Historique complet sur Stripe", FileText, portal)}
-      </div>
-    );
-    return (
-      <section className="commerce-page">
-        <header className="commerce-heading">
-          <h1>
-            {
-              {
-                plans: "Mon abonnement",
-                wallet: "Mes crédits",
-                payouts: "Ma rémunération",
-                services: "Mes prestations",
-              }[tab]
-            }
-          </h1>
-          {tab !== "payouts" && <p>
-            {
-              {
-                plans: "Gère ton offre et ta facturation.",
-                wallet:
-                  "Utilise tes crédits pour réserver des prestations et des accompagnements.",
-                payouts:
-                  "Suis tes prestations réalisées et tes rémunérations dues.",
-                services: "Gère les prestations que tu proposes aux membres.",
-              }[tab]
-            }
-          </p>}
-        </header>
-        <span className="commerce-test">{data.mode==="live"?"PRIVÉ · Paiements réels":"TEST PRIVÉ · Aucun paiement réel"}</span>
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
-        {message && <p role="status">{message}</p>}
-        {tab === "plans" && (
-          <>
-            <article className="commerce-card commerce-plan">
-              <div className="commerce-plan-top">
-                <Crown />
-                <div>
-                  <h2>Offre {current.name}</h2>
-                  <p>{euro(annual ? annualPrice(current.cents) : current.cents)} / {annual ? "an" : "mois"}</p>
-                </div>
-                <span className="commerce-pill">
-                  {data.account.cancel_at_end
-                    ? "Fin programmée"
-                    : data.account.status === "active"
-                      ? "Actif"
-                      : current.id === "free"
-                        ? "Gratuit"
-                        : "À vérifier"}
-                </span>
-              </div>
-              <ul className="commerce-benefits">
-                <li>
-                  <Check />
-                  {annual ? (billing?.creditsPerMonth ?? current.credits) * 12 : (billing?.creditsPerMonth ?? current.credits)} crédits par {annual ? "an" : "mois"}
-                </li>
-                {data.comparison
-                  .filter((r) =>
-                    [
-                      "Accès à la communauté",
-                      "Messagerie",
-                      "Espaces d’accompagnement simultanés",
-                    ].includes(r.label),
-                  )
-                  .map((r) => (
-                    <li key={r.label}>
-                      <Check />
-                      {r.label} ·{" "}
-                      {
-                        r.values[
-                          data.plans.findIndex((p) => p.id === current.id)
-                        ]
-                      }
-                    </li>
-                  ))}
-              </ul>
-              {billing?.renewal && (
-                <small>
-                  {data.account.cancel_at_end
-                    ? "Fin le "
-                    : "Renouvellement le "}
-                  {new Date(billing.renewal * 1000).toLocaleDateString("fr-FR")}
-                </small>
-              )}
-              {billing?.pendingPlan && (
-                <p className="commerce-upcoming">
-                  Prochaine offre : {billing.pendingPlan}
-                </p>
-              )}
-            </article>
-            <button
-              className="commerce-primary"
-              disabled={busy}
-              onClick={() => toggle("offers")}
-            >
-              <Crown size={19} />
-              Changer d’offre
-            </button>
-            {panel === "offers" && (
-              <section className="commerce-offers">
-                <h2>Choisis ton prochain cap</h2>
-                <p>
-                  Formules {annual ? "annuelles" : "mensuelles"} · changement au prochain renouvellement.
-                </p>
-                {current.id === "free" && <TestSalesAcceptance live={data.mode==="live"} checked={accepted} onChange={setAccepted} />}
-                {data.plans.map((p) => (
-                  <article
-                    className={`commerce-card ${current.id === p.id ? "chosen" : ""}`}
-                    key={p.id}
-                  >
-                    <div className="commerce-plan-top">
-                      <Crown />
-                      <h3>{p.name}</h3>
-                      <strong>
-                        {euro(annual ? annualPrice(p.cents) : p.cents)}
-                        <small>/{annual ? "an" : "mois"}</small>
-                      </strong>
-                    </div>
-                    <p>{annual ? p.credits * 12 : p.credits} crédits par {annual ? "an" : "mois"}</p>
-                    <details>
-                      <summary>Fonctionnalités incluses</summary>
-                      <ul>
-                        {data.comparison.map((r) => (
-                          <li key={r.label}>
-                            {r.label} :{" "}
-                            {
-                              r.values[
-                                data.plans.findIndex((x) => x.id === p.id)
-                              ]
-                            }
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
-                    {p.id === current.id ? (
-                      <span className="commerce-pill">Offre actuelle</span>
-                    ) : p.cents > 0 ? (
-                      <button
-                        className="commerce-primary"
-                        disabled={
-                          busy ||
-                          !data.configured ||
-                          !!data.account.cancel_at_end
-                        }
-                        onClick={() => {
-                          const active = ["active", "trialing"].includes(
-                            data.account.status,
-                          );
-                          if (
-                            !active ||
-                            window.confirm(
-                              `Passer à ${p.name} au prochain renouvellement pour ${euro(annual ? annualPrice(p.cents) : p.cents)} / ${annual ? "an" : "mois"} ?`,
-                            )
-                          )
-                            void send(
-                              active
-                                ? { action: "change-plan", plan: p.id }
-                                : {
-                                    action: "checkout",
-                                    offer: p.id,
-                                    key: crypto.randomUUID(),
-                                  },
-                            );
-                        }}
-                      >
-                        Choisir {p.name}
-                      </button>
-                    ) : (
-                      <p>
-                        Le retour à Free se fait en résiliant ton abonnement.
-                      </p>
-                    )}
-                  </article>
-                ))}
-              </section>
-            )}
-            <div className="commerce-links">
-              {row("Gérer ma carte", CreditCard, portal)}
-              {billing?.card && (
-                <small className="commerce-card-hint">
-                  {billing.card.brand} •••• {billing.card.last4} ·{" "}
-                  {billing.card.month}/{billing.card.year}
-                </small>
-              )}
-              {row("Voir mes factures", FileText, () => toggle("invoices"))}
-              {["active", "trialing"].includes(data.account.status) &&
-                row(
-                  data.account.cancel_at_end
-                    ? "Reprendre mon abonnement"
-                    : "Résilier mon abonnement",
-                  CircleX,
-                  () => {
-                    if (
-                      window.confirm(
-                        data.account.cancel_at_end
-                          ? "Reprendre le renouvellement ?"
-                          : "Résilier à la fin de la période et annuler tout changement programmé ?",
-                      )
-                    )
-                      void send({
-                        action: data.account.cancel_at_end
-                          ? "resume-subscription"
-                          : "cancel-subscription",
-                      });
-                  },
-                  !data.account.cancel_at_end,
-                )}
-            </div>
-            {panel === "invoices" && invoices}
-            <p className="commerce-footnote">
-              <a href="/juridique/contrats">Rétractation, résiliation et remboursements</a>
-            </p>
-          </>
-        )}
-        {tab === "wallet" && (
-          <>
-            {data.mode==="test"&&<TestWalletUpdate onChange={async()=>{await load();await loadBilling();}}/>}
-            <article className="commerce-card commerce-balance">
-              <Coins size={38} />
-              <strong>{data.balance} crédits</strong>
-              <span>Solde disponible</span>
-            </article>
-            <button
-              className="commerce-primary"
-              onClick={() => {
-                setError("");
-                setAccepted(false);
-                creditDialog.current?.showModal();
-              }}
-            >
-              <Plus />
-              Acheter des crédits
-            </button>
-            {row("Historique des crédits", FileText, () => toggle("credits"))}
-            {panel === "credits" && (
-              <div className="commerce-history">
-                {data.ledger.length ? (
-                  data.ledger.map((l, i) => (
-                    <article key={i}>
-                      <span>
-                        {l.kind}
-                        <small>
-                          {new Date(l.created_at).toLocaleDateString("fr-FR")}
-                        </small>
-                      </span>
-                      <strong>
-                        {l.delta > 0 ? "+" : ""}
-                        {l.delta}
-                      </strong>
-                    </article>
-                  ))
-                ) : (
-                  <p>Aucun mouvement.</p>
-                )}
-              </div>
-            )}
-            <dialog ref={creditDialog} className="commerce-dialog" aria-labelledby="credit-dialog-title">
-              <div className="commerce-plan-top">
-                <h2 id="credit-dialog-title">Acheter des crédits</h2>
-                <button className="commerce-icon" aria-label="Fermer" onClick={() => creditDialog.current?.close()}>
-                  <CircleX />
-                </button>
-              </div>
-              <p>{data.mode==="live"?"Paiement Stripe réel":"Paiement Stripe en mode test"}</p>
-              <TestSalesAcceptance live={data.mode==="live"} checked={accepted} onChange={setAccepted} />
-              {!data.configured && <p>Le paiement est indisponible.</p>}
-              {error && <p role="alert">{error}</p>}
-              <p>100 crédits = 2 €</p>
-              <div className="commerce-packs">
-                {data.packs.map((p) => (
-                  <button
-                    key={p.id}
-                    className="commerce-card commerce-pack"
-                    disabled={busy || !data.configured || !accepted}
-                    onClick={() => void send({ action: "checkout", offer: p.id, key: crypto.randomUUID() })}
-                  >
-                    <Coins />
-                    <span className="credit-pack-description"><small>{p.name}</small><strong>{p.credits.toLocaleString("fr-FR")} crédits au total</strong><small>{p.bonusCredits?`+${p.bonusCredits.toLocaleString("fr-FR")} crédits bonus`:"Sans bonus"}</small><small>{p.purchasedCredits.toLocaleString("fr-FR")} achetés{p.bonusCredits?` + ${p.bonusCredits.toLocaleString("fr-FR")} bonus`:""}</small></span>
-                    <span>{euro(p.cents)}</span>
-                    <ChevronRight size={16} />
-                  </button>
-                ))}
-              </div>
-              <form className="commerce-custom-credits" onSubmit={(event) => {
-                event.preventDefault();
-                if (customPrice !== null)
-                  void send({ action: "checkout", credits: Number(customCredits), key: crypto.randomUUID() });
-              }}>
-                <label>
-                  Quantité personnalisée (25 crédits minimum)
-                  <input type="number" min={minCustomCredits} max={maxCustomCredits} step={1} required
-                    value={customCredits} onChange={(event) => setCustomCredits(event.target.value)} />
-                </label>
-                <button className="commerce-primary" disabled={busy || !data.configured || !accepted || customPrice === null || Number(customCredits)<minCustomCredits}>
-                  {customPrice === null ? "Choisir une quantité" : `Payer ${euro(customPrice)}`}
-                </button>
-              </form>
-            </dialog>
-            <small className="commerce-footnote">
-              Les crédits restent personnels, sans transfert ni conversion en
-              argent.
-            </small>
-          </>
-        )}
-        {tab === "payouts" && (
-          <>
-            <ManualBankForm />
-            <div className="commerce-stat-grid">
-              <article className="commerce-card">
-                <Coins />
-                <strong>{completed.reduce((n, b) => n + b.credits, 0)}</strong>
-                <span>Crédits des prestations</span>
-              </article>
-              <article className="commerce-card">
-                <Check />
-                <strong>{completed.length}</strong>
-                <span>Prestations réalisées</span>
-              </article>
-            </div>
-            {row("Historique des rémunérations", BarChart3, () =>
-              toggle("earnings"),
-            )}
-            {panel === "earnings" && (
-              <div className="commerce-history">
-                {completed.length ? (
-                  completed.map((b) => (
-                    <article key={b.id}>
-                      <span>{b.snapshot.title}</span>
-                      <strong>{euro(b.payout_cents)}</strong>
-                    </article>
-                  ))
-                ) : (
-                  <p>Aucune prestation terminée.</p>
-                )}
-              </div>
-            )}
-            {row("Historique des réservations", ClipboardList, () =>
-              toggle("bookings"),
-            )}
-            {panel === "bookings" && (
-              <div className="commerce-history">
-                {data.bookings.length ? (
-                  data.bookings.map((b) => (
-                    <article key={b.id}>
-                      <span>
-                        {b.snapshot.title}
-                        <small>{status[b.status] || b.status}</small>
-                      </span>
-                      <strong>{b.credits} crédits</strong>
-                    </article>
-                  ))
-                ) : (
-                  <p>Aucune réservation.</p>
-                )}
-              </div>
-            )}
-            {row("Mes retraits", Wallet, () => toggle("withdrawals"))}
-            {panel === "withdrawals" && <ManualBankHistory />}
-          </>
-        )}
-        {tab === "services" && (
-          <>
-            <button
-              className="commerce-primary"
-              onClick={() => {
-                setForm(blank);
-                setEditId(undefined);
-                setEditing(true);
-              }}
-            >
-              <Plus />
-              Ajouter une prestation
-            </button>
-            <div className="commerce-services">
-              {data.services.length ? (
-                data.services.map((s) => (
-                  <article className="commerce-card" key={s.id}>
-                    <div className="commerce-plan-top">
-                      <Rocket />
-                      <div>
-                        <h2>{s.data.title}</h2>
-                      </div>
-                      <button
-                        className="commerce-icon"
-                        aria-label={`Options de ${s.data.title}`}
-                        onClick={() =>
-                          setServiceMenu(serviceMenu === s.id ? null : s.id)
-                        }
-                      >
-                        <MoreHorizontal />
-                      </button>
-                    </div>
-                    <div className="commerce-service-bottom">
-                      <strong>{s.data.credits} crédits</strong>
-                      <button
-                        role="switch"
-                        aria-checked={s.data.published}
-                        aria-label={`Publier ${s.data.title}`}
-                        className={`commerce-switch ${s.data.published ? "on" : ""}`}
-                        disabled={busy}
-                        onClick={() =>
-                          void send({
-                            action: "save",
-                            id: s.id,
-                            service: {
-                              ...s.data,
-                              published: !s.data.published,
-                            },
-                          })
-                        }
-                      >
-                        <span />
-                      </button>
-                    </div>
-                    {serviceMenu === s.id && (
-                      <div className="commerce-service-menu">
-                        <p>{s.data.description}</p>
-                        <p>
-                          Rémunération prévue :{" "}
-                          {euro(Math.round(s.data.credits * data.payoutRate))}
-                        </p>
-                        <button
-                          className="commerce-row"
-                          onClick={() => {
-                            setForm(s.data);
-                            setEditId(s.id);
-                            setEditing(true);
-                          }}
-                        >
-                          Modifier la prestation
-                          <ChevronRight />
-                        </button>
-                        <button
-                          className="commerce-row danger"
-                          disabled={busy}
-                          onClick={() => {
-                            if (
-                              window.confirm(
-                                "Supprimer cette prestation du catalogue ?",
-                              )
-                            )
-                              void send({ action: "delete", id: s.id });
-                          }}
-                        >
-                          Supprimer
-                        </button>
-                      </div>
-                    )}
-                  </article>
-                ))
-              ) : (
-                <article className="commerce-card">
-                  <ClipboardList />
-                  <p>Partage ton expérience : crée ta première prestation.</p>
-                </article>
-              )}
-            </div>
-          </>
-        )}
-      </section>
-    );
-  }
+  const offers = rechargeOffers.filter((p) => p.season === season);
   return (
-    <section className="pricing-lab money-lab">
-      {dedicated && editing && (
-        <button className="commerce-row" onClick={() => setEditing(false)}>
-          <ArrowLeft />
-          Mes prestations
-        </button>
-      )}
-      <div className="pricing-private">
-        <strong>{data.mode==="live"?"Monétisation · privée":"Monétisation · TEST · toi uniquement"}</strong>
-        <span>{data.mode==="live"?"Paiements réels · compte principal uniquement":"Aucun encaissement ni versement réel"}</span>
-      </div>
+    <section className="commerce-screen private-credit-system">
       {!dedicated && (
-        <p>
-          Tu joues les deux rôles dans cet espace isolé : parrain pour proposer
-          et gérer, débutant pour acheter des crédits et réserver.
-        </p>
-      )}
-      {!data.configured && (
-        <p role="status">
-          Stripe test ou son webhook n’est pas encore configuré. Les paiements
-          restent bloqués.
-        </p>
-      )}
-      {!dedicated && (
-        <nav className="pricing-switch" aria-label="Monétisation privée">
+        <nav className="service-request-tabs">
           {[
-            ["plans", "Abonnements"],
-            ["wallet", "Portefeuille"],
-            ["services", "Prestations · parrain"],
-            ["discover", "Réserver · débutant"],
-            ["bookings", "Réservations"],
-            ["payouts", "Rémunérations"],
+            ["wallet", "Crédits"],
+            ["services", "Prestations"],
+            ["payouts", "Rémunération"],
           ].map(([id, label]) => (
             <button
               key={id}
-              aria-pressed={tab === id}
-              onClick={() => setTab(id)}
+              onClick={() => {
+                setTab(id);
+                setEditing(false);
+              }}
+              className={view === id ? "selected" : ""}
             >
               {label}
             </button>
           ))}
         </nav>
       )}
-      {!dedicated&&<div className="money-summary">
-        <strong>{data.balance} crédits disponibles</strong>
-        <span>
-          Offre : {data.account.plan} · {data.account.status}
-          {data.account.cancel_at_end ? " · résiliation en fin de période" : ""}
-        </span>
-        <button
-          className="btn secondary"
-          disabled={busy}
-          onClick={() => void load()}
-        >
-          Actualiser
-        </button>
-      </div>}
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
+      <header>
+        <h1>
+          {editing
+            ? editId
+              ? "Modifier la prestation"
+              : "Créer une prestation"
+            : view === "services"
+              ? "Mes prestations"
+              : view === "payouts"
+                ? "Ma rémunération"
+                : "Mes crédits"}
+        </h1>
+        <small>
+          {data.mode === "test"
+            ? "TEST PRIVÉ · Aucun paiement réel"
+            : "ESPACE PRIVÉ"}
+        </small>
+      </header>
+      {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
-      {tab === "plans" && (
+      {view === "wallet" && (
         <>
-          <h2>
-            Mon abonnement ·{" "}
-            {data.plans.find((p) => p.id === data.account.plan)?.name || "Free"}
-          </h2>
-          <section className="money-billing-details">
-            <p>
-              Moyen de paiement :{" "}
-              {billing?.card
-                ? `${billing.card.brand} •••• ${billing.card.last4} · ${billing.card.month}/${billing.card.year}`
-                : "Aucune carte enregistrée"}
-            </p>
-            {billing?.renewal && (
-              <p>
-                {data.account.cancel_at_end
-                  ? "Fin de l’abonnement"
-                  : "Prochain renouvellement"}{" "}
-                : {new Date(billing.renewal * 1000).toLocaleDateString("fr-FR")}
-              </p>
-            )}
-            {billing?.pendingPlan && (
-              <p>
-                Prochaine formule : {billing.pendingPlan}, au renouvellement.
-              </p>
-            )}
+          {data.needsCreditTransition && (
             <button
-              className="btn secondary"
-              disabled={busy || !data.configured}
-              onClick={() => void send({ action: "portal" })}
+              className="commerce-row"
+              disabled={busy}
+              onClick={() => void send({ action: "credits-only" })}
             >
-              Changer de carte · portail Stripe test
+              Appliquer le fonctionnement par crédits
             </button>
-            {["active", "trialing"].includes(data.account.status) && (
+          )}
+          <article className="commerce-card commerce-balance">
+            <CreditCoin />
+            <strong>{data.balance.toLocaleString("fr-FR")} crédits</strong>
+            <span>Solde disponible</span>
+          </article>
+          <nav className="credit-seasons" aria-label="Grille tarifaire privée">
+            {creditSeasons.map((s) => (
               <button
-                className="btn secondary"
-                disabled={busy}
+                key={s.id}
+                className={season === s.id ? "selected" : ""}
+                aria-pressed={season === s.id}
                 onClick={() => {
-                  if (
-                    window.confirm(
-                      data.account.cancel_at_end
-                        ? "Reprendre le renouvellement de cet abonnement ?"
-                        : "Résilier à la fin de la période et annuler tout changement d’offre programmé ?",
-                    )
-                  )
-                    void send({
-                      action: data.account.cancel_at_end
-                        ? "resume-subscription"
-                        : "cancel-subscription",
-                    });
+                  setSeason(s.id);
+                  setAccepted(false);
                 }}
               >
-                {data.account.cancel_at_end
-                  ? "Reprendre mon abonnement"
-                  : "Résilier mon abonnement"}
+                {s.label}
               </button>
-            )}
-          </section>
-
-          {data.account.plan === "free" && <TestSalesAcceptance live={data.mode==="live"} checked={accepted} onChange={setAccepted} />}
-          <div className="pricing-cards">
-            {data.plans.map((p, i) => (
-              <article className="pricing-card" key={p.id}>
-                <h3>{p.name}</h3>
-                <div className="pricing-amount">
-                  {euro(annual ? annualPrice(p.cents) : p.cents)}
-                  <small>/{annual ? "an" : "mois"}</small>
-                </div>
-                <p>{annual ? p.credits * 12 : p.credits} crédits par {annual ? "an" : "mois"}</p>
-                <ul>
-                  {data.comparison.map((row) => (
-                    <li key={row.label}>
-                      <span>
-                        {row.label}
-                        <small>{row.values[i]}</small>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                {p.cents > 0 &&
-                ["active", "trialing"].includes(data.account.status) ? (
+            ))}
+          </nav>
+          <div className={`credit-offers-heading ${season}`}>
+            <h2>{creditSeasons.find((s) => s.id === season)?.title}</h2>
+            <p>
+              {season === "launch"
+                ? "Profite de nos tarifs pour le début de l’aventure Mentora !"
+                : season === "black-friday"
+                  ? "Les packs Black Friday et leurs crédits bonus."
+                  : "Choisis le pack adapté à tes besoins."}
+            </p>
+          </div>
+          <div className={`credit-offers ${season}`}>
+            {offers.map((p) => (
+              <button
+                key={p.id}
+                className="credit-offer"
+                onClick={() => {
+                  setPanel(p.id);
+                  setAccepted(false);
+                  setError("");
+                  dialog.current?.showModal();
+                }}
+              >
+                <CreditCoin small />
+                <span>
+                  <strong>Pack {p.name}</strong>
+                  <small className="credit-offer-tag">{p.tag}</small>
+                  <b>{p.credits.toLocaleString("fr-FR")} crédits</b>
+                  {p.bonusCredits > 0 && (
+                    <small>+{p.bonusCredits} bonus inclus</small>
+                  )}
+                  <small>
+                    {euro((p.cents * 100) / p.credits)} / 100 crédits
+                  </small>
+                </span>
+                <b className="credit-offer-price">{euro(p.cents)}</b>
+              </button>
+            ))}
+          </div>
+          <button className="commerce-row" onClick={() => toggle("history")}>
+            <FileText size={20} />
+            Historique des crédits
+          </button>
+          {panel === "history" && (
+            <div className="commerce-history">
+              {data.ledger.map((l, i) => (
+                <article key={i}>
+                  <span>
+                    {l.kind}
+                    <small>
+                      {new Date(l.created_at).toLocaleString("fr-FR")}
+                    </small>
+                  </span>
+                  <strong>
+                    {l.delta > 0 ? "+" : ""}
+                    {l.delta}
+                  </strong>
+                </article>
+              ))}
+            </div>
+          )}
+          <button className="commerce-row" onClick={() => toggle("payments")}>
+            <FileText size={20} />
+            Mes paiements
+          </button>
+          {panel === "payments" && (
+            <div className="commerce-history">
+              {data.payments.map((p) => (
+                <article key={p.id}>
+                  <span>
+                    {p.credits} crédits · {euro(p.amount)}
+                    <small>
+                      {new Date(p.created_at).toLocaleDateString("fr-FR")}
+                    </small>
+                  </span>
+                  {p.invoice_url && (
+                    <a href={p.invoice_url} target="_blank" rel="noreferrer">
+                      Reçu
+                    </a>
+                  )}
                   <button
-                    className="btn"
-                    disabled={
-                      busy ||
-                      !!data.account.cancel_at_end ||
-                      data.account.plan === p.id
-                    }
+                    className="commerce-row"
+                    disabled={busy}
                     onClick={() => {
                       if (
                         window.confirm(
-                          `Passer à ${p.name} (${euro(annual ? annualPrice(p.cents) : p.cents)} / ${annual ? "an" : "mois"}, ${annual ? p.credits * 12 : p.credits} crédits par période) au prochain renouvellement ?`,
+                          "Demander le remboursement de ce paiement ?",
                         )
                       )
-                        void send({ action: "change-plan", plan: p.id });
+                        void send({ action: "refund", id: p.id });
                     }}
                   >
-                    {data.account.plan === p.id
-                      ? "Offre actuelle"
-                      : `Passer à ${p.name} au renouvellement`}
+                    Demander un remboursement
                   </button>
-                ) : p.cents > 0 ? (
+                </article>
+              ))}
+            </div>
+          )}
+          <dialog
+            className="credit-purchase-dialog"
+            ref={dialog}
+            aria-labelledby="credit-purchase-title"
+          >
+            <header>
+              <h2 id="credit-purchase-title">Acheter des crédits</h2>
+              <button
+                className="commerce-icon"
+                aria-label="Fermer"
+                onClick={() => dialog.current?.close()}
+              >
+                ×
+              </button>
+            </header>
+            {(() => {
+              const p = rechargeOffers.find((o) => o.id === panel);
+              return p ? (
+                <>
+                  <CreditCoin />
+                  <h3>Pack {p.name}</h3>
+                  <p>
+                    {p.credits.toLocaleString("fr-FR")} crédits ·{" "}
+                    {euro(p.cents)}
+                  </p>
+                  <p>
+                    {data.mode === "test"
+                      ? "Paiement Stripe en mode test"
+                      : "Paiement sécurisé"}
+                  </p>
+                  <TestSalesAcceptance
+                    live={data.mode === "live"}
+                    checked={accepted}
+                    onChange={setAccepted}
+                  />
+                  {error && <p role="alert">{error}</p>}
                   <button
-                    className="btn"
-                    disabled={
-                      busy ||
-                      !data.configured ||
-                      !["free", "canceled", "incomplete_expired"].includes(
-                        data.account.status,
-                      )
-                    }
+                    className="commerce-primary"
+                    disabled={busy || !accepted || !data.configured}
                     onClick={() =>
                       void send({
                         action: "checkout",
@@ -893,449 +401,264 @@ export function AdminMonetization({
                       })
                     }
                   >
-                    Tester {p.name} avec Stripe
+                    Payer {euro(p.cents)}
                   </button>
-                ) : (
-                  <p>Offre par défaut, sans paiement.</p>
-                )}
-              </article>
-            ))}
-          </div>
-          <button
-            className="btn secondary"
-            disabled={busy || !data.configured}
-            onClick={() => void send({ action: "portal" })}
-          >
-            Gérer l’abonnement et les factures test
-          </button>
-          <p className="pricing-detail">
-            Crédits ajoutés uniquement après confirmation Stripe de chaque
-            facture payée. Dans cet essai, les crédits se cumulent sans
-            expiration. Le changement d’offre prend effet au prochain
-            renouvellement, sans débit ni crédit supplémentaire immédiat. Les
-            droits actuels des membres restent inchangés.
-          </p>
-          <h3>Historique des factures</h3>
-          {billing?.invoices?.length ? (
-            billing.invoices.map((i: any) => (
-              <div className="money-row" key={i.id}>
-                <span>
-                  {i.number || "Facture"}
-                  <small>
-                    {new Date(i.date * 1000).toLocaleDateString("fr-FR")} ·{" "}
-                    {i.status}
-                  </small>
-                </span>
-                <strong>{euro(i.amount)}</strong>
-                {i.url && (
-                  <a href={i.url} target="_blank" rel="noreferrer">
-                    Consulter
-                  </a>
-                )}
-                {i.pdf && (
-                  <a href={i.pdf} target="_blank" rel="noreferrer">
-                    PDF
-                  </a>
-                )}
-              </div>
-            ))
-          ) : (
-            <p>Aucune facture pour le moment.</p>
-          )}
-          <p>
-            Les vingt dernières factures sont affichées. Retrouve l’historique
-            complet dans le portail Stripe.
-          </p>
+                  {!data.configured && <p>Le paiement est indisponible.</p>}
+                </>
+              ) : null;
+            })()}
+          </dialog>
         </>
       )}
-      {tab === "wallet" && (
+      {view === "services" && (
         <>
-          <h3>Recharger avec Stripe test</h3>
-          <TestSalesAcceptance live={data.mode==="live"} checked={accepted} onChange={setAccepted} />
-          <div className="pricing-pack-grid">
-            {data.packs.map((p) => (
-              <article key={p.id}>
-                <strong>{p.name} · {p.credits.toLocaleString("fr-FR")} crédits</strong><small>{p.purchasedCredits} achetés + {p.bonusCredits} bonus</small>
-                <b>{euro(p.cents)}</b>
+          {editing ? (
+            <>
+              <button
+                className="commerce-row"
+                onClick={() => setEditing(false)}
+              >
+                <ArrowLeft size={18} />
+                Mes prestations
+              </button>
+              <form
+                className="commerce-form"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (await send({ action: "save", id: editId, service: form }))
+                    setEditing(false);
+                }}
+              >
+                <label>
+                  Titre
+                  <input
+                    minLength={4}
+                    maxLength={100}
+                    required
+                    value={form.title}
+                    onChange={(e) => field("title", e.target.value)}
+                  />
+                </label>
+                <label>
+                  Description
+                  <textarea
+                    minLength={20}
+                    maxLength={5000}
+                    required
+                    rows={5}
+                    value={form.description}
+                    onChange={(e) => field("description", e.target.value)}
+                  />
+                </label>
+                <label>
+                  Image (facultatif)
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    disabled={uploading}
+                    onChange={(e) => void upload(e.target.files?.[0])}
+                  />
+                </label>
+                {form.image && (
+                  <>
+                    <img
+                      className="service-editor-image"
+                      src={`/api/admin/prestations?image=${form.image}`}
+                      alt="Image de la prestation"
+                    />
+                    <button
+                      type="button"
+                      className="commerce-row"
+                      onClick={() => field("image", "")}
+                    >
+                      Retirer l’image
+                    </button>
+                  </>
+                )}
+                <label>
+                  Nombre de crédits
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    max={maxServiceCredits}
+                    value={form.credits || ""}
+                    onChange={(e) => field("credits", Number(e.target.value))}
+                  />
+                </label>
+                <label>
+                  Jauge du prix
+                  <input
+                    type="range"
+                    min={1}
+                    max={1000}
+                    step={1}
+                    value={creditsSlider(form.credits)}
+                    onChange={(e) =>
+                      field("credits", sliderCredits(Number(e.target.value)))
+                    }
+                  />
+                </label>
+                <p className="service-euro-preview">
+                  Coût indicatif pour le débutant :{" "}
+                  {euro(servicePriceCents(form.credits))} (base 2 € / 100
+                  crédits).
+                  <br />
+                  Ta rémunération prévue :{" "}
+                  {euro(Math.round(form.credits * data.payoutRate))}.
+                </p>
+                <label className="commerce-check">
+                  <input
+                    type="checkbox"
+                    checked={form.published}
+                    onChange={(e) => field("published", e.target.checked)}
+                  />
+                  Visible sur mon profil
+                </label>
                 <button
-                  className="btn"
-                  disabled={busy || !data.configured}
-                  onClick={() =>
-                    void send({
-                      action: "checkout",
-                      offer: p.id,
-                      key: crypto.randomUUID(),
-                    })
-                  }
+                  className="commerce-primary"
+                  disabled={busy || uploading}
                 >
-                  Tester la recharge
+                  Enregistrer
                 </button>
-              </article>
-            ))}
-          </div>
-          <p>
-            Les crédits restent personnels : aucun transfert ni conversion en
-            argent. Un remboursement retire les crédits correspondants ; un
-            solde négatif bloque les réservations.
-          </p>
-          <h3>Historique des crédits</h3>
-          {data.ledger.length ? (
-            data.ledger.map((l, i) => (
-              <div className="money-row" key={i}>
-                <span>
-                  {l.kind}
-                  <small>
-                    {new Date(l.created_at).toLocaleString("fr-FR")}
-                  </small>
-                </span>
-                <strong>
-                  {l.delta > 0 ? "+" : ""}
-                  {l.delta}
-                </strong>
-              </div>
-            ))
+              </form>
+            </>
           ) : (
-            <p>Aucun mouvement.</p>
-          )}
-          <h3>Paiements et factures test</h3>
-          {data.payments.map((p) => (
-            <article className="money-row" key={p.id}>
-              <span>
-                {euro(p.amount)} · {p.credits} crédits
-                <small>Remboursé : {euro(p.refund_amount)}</small>
-              </span>
-              {p.invoice_url && (
-                <a href={p.invoice_url} target="_blank" rel="noreferrer">
-                  Facture Stripe
-                </a>
-              )}
+            <>
               <button
-                className="btn secondary"
-                disabled={busy || p.refund_amount >= p.amount}
+                className="commerce-primary"
                 onClick={() => {
-                  if (
-                    window.confirm(
-                      "Rembourser entièrement ce paiement TEST et retirer ses crédits ?",
-                    )
-                  )
-                    void send({ action: "refund", id: p.id });
-                }}
-              >
-                Rembourser le paiement test
-              </button>
-            </article>
-          ))}
-        </>
-      )}
-      {tab === "services" && (
-        <>
-          <h3>{editId ? "Modifier la prestation" : "Créer une prestation"}</h3>
-          <form
-            className="money-form"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (await send({ action: "save", id: editId, service: form })) {
-                setForm(blank);
-                setEditId(undefined);
-                setEditing(false);
-              }
-            }}
-          >
-            <label>
-              Titre
-              <input
-                required
-                minLength={4}
-                maxLength={100}
-                value={form.title}
-                onChange={(e) => field("title", e.target.value)}
-              />
-            </label>
-            <label>
-              Description
-              <textarea
-                required
-                minLength={20}
-                maxLength={5000}
-                value={form.description}
-                onChange={(e) => field("description", e.target.value)}
-              />
-            </label>
-            <label>Image (facultatif)<input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading||busy} onChange={async e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>4000000){setError("4 Mo maximum.");return;}setUploading(true);try{const body=new FormData();body.set("file",f);const r=await fetch("/api/admin/prestations",{method:"POST",body}),d=await r.json();if(!r.ok)throw Error(d.error);field("image",d.id);}catch(e){setError((e as Error).message);}finally{setUploading(false);}}}/></label>
-            {form.image&&<div className="service-image-preview"><img src={`/api/admin/prestations?image=${form.image}`} alt="Image de la prestation"/><button type="button" className="text-btn" onClick={()=>field("image","")}>Retirer l’image</button></div>}
-            <p className="service-euro-preview">Coût indicatif pour le débutant : {euro(servicePriceCents(form.credits))} (base 2 € / 100 crédits).<br/>Ta rémunération prévue : {euro(Math.round(form.credits*data.payoutRate))}.</p>
-            <div className="service-credit-fields">
-              <label>
-                Nombre de crédits
-                <input
-                  type="number"
-                  min={1}
-                  max={maxServiceCredits}
-                  step={1}
-                  required
-                  value={form.credits || ""}
-                  onChange={(e) => field("credits", Number(e.target.value))}
-                />
-              </label>
-              <label>
-                Jauge du prix
-                <input
-                  type="range"
-                  min={1}
-                  max={1000}
-                  step={1}
-                  value={creditsSlider(form.credits)}
-                  aria-valuetext={`${form.credits} crédits`}
-                  onChange={(e) => {
-                    const position = Number(e.target.value);
-                    field("credits", sliderCredits(position));
-                  }}
-                />
-              </label>
-              <small>De 10 à 50 000 crédits. Saisis le nombre exact si besoin.</small>
-            </div>
-            <button className="btn" disabled={busy||uploading}>
-              Enregistrer
-            </button>
-            {editId && (
-              <button
-                type="button"
-                className="btn secondary"
-                onClick={() => {
-                  setEditId(undefined);
                   setForm(blank);
+                  setEditId(undefined);
+                  setEditing(true);
                 }}
               >
-                Annuler la modification
+                <Plus />
+                Ajouter une prestation
               </button>
-            )}
-          </form>
-          {!dedicated && <>
-          <h3>Mes prestations</h3>
-          {data.services.map((s) => (
-            <article className="money-row" key={s.id}>
-              <span>
-                {s.data.title}
-                <small>
-                  {s.data.credits} crédits ·{" "}
-                  {s.data.published ? "Disponible" : "Brouillon"}
-                </small>
-              </span>
-              <button
-                className="btn secondary"
-                onClick={() => {
-                  setEditId(s.id);
-                  setForm(s.data);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-              >
-                Modifier
-              </button>
-              <button
-                className="btn secondary"
-                disabled={busy}
-                onClick={() => void send({
-                  action: "save",
-                  id: s.id,
-                  service: { ...s.data, published: !s.data.published },
-                })}
-              >
-                {s.data.published ? "Retirer du catalogue" : "Publier dans le catalogue test"}
-              </button>
-              <button
-                className="btn secondary"
-                disabled={busy}
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      "Retirer cette prestation du catalogue privé ? Les réservations seront conservées.",
-                    )
-                  )
-                    void send({ action: "delete", id: s.id });
-                }}
-              >
-                Supprimer
-              </button>
-            </article>
-          ))}
-          </>}
-        </>
-      )}
-      {tab === "discover" && (
-        <>
-          <h3>Catalogue privé · parcours débutant</h3>
-          {!data.services.some((s) => s.data.published) && (
-            <p>Publie d’abord une prestation depuis la vue parrain.</p>
-          )}
-          <div className="pricing-use-grid">
-            {data.services
-              .filter((s) => s.data.published)
-              .map((s) => (
-                <article key={s.id}>
-                  <h4>{s.data.title}</h4>
-                  <strong>{s.data.credits} crédits</strong>
-                  <p>{s.data.description}</p>
+              {data.services.map((s) => (
+                <article className="commerce-card" key={s.id}>
+                  {s.data.image && (
+                    <img
+                      className="service-editor-image"
+                      src={`/api/admin/prestations?image=${s.data.image}`}
+                      alt=""
+                    />
+                  )}
+                  <h2>{s.data.title}</h2>
                   <p>
-                    {s.data.category} · {s.data.duration} min · {s.data.calls}{" "}
-                    appel(s)
+                    {s.data.credits.toLocaleString("fr-FR")} crédits ·{" "}
+                    {euro(Math.round(s.data.credits * data.payoutRate))} pour
+                    toi
                   </p>
-                  <p>Suivi : {s.data.followup || "Non inclus"}</p>
-                  <p>{s.data.availability}</p>
-                  <button className="btn" onClick={() => setSelected(s.id)}>
-                    Consulter et réserver
+                  <label className="commerce-check">
+                    <input
+                      type="checkbox"
+                      checked={s.data.published}
+                      disabled={busy}
+                      onChange={(e) =>
+                        void send({
+                          action: "save",
+                          id: s.id,
+                          service: { ...s.data, published: e.target.checked },
+                        })
+                      }
+                    />
+                    Visible sur mon profil
+                  </label>
+                  <button
+                    className="commerce-row"
+                    onClick={() => {
+                      setForm(s.data);
+                      setEditId(s.id);
+                      setEditing(true);
+                    }}
+                  >
+                    Modifier
+                  </button>
+                  <button
+                    className="commerce-row danger"
+                    disabled={busy}
+                    onClick={() => void send({ action: "delete", id: s.id })}
+                  >
+                    Supprimer
                   </button>
                 </article>
               ))}
-          </div>
-          {selected && (
-            <form
-              className="money-form"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                if (
-                  await send({
-                    action: "book",
-                    id: selected,
-                    key: crypto.randomUUID(),
-                    notes,
-                    slot,
-                  })
-                ) {
-                  setSelected(null);
-                  setNotes("");
-                  setSlot("");
-                  setTab("bookings");
-                }
-              }}
-            >
-              <h3>
-                {data.services.find((s) => s.id === selected)?.data.title}
-              </h3>
-              <label>
-                Ton besoin
-                <textarea
-                  required
-                  minLength={5}
-                  maxLength={2000}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
-              </label>
-              <label>
-                Créneau souhaité (à confirmer par le parrain)
-                <input
-                  required
-                  minLength={3}
-                  maxLength={200}
-                  value={slot}
-                  onChange={(e) => setSlot(e.target.value)}
-                />
-              </label>
-              <p>
-                Les crédits sont déduits à la réservation et restitués en cas de
-                refus ou d’annulation avant réalisation.
-              </p>
-              <button className="btn" disabled={busy}>
-                Confirmer la réservation test
-              </button>
-              <button
-                className="btn secondary"
-                type="button"
-                onClick={() => setSelected(null)}
-              >
-                Fermer
-              </button>
-            </form>
+              <h2>Prestations en cours</h2>
+              {ongoing.length ? (
+                ongoing.map((b) => (
+                  <article className="commerce-card" key={b.id}>
+                    <h3>{b.snapshot.title}</h3>
+                    <p>{statuses[b.status]}</p>
+                    <button
+                      className="commerce-row"
+                      onClick={() => openServiceChat(b.id)}
+                    >
+                      <MessageCircle size={18} />
+                      Ouvrir la conversation
+                    </button>
+                    {b.status === "accepted" && (
+                      <button
+                        className="commerce-primary"
+                        disabled={busy}
+                        onClick={() => void decision(b.id, "complete")}
+                      >
+                        Prestation terminée
+                      </button>
+                    )}
+                  </article>
+                ))
+              ) : (
+                <p>Aucune prestation en cours.</p>
+              )}
+            </>
           )}
         </>
       )}
-      {tab === "bookings" && (
-        <>
-          <h3>Réservations · les deux côtés du test</h3>
-          {!data.bookings.length && <p>Aucune réservation.</p>}
-          {data.bookings.map((b) => (
-            <article className="money-booking" key={b.id}>
-              <h4>{b.snapshot.title}</h4>
-              <strong>
-                {status[b.status] || b.status} · {b.credits} crédits
-              </strong>
-              <p>{b.notes}</p>
-              <p>Créneau demandé : {b.slot}</p>
-              <p>Rémunération prévue : {euro(b.payout_cents)}</p>
-              <div className="money-actions">
-                {(b.status === "reserved"
-                  ? ["accept", "decline", "cancel"]
-                  : b.status === "accepted"
-                    ? ["complete", "cancel"]
-                    : b.status === "completed"
-                      ? ["refund"]
-                      : []
-                ).map((a) => (
-                  <button
-                    className="btn secondary"
-                    key={a}
-                    disabled={busy}
-                    onClick={() =>
-                      void send({ action: "booking", id: b.id, transition: a })
-                    }
-                  >
-                    {
-                      {
-                        accept: "Accepter · parrain",
-                        decline: "Refuser · parrain",
-                        cancel: "Annuler · débutant",
-                        complete: "Confirmer la réalisation",
-                        refund: "Restituer les crédits · admin",
-                      }[a]
-                    }
-                  </button>
-                ))}
-              </div>
-            </article>
-          ))}
-        </>
-      )}
-      {tab === "payouts" && (
+      {view === "payouts" && (
         <>
           <ManualBankForm />
-          <ManualBankHistory />
-          <h3>Rémunérations dues · simulation</h3>
-          <div className="pricing-results">
-            <div>
-              <strong>
-                {euro(
-                  data.bookings
-                    .filter((b) => b.status === "completed")
-                    .reduce((n, b) => n + b.payout_cents, 0),
-                )}
-              </strong>
-              <span>Total dû pour les prestations terminées</span>
+          <button className="commerce-row" onClick={() => toggle("earnings")}>
+            Historique des rémunérations
+          </button>
+          {panel === "earnings" && (
+            <div className="commerce-history">
+              {completed.length ? (
+                completed.map((b) => (
+                  <article key={b.id}>
+                    <span>{b.snapshot.title}</span>
+                    <strong>{euro(b.payout_cents)}</strong>
+                  </article>
+                ))
+              ) : (
+                <p>Aucune prestation terminée.</p>
+              )}
             </div>
-            <div>
-              <strong>
-                {euro(
-                  data.bookings
-                    .filter((b) => ["reserved", "accepted"].includes(b.status))
-                    .reduce((n, b) => n + b.payout_cents, 0),
-                )}
-              </strong>
-              <span>Prévision pour les prestations à réaliser</span>
+          )}
+          <button className="commerce-row" onClick={() => toggle("bookings")}>
+            Historique des réservations
+          </button>
+          {panel === "bookings" && (
+            <div className="commerce-history">
+              {data.bookings.map((b) => (
+                <article key={b.id}>
+                  <span>
+                    {b.snapshot.title}
+                    <small>{statuses[b.status] || b.status}</small>
+                  </span>
+                  <strong>{b.credits} crédits</strong>
+                </article>
+              ))}
             </div>
-          </div>
-          <p>
-            Ce registre suit la rémunération de prestations, pas une conversion
-            de portefeuille. Stripe Connect est disponible uniquement dans ce test privé ; aucun versement réel n’est activé.
-          </p>
-          {data.bookings
-            .filter((b) => b.status === "completed")
-            .map((b) => (
-              <div className="money-row" key={b.id}>
-                <span>{b.snapshot.title}</span>
-                <strong>
-                  {euro(b.payout_cents)} à régler après validation future
-                </strong>
-              </div>
-            ))}
+          )}
+          <button
+            className="commerce-row"
+            onClick={() => toggle("withdrawals")}
+          >
+            Mes retraits
+          </button>
+          {panel === "withdrawals" && <ManualBankHistory />}
         </>
       )}
     </section>

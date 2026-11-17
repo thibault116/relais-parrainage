@@ -7,7 +7,7 @@ export const walletRevision="credits-v2-admin-2026-11-16";
 type Payment={id:string;amount:number;credits:number;refund_amount:number;reversed_credits:number;offer:string|null};
 export function repricedPayment(p:Payment){
  if(p.offer){const code=p.offer;
-  if(code.includes("v2"))return Number(checkoutOffer(code)?.credits??p.credits);
+  if(/credits-v[23]-|custom-v2-/.test(code))return Number(checkoutOffer(code)?.credits??p.credits);
   if(plans.some(plan=>code===plan.id||code===`${plan.id}-annual`))return Number(checkoutOffer(currentCheckoutCode(code))?.credits??p.credits);
  }
  for(const plan of plans.filter(p=>p.cents>0)){

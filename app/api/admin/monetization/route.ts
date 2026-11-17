@@ -1,10 +1,11 @@
+import {switchToCredits} from "@/lib/monetization/credit-transition";
 import {payoutRate} from "@/lib/monetization/payout-rate";
 import {salesVersion,moneyMode,billingLive,liveReadiness} from "@/lib/monetization/mode";
 import { manageSubscription } from "@/lib/monetization/billing";
 import { user, json, guard } from "@/lib/http";
 import { isCrmOwner } from "@/lib/crm";
 import { query } from "@/lib/monetization/db";
-import { plans, packs, maxCustomCredits, minCustomCredits, currentCheckoutCode } from "@/lib/monetization/catalog";
+import { plans, packs, maxCustomCredits, minCustomCredits, currentCheckoutCode, isRechargeCode } from "@/lib/monetization/catalog";
 import {
   balance,
   saveService,
@@ -26,9 +27,10 @@ export async function GET(r: Request) {
       mode:moneyMode(),
       salesVersion:salesVersion(),
       readiness:billingLive()?liveReadiness():null,
-      plans,
+      plans:[],
       packs,
-      comparison: pricingProposal.comparison.map(r=>({...r,values:r.label==="Crédits par mois"?plans.map(p=>String(p.credits)):r.values})),
+      comparison:[],
+      needsCreditTransition:!!(await query("SELECT subscription_id FROM money_accounts WHERE owner_id=$1 AND subscription_id IS NOT NULL AND status IN ('active','trialing','past_due','unpaid','incomplete')",[id])).length,
       payoutRate: payoutRate(),
       configured:
         billingLive()?liveReadiness().ready:/^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY || "") && !!process.env.STRIPE_WEBHOOK_SECRET,
@@ -77,6 +79,7 @@ export async function POST(r: Request) {
     const d = await r.json(),
       id = u!.id;
     const action = z.string().parse(d.action);
+    if(action==="credits-only")return json(await switchToCredits(id));
     if (action === "save") {
       if(d.service?.image && !(await query("SELECT id FROM money_service_images WHERE id=$1 AND owner_id=$2",[z.string().uuid().parse(d.service.image),id])).length) throw Error("Image indisponible");
       return json({
@@ -123,6 +126,7 @@ export async function POST(r: Request) {
       const code = d.credits === undefined
         ? currentCheckoutCode(z.string().parse(d.offer))
         : `custom-v2-${z.number().int().min(minCustomCredits).max(maxCustomCredits).parse(d.credits)}`;
+      if(!isRechargeCode(code))return json({error:"Seuls les packs de crédits sont disponibles."},400);
       return json({
         url: await checkout(
           id,
@@ -136,40 +140,7 @@ export async function POST(r: Request) {
         ),
       });
     }
-    if (
-      ["change-plan", "cancel-subscription", "resume-subscription"].includes(
-        action,
-      )
-    ) {
-      await manageSubscription(
-        id,
-        action === "change-plan"
-          ? "change"
-          : action === "cancel-subscription"
-            ? "cancel"
-            : "resume",
-        d.plan ? z.enum(["starter", "plus", "pro"]).parse(d.plan) : undefined,
-      );
-      return json({
-        ok: true,
-        message:
-          action === "change-plan"
-            ? "Changement programmé au prochain renouvellement."
-            : action === "cancel-subscription"
-              ? "Résiliation programmée en fin de période."
-              : "Abonnement repris.",
-      });
-    }
-    if (action === "portal")
-      return json({
-        url: await portal(
-          id,
-          z
-            .enum(["admin", "billing", "credits"])
-            .default("admin")
-            .parse(d.returnTo),
-        ),
-      });
+    if (["change-plan","cancel-subscription","resume-subscription","portal"].includes(action))return json({error:"Cette fonction a été remplacée par l’achat de crédits."},410);
     if (action === "refund") {
       const p = (
         await query(

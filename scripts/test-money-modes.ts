@@ -6,7 +6,7 @@ import {randomBytes} from "node:crypto";
 import {database,query as raw} from "../lib/db";
 import {query,moneySQL} from "../lib/monetization/db";
 import {moneyMode,withMoneyMode,liveReadiness,salesVersion} from "../lib/monetization/mode";
-import {migrateMonetization,entry,balance,saveService,book,bookingAction} from "../lib/monetization/store";
+import {migrateMonetization,entry,balance,saveService,book,bookingAction,confirmService} from "../lib/monetization/store";
 import {stripeBilling} from "../lib/monetization/stripe";
 import {POST as webhook} from "../app/api/stripe/webhook/route";
 import {manualPayoutPolicy} from "../lib/monetization/manual-payout-policy";
@@ -26,7 +26,7 @@ try{
  await withMoneyMode("live",async()=>{
  assert(liveReadiness().ready);assert.equal(salesVersion(),"live-fixture-v1");await entry(query,"owner",10,"fixture","initial");assert.equal(await balance(query,"owner"),10);
  assert.equal((await query("SELECT * FROM money_services")).length,1);
- const b=await book("owner",service,crypto.randomUUID(),"","À convenir");await bookingAction("owner",String(b),"accept");await bookingAction("owner",String(b),"complete");assert.equal(await balance(query,"owner"),5);
+ const b=await book("owner",service,crypto.randomUUID(),"","À convenir");await bookingAction("owner",String(b),"accept");await bookingAction("owner",String(b),"complete");await assert.rejects(()=>confirmService("owner",String(b),1,true),/propre parrain/);await query("UPDATE money_bookings SET status='completed' WHERE id=$1",[String(b)]);assert.equal(await balance(query,"owner"),5);
  process.env.MENTORA_MANUAL_PAYOUTS_LIVE_ENABLED="true";process.env.MENTORA_MANUAL_PAYOUTS_LEGAL_VALIDATED="true";process.env.MENTORA_MANUAL_PAYOUTS_LEGAL_VALIDATION_REFERENCE="fixture-only";assert(manualPayoutPolicy().liveEnabled);
  await saveBankDetails("owner",{holder:"Fixture",country:"FR",iban:"FR1420041010050500013M02606"});const req=await requestBankTransfer("owner",crypto.randomUUID());assert.equal(req.amount_cents,500);assert.equal((await manualBankOverview("owner")).history[0].mode,"live");
  });

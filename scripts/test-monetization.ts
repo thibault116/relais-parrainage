@@ -7,6 +7,7 @@ import {
   saveService,
   book,
   bookingAction,
+  confirmService,
   balance,
 } from "../lib/monetization/store";
 import {
@@ -121,11 +122,12 @@ try {
   );
   await bookingAction(owner, id, "accept");
   await bookingAction(owner, id, "complete");
+  await confirmService(owner,id,1,true);
   assert.equal(
     (
       await query("SELECT payout_cents FROM money_bookings WHERE id=$1", [id])
     )[0].payout_cents,
-    18,
+    19,
   );
   await bookingAction(owner, id, "refund");
   assert.equal(await balance(query, owner), 20);

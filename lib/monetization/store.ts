@@ -2,6 +2,7 @@ import { query, inTransaction, database } from "./db";
 import { Pool } from "pg";
 import { z } from "zod";
 import { payoutRate } from "./payout-rate";
+import {billingLive} from "./mode";
 import { migrateConnect } from "./connect-schema";
 let queue: Promise<unknown> = Promise.resolve();
 export function moneyTransaction<T>(
@@ -24,6 +25,8 @@ export async function migrateMonetization() {
     `CREATE TABLE IF NOT EXISTS money_service_images(id TEXT PRIMARY KEY,owner_id TEXT NOT NULL,stored_path TEXT NOT NULL,mime TEXT NOT NULL,created_at TEXT NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS money_test_reprices(payment_id TEXT PRIMARY KEY,owner_id TEXT NOT NULL,old_credits INTEGER NOT NULL,old_reversed INTEGER NOT NULL,new_credits INTEGER NOT NULL,new_reversed INTEGER NOT NULL,delta INTEGER NOT NULL,version TEXT NOT NULL,created_at TEXT NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS money_test_wallet_updates(owner_id TEXT PRIMARY KEY,version TEXT NOT NULL,updated_at TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS money_service_completion(booking_id TEXT PRIMARY KEY,revision INTEGER NOT NULL DEFAULT 0,requested_at TEXT,buyer_confirmed_at TEXT,updated_at TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS money_service_messages(id TEXT PRIMARY KEY,booking_id TEXT NOT NULL,owner_id TEXT NOT NULL,role TEXT NOT NULL,kind TEXT NOT NULL,body TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 0,event_key TEXT NOT NULL UNIQUE,created_at TEXT NOT NULL)`,
     `CREATE TABLE IF NOT EXISTS money_events(id TEXT PRIMARY KEY,created_at TEXT NOT NULL)`,
   ])
     await query(sql);
@@ -85,7 +88,7 @@ export const serviceSchema = z.object({
   credits: z.number().int().min(1).max(50000),
   capacity: z.number().int().min(1).max(100),
   published: z.boolean(),
-  image: z.union([z.string().uuid(),z.literal("")]).optional(),
+  image: z.union([z.string().uuid(), z.literal("")]).optional(),
 });
 export async function saveService(owner: string, raw: unknown, id?: string) {
   const data = serviceSchema.parse(raw);
@@ -119,7 +122,12 @@ export async function book(
       ])
     )[0];
     if (previous) {
-      if(previous.service_id!==serviceId||previous.notes!==notes||previous.slot!==slot)throw Error("Requête déjà utilisée");
+      if (
+        previous.service_id !== serviceId ||
+        previous.notes !== notes ||
+        previous.slot !== slot
+      )
+        throw Error("Requête déjà utilisée");
       return previous.id;
     }
     const s = (
@@ -134,7 +142,7 @@ export async function book(
     const active = Number(
       (
         await q(
-          "SELECT COUNT(*) AS n FROM money_bookings WHERE service_id=$1 AND status IN ('reserved','accepted')",
+          "SELECT COUNT(*) AS n FROM money_bookings WHERE service_id=$1 AND status IN ('reserved','accepted','completion_pending')",
           [serviceId],
         )
       )[0].n,
@@ -163,7 +171,12 @@ export async function book(
     return id;
   });
 }
-export async function bookingAction(owner: string, id: string, action: string, reason="") {
+export async function bookingAction(
+  owner: string,
+  id: string,
+  action: string,
+  reason = "",
+) {
   return moneyTransaction(async (q) => {
     await lock(q, owner);
     const b = (
@@ -173,13 +186,45 @@ export async function bookingAction(owner: string, id: string, action: string, r
       ])
     )[0];
     if (!b) throw Error("Réservation introuvable");
-    if (action === "accept" && b.status === "reserved")
+    if (action === "accept" && b.status === "reserved") {
       await q("UPDATE money_bookings SET status='accepted' WHERE id=$1", [id]);
-    else if (action === "complete" && b.status === "accepted")
-      await q("UPDATE money_bookings SET status='completed' WHERE id=$1", [id]);
-    else if (
+      await serviceMessage(
+        q,
+        owner,
+        id,
+        "system",
+        "accepted",
+        `Ta demande de prestation a été acceptée. Les ${b.credits} crédits réservés sont affectés à cette prestation. Vous pouvez échanger ici.`,
+        0,
+        `accept:${id}`,
+      );
+    } else if (action === "complete" && b.status === "accepted") {
+      const now = new Date().toISOString();
+      await q(
+        "INSERT INTO money_service_completion(booking_id,revision,requested_at,updated_at) VALUES($1,1,$2,$2) ON CONFLICT(booking_id) DO UPDATE SET revision=money_service_completion.revision+1,requested_at=excluded.requested_at,buyer_confirmed_at=NULL,updated_at=excluded.updated_at",
+        [id, now],
+      );
+      const [confirmation] = await q(
+        "SELECT revision FROM money_service_completion WHERE booking_id=$1",
+        [id],
+      );
+      await q(
+        "UPDATE money_bookings SET status='completion_pending' WHERE id=$1",
+        [id],
+      );
+      await serviceMessage(
+        q,
+        owner,
+        id,
+        "system",
+        "completion",
+        "Le parrain indique que la prestation est terminée. Est-ce bien le cas ?",
+        Number(confirmation.revision),
+        `complete:${id}:${confirmation.revision}`,
+      );
+    } else if (
       ["cancel", "decline"].includes(action) &&
-      ["reserved", "accepted"].includes(String(b.status))
+      ["reserved", "accepted", "completion_pending"].includes(String(b.status))
     ) {
       await q("UPDATE money_bookings SET status=$1 WHERE id=$2", [
         action === "cancel" ? "cancelled" : "declined",
@@ -187,8 +232,17 @@ export async function bookingAction(owner: string, id: string, action: string, r
       ]);
       await entry(q, owner, Number(b.credits), "Restitution", `restore:${id}`);
     } else if (action === "refund" && b.status === "completed") {
-      if ((await q("SELECT booking_id FROM money_connect_allocations WHERE booking_id=$1",[id])).length)
-        throw Error("Cette rémunération est réservée ou transférée dans un retrait. Vérifie le retrait avant de rembourser cette prestation.");
+      if (
+        (
+          await q(
+            "SELECT booking_id FROM money_connect_allocations WHERE booking_id=$1",
+            [id],
+          )
+        ).length
+      )
+        throw Error(
+          "Cette rémunération est réservée ou transférée dans un retrait. Vérifie le retrait avant de rembourser cette prestation.",
+        );
       await q("UPDATE money_bookings SET status='refunded' WHERE id=$1", [id]);
       await entry(
         q,
@@ -198,6 +252,85 @@ export async function bookingAction(owner: string, id: string, action: string, r
         `restore:${id}`,
       );
     } else throw Error("Transition impossible ou déjà effectuée");
-    if(action==="decline"&&reason) await q("INSERT INTO money_service_requests(booking_id,reason,updated_at) VALUES($1,$2,$3) ON CONFLICT(booking_id) DO UPDATE SET reason=$2,updated_at=$3",[id,reason,new Date().toISOString()]);
+    if (action === "decline" && reason)
+      await q(
+        "INSERT INTO money_service_requests(booking_id,reason,updated_at) VALUES($1,$2,$3) ON CONFLICT(booking_id) DO UPDATE SET reason=$2,updated_at=$3",
+        [id, reason, new Date().toISOString()],
+      );
+  });
+}
+
+export async function serviceMessage(
+  q: typeof query,
+  owner: string,
+  booking: string,
+  role: string,
+  kind: string,
+  body: string,
+  revision: number,
+  event: string,
+) {
+  await q(
+    "INSERT INTO money_service_messages(id,booking_id,owner_id,role,kind,body,revision,event_key,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(event_key) DO NOTHING",
+    [
+      crypto.randomUUID(),
+      booking,
+      owner,
+      role,
+      kind,
+      body,
+      revision,
+      event,
+      new Date().toISOString(),
+    ],
+  );
+}
+export async function confirmService(
+  owner: string,
+  id: string,
+  revision: number,
+  yes: boolean,
+) {
+  return moneyTransaction(async (q) => {
+    await lock(q, owner);
+    const [b] = await q(
+      "SELECT b.*,s.owner_id AS mentor FROM money_bookings b JOIN money_services s ON s.id=b.service_id WHERE b.id=$1 AND b.owner_id=$2",
+      [id, owner],
+    );
+    const [c] = await q(
+      "SELECT * FROM money_service_completion WHERE booking_id=$1",
+      [id],
+    );
+    if (
+      !b ||
+      b.status !== "completion_pending" ||
+      Number(c?.revision) !== revision
+    )
+      throw Error("Cette demande de confirmation n’est plus active.");
+    // Only the buyer can confirm; the principal can simulate the buyer on a self-booking in test.
+    if (b.mentor === owner && billingLive())
+      throw Error(
+        "Une prestation réelle ne peut pas être confirmée par son propre parrain.",
+      );
+    await q("UPDATE money_bookings SET status=$1 WHERE id=$2", [
+      yes ? "completed" : "accepted",
+      id,
+    ]);
+    await q(
+      "UPDATE money_service_completion SET buyer_confirmed_at=$1,updated_at=$2 WHERE booking_id=$3",
+      [yes ? new Date().toISOString() : null, new Date().toISOString(), id],
+    );
+    await serviceMessage(
+      q,
+      owner,
+      id,
+      "buyer",
+      "confirmation",
+      yes
+        ? "Oui, la prestation est terminée. La rémunération du parrain est maintenant disponible."
+        : "Non, la prestation continue. Échangeons sur ce qu’il reste à faire.",
+      revision,
+      `confirm:${id}:${revision}`,
+    );
   });
 }

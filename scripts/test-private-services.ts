@@ -1,3 +1,6 @@
+import {manualBankOverview} from "../lib/monetization/manual-bank";
+import {GET as chatGET,POST as chatPOST} from "../app/api/admin/prestations/chat/route";
+import {eligibleSql} from "../lib/monetization/earnings";
 import {GET as walletGET,POST as walletPOST} from "../app/api/admin/monetization/test-wallet/route";
 import {testWalletPreview,hasCurrentTestCredits} from "../lib/monetization/test-wallet";
 import {recordPaid,recordRefund} from "../lib/monetization/payments";
@@ -47,6 +50,25 @@ try{
  assert.equal(await balance(query,owner.id),20);assert.equal((await post({action:"decision",id,transition:"decline",reason:"Une deuxième décision ne doit rien restituer."})).status,400);assert.equal(await balance(query,owner.id),20);
  const next=(await(await post({...request,key:crypto.randomUUID()})).json()).id;
  for(const transition of ["accept","complete"])assert.equal((await post({action:"decision",id:next,transition})).status,200);
+ const chatURL="http://localhost:3000/api/admin/prestations/chat";
+ const chatPost=(d:unknown,c=owner.cookie,o="http://localhost:3000")=>chatPOST(new Request(chatURL,{method:"POST",headers:headers(c,o),body:JSON.stringify(d)}));
+ for(const c of ["",member.cookie]){assert.equal((await chatGET(new Request(chatURL,{headers:{cookie:c}}))).status,403);assert.equal((await chatPost({action:"confirm",id:next,revision:1,yes:true},c)).status,403);}
+ assert.equal((await chatPost({action:"confirm",id:next,revision:1,yes:true},owner.cookie,"https://foreign.example")).status,403);
+ assert.equal((await query("SELECT status FROM money_bookings WHERE id=$1",[next]))[0].status,"completion_pending");
+ assert.equal((await query(eligibleSql,[owner.id])).length,0);assert.equal((await manualBankOverview(owner.id)).availableCents,0);assert((await manualBankOverview(owner.id)).pendingCents>0);
+ assert.equal((await chatPost({action:"confirm",id:next,revision:1,yes:false})).status,200);
+ assert.equal((await query("SELECT status FROM money_bookings WHERE id=$1",[next]))[0].status,"accepted");
+ assert.equal((await query(eligibleSql,[owner.id])).length,0);
+ assert.equal((await post({action:"decision",id:next,transition:"complete"})).status,200);
+ assert.equal((await chatPost({action:"confirm",id:next,revision:1,yes:true})).status,400);
+ const confirmed=await Promise.all([chatPost({action:"confirm",id:next,revision:2,yes:true}),chatPost({action:"confirm",id:next,revision:2,yes:true})]);
+ assert.deepEqual(confirmed.map(r=>r.status).sort(),[200,400]);assert.equal((await manualBankOverview(owner.id)).pendingCents,0);assert((await manualBankOverview(owner.id)).availableCents>0);assert.equal((await query(eligibleSql,[owner.id])).length,1);
+ const thread=await(await chatGET(new Request(chatURL+"?id="+next,{headers:{cookie:owner.cookie}}))).json();assert.equal(thread.messages.filter((m:any)=>m.kind==="accepted").length,1);assert.equal(thread.messages.filter((m:any)=>m.kind==="completion").length,2);
+ assert.equal((await chatPost({action:"send",id:next,role:"mentor",body:"Message du parrain",key:crypto.randomUUID()})).status,200);
+ assert.equal((await chatGET(new Request(chatURL+"?id="+crypto.randomUUID(),{headers:{cookie:owner.cookie}}))).status,404);
+ assert.equal((await chatPost({action:"confirm",id:next,revision:2,yes:true,owner_id:member.id})).status,400);
+ console.log("PASS chat privé, acceptation atomique, oui/non, réponse périmée, double confirmation, gain indisponible avant double validation");
+
  const list=await GET(new Request(url,{headers:{cookie:owner.cookie}}));assert.equal(list.headers.get("cache-control"),"private, no-store");const d=await list.json();assert.equal(d.services.length,2);assert.equal(d.requests.length,2);assert.equal(d.requests.find((r:any)=>r.id===id).reason,"Cette prestation ne correspond pas à ton besoin.");assert.equal(d.stats.satisfaction,null);
  const form=new FormData();form.set("file",new File([Buffer.from("89504e470d0a1a0a","hex")],"fixture.png",{type:"image/png"}));const upload=await POST(new Request(url,{method:"POST",headers:{cookie:owner.cookie,origin:"http://localhost:3000"},body:form}));assert.equal(upload.status,201);const image=(await upload.json()).id;
  assert.equal((await GET(new Request(url+"?image="+image,{headers:{cookie:member.cookie}}))).status,403);
@@ -61,6 +83,7 @@ try{
  const decisions=await Promise.all([wallet(),wallet()]);for(const r of decisions)assert.equal(r.status,200);const results=await Promise.all(decisions.map(r=>r.json()));assert.equal(results.reduce((sum,r)=>sum+r.added,0),1995);assert.equal(await balance(query,owner.id),2037);assert.equal(await hasCurrentTestCredits(owner.id),true);assert.equal(await withMoneyMode("live",()=>hasCurrentTestCredits(owner.id)),false);
  assert.equal((await(await wallet()).json()).added,0);assert.equal((await query("SELECT COUNT(*) AS n FROM money_test_reprices"))[0].n,2);await recordRefund("legacy-pack-pi",1690);assert.equal(await balance(query,owner.id),1615);
  await recordPaid(owner.id,"late-plus","late-plus-pi",2990,22,null);assert.equal(await balance(query,owner.id),3215);assert.equal((await query("SELECT credits FROM money_payments WHERE id='late-plus'"))[0].credits,1600);
+ await query("INSERT INTO money_orders(id,owner_id,offer,session_id,created_at) VALUES('v3-fixture-order',$1,'credits-v3-black-friday-1050','v3-fixture-payment',$2)",[owner.id,new Date().toISOString()]);await recordPaid(owner.id,"v3-fixture-payment","v3-fixture-pi",1790,1050,null);assert.equal(await balance(query,owner.id),4265);await recordRefund("v3-fixture-pi",1790);assert.equal(await balance(query,owner.id),3215);
  assert.equal((await query("SELECT old_credits FROM money_test_reprices WHERE payment_id='legacy-plus'"))[0].old_credits,22);assert.equal((await query("SELECT credits FROM money_payments WHERE id='legacy-plus'"))[0].credits,1600);
  assert(!workspaceGroups(true,true,true,true).flatMap(g=>g.items).some(i=>i.label==="Finaliser mon profil"));assert(workspaceGroups(true,false,false,false).flatMap(g=>g.items).some(i=>i.label==="Finaliser mon profil"));assert(workspaceGroups(true,true,true,true).flatMap(g=>g.items).some(i=>i.adminTab==="verification"));
  console.log("PASS rattrapage de test calculé sur les paiements, refus des autres modérateurs, concurrence, audit et remboursements après correction");

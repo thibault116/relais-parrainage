@@ -2,7 +2,7 @@ import {moneyMode,salesVersion} from "@/lib/monetization/mode";
 import { user, json } from "@/lib/http";
 import { isCrmOwner } from "@/lib/crm";
 import { query } from "@/lib/monetization/db";
-import { joinOffers } from "@/lib/join-offers";
+import {rechargeOffers,creditSeasons} from "@/lib/monetization/catalog";
 export async function GET(r: Request) {
   const u = await user(r);
   if (!u)
@@ -12,11 +12,5 @@ export async function GET(r: Request) {
       { error: "Accès réservé au compte administrateur principal." },
       403,
     );
-  const [account] = await query("SELECT plan, status FROM money_accounts WHERE owner_id=$1", [u.id]);
-  return json({
-    ...joinOffers(),
-    mode:moneyMode(),salesVersion:salesVersion(),
-    currentPlan: String(account?.plan || "free"),
-    subscriptionStatus: String(account?.status || "free"),
-  });
+  return json({offers:rechargeOffers,seasons:creditSeasons,mode:moneyMode(),salesVersion:salesVersion()});
 }

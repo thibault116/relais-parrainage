@@ -1,12 +1,3 @@
-import { joinOffers } from "@/lib/join-offers";
-import { JoinOffers } from "./join-offers";
-
-const offers = joinOffers();
-
-export function PricingPreview() {
-  return (
-    <div className="wrap pricing-preview">
-      <JoinOffers previewOffers={offers} />
-    </div>
-  );
-}
+"use client";
+import {AdminMonetization} from "./admin-monetization";
+export function PricingPreview(){return <div className="wrap pricing-preview"><AdminMonetization initialTab="wallet" dedicated/></div>;}

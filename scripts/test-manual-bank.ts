@@ -6,7 +6,7 @@ import {randomBytes} from "node:crypto";
 import {query,database} from "../lib/db";
 import {getAuth} from "../lib/auth";
 import {getMigrations} from "better-auth/db/migration";
-import {migrateMonetization,saveService,book,bookingAction,entry,moneyTransaction,balance} from "../lib/monetization/store";
+import {migrateMonetization,saveService,book,bookingAction,confirmService,entry,moneyTransaction,balance} from "../lib/monetization/store";
 import {manualBankOverview,requestBankTransfer,saveBankDetails,cancelBankTransfer} from "../lib/monetization/manual-bank";
 import {GET,POST} from "../app/api/admin/monetization/bank/route";
 import {GET as adminGET,POST as adminPOST} from "../app/api/admin/withdrawals/route";
@@ -56,7 +56,7 @@ try {
   await saveBankDetails(other,{holder:"Belgian test",country:"BE",iban:"BE68539007547034"});
   const service=await saveService(owner,{title:"Test virement",description:"Une prestation pour vérifier les demandes de versement.",category:"Conseil",duration:0,calls:0,followup:"",availability:"Messages",credits:1,capacity:10,published:true});
   await moneyTransaction(async q=>{await entry(q,owner,10,"fixture","manual-bank-fixture");});
-  const booking=String(await book(owner,service,crypto.randomUUID(),"Test","Flexible"));await bookingAction(owner,booking,"accept");await bookingAction(owner,booking,"complete");
+  const booking=String(await book(owner,service,crypto.randomUUID(),"Test","Flexible"));await bookingAction(owner,booking,"accept");await bookingAction(owner,booking,"complete");await confirmService(owner,booking,1,true);
   await query("UPDATE money_bookings SET payout_cents=1 WHERE id=$1",[booking]);
   const credits=await balance(query,owner),key=crypto.randomUUID();
   const [one,two]=await Promise.all([requestBankTransfer(owner,key),requestBankTransfer(owner,key)]);
@@ -110,7 +110,7 @@ try {
   const payJob=(await query("SELECT * FROM push_outbox WHERE kind='bank_withdrawal' AND event_id<>$1",[String(processJob.event_id)]))[0];
   assert(await stillRelevant(payJob));assert((await pushContent(payJob)).title.includes("test"));
   await assert.rejects(()=>decideBankTransfer(actor,{id:next.id,action:"refused",revision:2,key:crypto.randomUUID(),reason:"Test"}),/impossible/);
-  const b2=String(await book(owner,service,crypto.randomUUID(),"Test refus","Flexible"));await bookingAction(owner,b2,"accept");await bookingAction(owner,b2,"complete");await query("UPDATE money_bookings SET payout_cents=7 WHERE id=$1",[b2]);
+  const b2=String(await book(owner,service,crypto.randomUUID(),"Test refus","Flexible"));await bookingAction(owner,b2,"accept");await bookingAction(owner,b2,"complete");await confirmService(owner,b2,1,true);await query("UPDATE money_bookings SET payout_cents=7 WHERE id=$1",[b2]);
   const req2=await requestBankTransfer(owner,crypto.randomUUID());
   const race=await Promise.allSettled([
     decideBankTransfer(actor,{id:req2.id,action:"processing",revision:0,key:crypto.randomUUID()}),
@@ -137,7 +137,7 @@ try {
   for(const k of policyKeys)delete process.env[k];
   const otherService=await saveService(other,{title:"Test autre parrain",description:"Prestation du deuxième parrain pour tester l’isolation.",category:"Conseil",duration:0,calls:0,followup:"",availability:"Messages",credits:1,capacity:10,published:true});
   await moneyTransaction(async q=>{await entry(q,other,10,"fixture","other-bank-fixture");});
-  const otherBooking=String(await book(other,otherService,crypto.randomUUID(),"Isolation","Flexible"));await bookingAction(other,otherBooking,"accept");await bookingAction(other,otherBooking,"complete");
+  const otherBooking=String(await book(other,otherService,crypto.randomUUID(),"Isolation","Flexible"));await bookingAction(other,otherBooking,"accept");await bookingAction(other,otherBooking,"complete");await confirmService(other,otherBooking,1,true);
   const otherRequest=await requestBankTransfer(other,crypto.randomUUID());
   assert((await adminBankList(actor)).items.some(r=>r.owner_id===other));
   assert.equal((await adminBankDetails(actor,otherRequest.id)).bank.iban,"BE68539007547034");

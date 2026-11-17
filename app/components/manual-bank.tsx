@@ -5,7 +5,7 @@ const endpoint="/api/admin/monetization/bank";
 const euro=(c:number)=>(c/100).toLocaleString("fr-FR",{style:"currency",currency:"EUR"});
 type Bank={holder:string;country:"FR"|"BE"|"OTHER";ibanCountry:string;last4:string};
 type Entry={id:string;amount_cents:number;status:string;created_at:string;kind:"manual"|"stripe";mode?:string;reference?:string;reason?:string};
-type Overview={withdrawalsEnabled:boolean;configured:boolean;bank:Bank|null;availableCents:number;history:Entry[]};
+type Overview={withdrawalsEnabled:boolean;configured:boolean;bank:Bank|null;availableCents:number;pendingCents:number;history:Entry[]};
 async function api(body?:unknown):Promise<Overview&{error?:string}> {
   const r=await fetch(endpoint,{cache:"no-store",...(body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{})});
   const d=await r.json();if(!r.ok)throw Error(d.error || "Opération indisponible.");return d;
@@ -35,7 +35,8 @@ export function ManualBankForm() {
       <label>Ton IBAN<input autoComplete="off" name="bank-iban" spellCheck={false} autoCapitalize="characters" value={iban} onChange={e=>setIban(e.target.value)} placeholder={data?.bank?`${data.bank.ibanCountry} •••• ${data.bank.last4}`:"FR76 …"} maxLength={80} required disabled={busy}/></label>
       <button type="submit" className="commerce-row" disabled={busy||!data?.configured||!iban.trim()||holder.trim().length<2}>Enregistrer</button>
     </form>
-    <div className="manual-bank-request"><button type="button" className="commerce-primary" disabled={busy||!data?.withdrawalsEnabled||!data?.configured||!data.bank||data.availableCents<=0||unsaved} onClick={()=>void request()}>Demander un retrait</button><strong>{euro(data?.availableCents || 0)} disponibles</strong></div>
+    <div className="commerce-stat-grid"><strong>{euro(data?.availableCents||0)} disponibles</strong><strong>{euro(data?.pendingCents||0)} en attente</strong></div>
+    <div className="manual-bank-request"><button type="button" className="commerce-primary" disabled={busy||!data?.withdrawalsEnabled||!data?.configured||!data.bank||data.availableCents<=0||unsaved} onClick={()=>void request()}>Demander un retrait</button></div>
     {data&&!data.configured&&<p role="status">Enregistrement bancaire en attente d’activation.</p>}
     {error&&<p role="alert">{error}</p>}{message&&<p role="status">{message}</p>}
   </section>;

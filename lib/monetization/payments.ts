@@ -37,6 +37,7 @@ export async function checkout(
 ) {
   const item = checkoutOffer(code);
   if (!item || !item.cents) throw Error("Offre inconnue");
+  if(isSubscriptionOffer(item))throw Error("Les nouveaux abonnements ne sont plus disponibles.");
   if(item.cents<50)throw Error("Le paiement doit atteindre 0,50 € minimum (25 crédits au tarif standard).");
   const s = stripeBilling(),
     cid = await customer(owner),

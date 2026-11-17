@@ -15,8 +15,8 @@ export async function GET(r: Request) {
   )[0];
   return json({
     mode:moneyMode(),
-    plan: a?.plan || "free",
-    status: a?.status || "free",
+    plan: "credits",
+    status: "credits",
     balance: await balance(query, u!.id),
   });
 }

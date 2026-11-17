@@ -38,6 +38,7 @@ import {
 import { PrivateServiceCatalog } from "./private-services";
 import { AdminMonetization } from "./admin-monetization";
 import { AdminLegalGuide } from "./admin-legal-guide";
+import {ServiceConversation,ServiceConversationList} from "./service-conversations";
 import { JoinOffers } from "./join-offers";
 import { OwnerPlanBadge } from "./owner-billing";
 import { BrandLogo } from "./brand-logo";
@@ -1004,8 +1005,10 @@ export function MobileExperience({
               </>
             ))}
           {screen === "messages" &&
-            (dm ? (
-              <PrivateMessages
+            (administrator&&chat.startsWith("service:") ? <ServiceConversation key={chat} id={chat.slice(8)} onBack={()=>setChat("")}/> : (dm||administrator) ? (
+              <>
+              {administrator&&!chat&&<ServiceConversationList onOpen={setChat}/>}
+              {dm&&<PrivateMessages
                 userId={userId}
                 chatId={chat}
                 setChatId={setChat}
@@ -1014,7 +1017,8 @@ export function MobileExperience({
                   go("discover");
                   onOpenProfile(id, role);
                 }}
-              />
+              />}
+              </>
             ) : (
               beta
             ))}

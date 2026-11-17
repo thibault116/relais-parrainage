@@ -50,13 +50,15 @@ export async function saveBankDetails(owner:string,input:unknown) {
   return summary(bank);
 }
 export async function manualBankOverview(owner:string) {
-  const [saved,earnings,requests,connect]=await Promise.all([
+  const [saved,earnings,requests,connect,pending]=await Promise.all([
     query<SavedBank>("SELECT * FROM money_bank_details WHERE owner_id=$1",[owner]),query(eligibleSql,[owner]),
     query<RequestRow>("SELECT r.id,r.amount_cents,COALESCE(w.state,r.status) AS status,r.created_at,COALESCE(w.mode,'test') AS mode,w.reason,w.reference FROM money_bank_requests r LEFT JOIN money_bank_workflow w ON w.request_id=r.id WHERE r.owner_id=$1 ORDER BY r.created_at DESC",[owner]),
     query<RequestRow>("SELECT id,amount_cents,status,created_at FROM money_connect_withdrawals WHERE owner_id=$1 ORDER BY created_at DESC",[owner]),
+    query("SELECT COALESCE(SUM(b.payout_cents),0) AS amount FROM money_bookings b JOIN money_services s ON s.id=b.service_id WHERE s.owner_id=$1 AND b.status IN ('accepted','completion_pending')",[owner]),
   ]);
   // Return a masked bank only, never the IBAN or encrypted snapshots.
   return {testMode:!billingLive(),withdrawalsEnabled:!billingLive()||manualPayoutPolicy().liveEnabled,configured:bankStorageConfigured(),bank:saved[0]?summary(decryptBankSnapshot(owner,"saved",saved[0].payload)):null,
+    pendingCents:Number(pending[0]?.amount||0),
     availableCents:earnings.reduce((n,e)=>n+Number(e.payout_cents),0),
     history:[...requests.map(r=>({...r,kind:"manual"})),...connect.map(r=>({...r,kind:"stripe"}))].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))),
   };

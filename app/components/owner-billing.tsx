@@ -29,18 +29,4 @@ export function useOwnerBilling(enabled: boolean) {
   }, [enabled]);
   return enabled ? data : null;
 }
-export function OwnerPlanBadge({ enabled }: { enabled: boolean }) {
-  const d = useOwnerBilling(enabled);
-  return d ? (
-    <span className="owner-plan-badge">
-      {(
-        {
-          free: "Free",
-          starter: "Starter",
-          plus: "Plus",
-          pro: "Pro",
-        } as Record<string, string>
-      )[d.plan] || "Free"}
-    </span>
-  ) : null;
-}
+export function OwnerPlanBadge({enabled}:{enabled:boolean}){const d=useOwnerBilling(enabled);return d?<span className="owner-plan-badge">{d.balance.toLocaleString("fr-FR")} crédits</span>:null;}

@@ -36,6 +36,6 @@ export async function POST(r:Request){
  ]).parse(await r.json());
  if(d.action==="request")return json({id:await book(u!.id,d.id,d.key,d.notes,"À convenir")});
  if(d.transition==="decline"&&d.reason.length<10)return json({error:"Explique le refus en au moins 10 caractères."},400);
- await bookingAction(u!.id,d.id,d.transition,d.reason);return json({ok:true});
+ await bookingAction(u!.id,d.id,d.transition,d.reason);return json({ok:true,chat:`service:${d.id}`});
  }catch(e){if(path)await deleteProof(path);const message=(e as Error).message;return json({error:["Crédits insuffisants","Plus de disponibilité","Prestation indisponible","Prestation introuvable","Transition impossible ou déjà effectuée","Limite d’images atteinte."].includes(message)?message:"Action impossible. Vérifie le formulaire puis actualise."},400);}
 }

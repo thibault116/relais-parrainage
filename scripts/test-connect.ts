@@ -5,7 +5,7 @@ import {join} from "node:path";
 import type Stripe from "stripe";
 import StripeSDK from "stripe";
 import {query,database} from "../lib/db";
-import {migrateMonetization,saveService,book,bookingAction,entry,balance,moneyTransaction} from "../lib/monetization/store";
+import {migrateMonetization,saveService,book,bookingAction,confirmService,entry,balance,moneyTransaction} from "../lib/monetization/store";
 import {connectOverview,createConnectAccount,connectOnboarding,connectEmbeddedSession,requestConnectWithdrawal,resumeConnectWithdrawal,refreshConnectWithdrawals,handleConnectEvent} from "../lib/monetization/connect";
 import {GET,POST} from "../app/api/admin/monetization/connect/route";
 import {POST as webhook} from "../app/api/stripe/webhook/route";
@@ -105,7 +105,7 @@ try {
   live=true;await assert.rejects(()=>connectOverview(owner,client),/réel/);live=false;
   const service=await saveService(owner,{title:"Conseils test",description:"Une prestation de conseil en achat-revente pour tests.",category:"Conseil",duration:0,calls:0,followup:"",availability:"Messages",credits:10,capacity:50,published:true});
   await moneyTransaction(async q=>{await entry(q,owner,1000,"fixture","connect-fixture");});
-  async function completed() {const id=String(await book(owner,service,crypto.randomUUID(),"Objectif de test","Flexible"));await bookingAction(owner,id,"accept");await bookingAction(owner,id,"complete");return id;}
+  async function completed() {const id=String(await book(owner,service,crypto.randomUUID(),"Objectif de test","Flexible"));await bookingAction(owner,id,"accept");await bookingAction(owner,id,"complete");await confirmService(owner,id,1,true);return id;}
   const first=await completed();const creditsBefore=await balance(query,owner);
   const key=crypto.randomUUID();
   const [one,two]=await Promise.all([requestConnectWithdrawal(owner,key,client),requestConnectWithdrawal(owner,key,client)]);
