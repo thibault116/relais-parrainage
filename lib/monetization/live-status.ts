@@ -1,9 +1,9 @@
 import type Stripe from "stripe";
 import {stripeBilling,appOrigin} from "./stripe";
-import {billingLive,liveReadiness} from "./mode";
+import {billingLive,liveReadiness,liveSecretKey} from "./mode";
 export async function liveProviderStatus(provider:()=>Stripe=stripeBilling){
  if(!billingLive())return null;
- const readiness=liveReadiness();if(!readiness.ready)return {ready:false,chargesEnabled:false,webhookReady:false,message:readiness.missing.join(", ")};
+ const readiness=liveReadiness();if(!readiness.ready)return {ready:false,chargesEnabled:false,webhookReady:false,message:readiness.missing.includes("Clé Stripe réelle")?(/^(sk|rk)_test_/.test(liveSecretKey())?"STRIPE_LIVE_SECRET_KEY contient une clé de test. Enregistre une clé sk_live_ ou rk_live_ dans Vercel.":/^pk_/.test(liveSecretKey())?"STRIPE_LIVE_SECRET_KEY contient une clé publique. Enregistre une clé secrète sk_live_ ou rk_live_.":"STRIPE_LIVE_SECRET_KEY doit contenir une clé secrète réelle sk_live_ ou rk_live_ valide."):readiness.missing.join(", ")};
  try{
  const stripe=provider();
  const [account,endpoints]=await Promise.all([stripe.accounts.retrieve(null),stripe.webhookEndpoints.list({limit:100})]);

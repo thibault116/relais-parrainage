@@ -1,4 +1,4 @@
-import {billingLive,liveReadiness} from "./mode";
+import {billingLive,liveReadiness,liveSecretKey} from "./mode";
 import Stripe from "stripe";
 export function stripeTest() {
   const key = process.env.STRIPE_SECRET_KEY || "";
@@ -9,7 +9,7 @@ export function stripeTest() {
 export function stripeBilling(){
  if(!billingLive())return stripeTest();
  const config=liveReadiness();if(!config.ready)throw Error("Paiements réels non configurés : "+config.missing.join(", "));
- return new Stripe(process.env.STRIPE_LIVE_SECRET_KEY!,{maxNetworkRetries:2,timeout:20000});
+ return new Stripe(liveSecretKey(),{maxNetworkRetries:2,timeout:20000});
 }
 export const stripeModeMatches=(live:boolean|undefined)=>!!live===billingLive();
 export function appOrigin() {
