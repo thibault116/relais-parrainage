@@ -1,13 +1,11 @@
 export const memberRelease = {
-  id: "2026-11-18-guides-gratuits",
+  id: "2026-11-18-guides-lecture-app",
   discordAudience: "public",
-  title: "Les guides gratuits arrivent sur Mentora",
+  title: "Les guides se lisent dans Mentora",
   notes: [
-    "Nouveautés : 4 guides gratuits pour tous : débuter dans l’achat-revente, choisir son matériel, réussir ses photos et annonces, et trouver son stock.",
-    "Améliorations : retrouve les guides dans Menu → Général → Guides, avec lecture continue, plein écran, téléchargement et lien à partager.",
-    "Corrections : sur téléphone, le bandeau du haut défile avec la page et ne masque plus les contenus.",
+    "Correction : les guides gratuits se consultent dans Mentora, sans bouton de téléchargement. La lecture continue, le plein écran et les liens à partager restent disponibles.",
   ],
   guideUrl: "/?mobile=guides#workspace",
-  guideLabel: "Découvrir les guides gratuits",
+  guideLabel: "Lire les guides gratuits",
 };
 export const retiredMemberReleaseIds = [] as string[];

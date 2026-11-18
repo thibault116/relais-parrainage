@@ -20,4 +20,3 @@ export async function guideDocument(slug:string){
  html=html.replace(/<head>/i,`<head>${head}`).replace(/<\/head>/i,`<style>${responsive}</style></head>`);
  return {slug:guide.slug,title:guide.title,html,missing,pdf:'pdf' in guide};
 }
-export async function guideDownload(slug:string){const guide=memberGuides.find(g=>g.slug===slug);if(!guide)return null;if('pdf' in guide)return {bytes:await guideAsset(guide.pdf),type:'application/pdf',filename:`${slug}.pdf`};const d=await guideDocument(slug);return {bytes:Buffer.from(d!.html),type:'text/html; charset=utf-8',filename:`${slug}.html`};}
