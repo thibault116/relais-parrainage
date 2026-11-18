@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { PrivateServiceCatalog } from "./private-services";
 import { AdminMonetization } from "./admin-monetization";
+import { MemberGuides } from "./member-guides";
 import { AdminLegalGuide } from "./admin-legal-guide";
 import {ServiceConversation,ServiceConversationList} from "./service-conversations";
 import { JoinOffers } from "./join-offers";
@@ -349,6 +350,7 @@ export function MobileExperience({
       const url = new URL(window.location.href);
       url.searchParams.set("mobile", next);
       url.searchParams.delete("services");
+      url.searchParams.delete("guide");
       url.hash =
         routes[next]?.[0] || (next === "community" ? "community" : "profile");
       url.searchParams.delete("chat");
@@ -502,6 +504,7 @@ export function MobileExperience({
         : screen === "community"
           ? "community"
           : [
+                "guides",
                 "joinOffers",
                 "legalGuide",
                 "billing",
@@ -596,6 +599,7 @@ export function MobileExperience({
           </div>
         )}
         <Content className="mobile-app-content">
+          {screen === "guides" && (administrator ? <MemberGuides onBack={back} onNavigate={slug=>go("guides",slug?{guide:slug}:{})}/> : <p>Accès réservé au compte administrateur principal.</p>)}
           {screen === "legalGuide" && (
             <>
               <button className="mobile-back" onClick={back}>

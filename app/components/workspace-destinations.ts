@@ -1,5 +1,5 @@
 import {
-  Bell, Bookmark, CheckCircle2, CircleHelp, Flag, Globe, Home, Inbox,
+  Bell, BookOpen, Bookmark, CheckCircle2, CircleHelp, Flag, Globe, Home, Inbox,
   Layers, Menu, MessageCircle, NotebookPen, Plus, Rocket, Search, Settings,
   Shield, Target, TrendingUp, UserRound, Users, type LucideIcon,
 } from "lucide-react";
@@ -34,6 +34,7 @@ export function workspaceGroups(mentor: boolean, moderator: boolean, owner: bool
         {label:"Demandes",icon:Inbox,screen:"requests"},
         {label:"Crédits",icon:Layers,screen:"credits"},
         {label:"Gérer mon profil",icon:UserRound,screen:"edit"},
+        ...(owner?[{label:"Guides",icon:BookOpen,screen:"guides",keywords:"ressources achat revente matériel photos annonces sourcing"}]:[]),
         ...(mentor?[{label:"Prestations",icon:Layers,screen:"services"},{label:"Rémunération",icon:TrendingUp,screen:"payouts"}]:[]),
       ],
     },
@@ -101,5 +102,5 @@ export const workspaceRoutes: Record<string, [string, string?]> = {
 
 export const desktopExperienceScreens = new Set([
   "home", "profile", "saved", "notifications", "notes", "messages",
-  "community", "legalGuide", "joinOffers", "billing", "credits", "services", "payouts",
+  "community", "guides", "legalGuide", "joinOffers", "billing", "credits", "services", "payouts",
 ]);

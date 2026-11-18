@@ -227,7 +227,7 @@ export default function App() {
     const route = workspaceRoutes[screen];
     const next = (route?.[0] || (screen === "community" || screen === "menu" ? screen : "workspace")) as View;
     const url = new URL(window.location.href);
-    for (const key of ["mobile", "chat", "profileTab", "settingsSection", "adminTab", "network", "member"]) url.searchParams.delete(key);
+    for (const key of ["mobile", "chat", "profileTab", "settingsSection", "adminTab", "network", "member", "guide"]) url.searchParams.delete(key);
     url.searchParams.set("mobile", screen);
     if (route?.[1]) url.searchParams.set("profileTab", route[1]);
     if (item.settingsSection) url.searchParams.set("settingsSection", item.settingsSection);
@@ -282,7 +282,7 @@ export default function App() {
     const hash = next === "pricing" ? "tarifs" : next;
     const url = new URL(window.location.href);
     if (!phoneLayout) {
-      for (const key of ["mobile", "chat", "profileTab", "settingsSection", "adminTab", "network", "member"])
+      for (const key of ["mobile", "chat", "profileTab", "settingsSection", "adminTab", "network", "member", "guide"])
         url.searchParams.delete(key);
       url.hash = hash;
       if (url.href !== window.location.href)

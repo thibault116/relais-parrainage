@@ -5,3 +5,6 @@ node_modules/
 .data/
 .vercel/
 *.tsbuildinfo
+
+# Guides admin : sources locales, jamais publiées en clair
+content/guides/

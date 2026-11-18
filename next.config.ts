@@ -8,6 +8,7 @@ const config: NextConfig = {
       "local",
   },
   outputFileTracingIncludes: {
+    "/api/guides/*": ["./content/guides.bundle.enc"],
     "/api/admin/crm/extension": ["./extension/mentora-vinted/**/*"],
   },
   serverExternalPackages: ["pg"],
