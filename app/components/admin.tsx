@@ -1,6 +1,7 @@
 "use client";
 import { t as translateUi, locale } from "@/app/components/language";
 import { AdminWithdrawals } from "./admin-withdrawals";
+import {AdminDiscordTickets} from "./admin-discord-tickets";
 import { AdminChangelog } from "./admin-changelog";
 import { AdminCrm } from "./admin-crm";
 import { AdminRetention } from "./admin-retention";
@@ -174,7 +175,7 @@ export function AdminDashboard({
           </p>
         ),
       )}
-      {tab === "withdrawals" && crmOwner ? (
+      {tab === "tickets" && crmOwner ? (<AdminDiscordTickets />) : tab === "withdrawals" && crmOwner ? (
         <AdminWithdrawals />
       ) : tab === "changelog" && crmOwner ? (
         <AdminChangelog />
