@@ -41,7 +41,7 @@ try{
  if(method==='GET'&&path.endsWith('/messages'))return [] as T;
  throw Error('Unexpected mock request '+path+' '+method);
  };
- await configureTickets({guild,channel:panel,category:''},fake);await publishPanel(fake);await publishPanel(fake);assert.equal(panelCreates,1);assert.equal((await config()).owner_id,owner);assert.deepEqual(ticketPanel().allowed_mentions,{parse:[]});
+ await configureTickets({guild,channel:panel,category:''},fake);await publishPanel(fake);await publishPanel(fake);assert.equal(panelCreates,1);assert.equal((await config()).owner_id,owner);assert.deepEqual(ticketPanel().allowed_mentions,{parse:[]});assert(ticketPanel().components[0].components[0].options.some(o=>o.value==="recruitment"));
  await query("UPDATE discord_ticket_config SET panel_message='',panel_state='uncertain'");await recoverPanel(fake);assert.equal(panelCreates,1);
  const i:Interaction={id:'100000000000000001',application_id:app,type:3,guild_id:guild,channel_id:panel,token:'fixture-not-real-token',member:{user:{id:member}},message:{id:'888888888888888888'},data:{custom_id:'mentora:ticket:category:v1',values:['technical']}};
  assert.equal((await interpret(i)).response.type,9);assert.equal((await interpret({...i,guild_id:other})).response.type,4);assert.equal((await interpret({...i,message:{id:other}})).response.type,4);

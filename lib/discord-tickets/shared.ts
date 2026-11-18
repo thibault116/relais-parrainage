@@ -4,6 +4,7 @@ export const ticketCategories=[
  {id:"services",label:"Prestations et rémunération",description:"Demande, prestation ou retrait",emoji:"🤝"},
  {id:"account",label:"Compte et profil",description:"Connexion, accès ou informations du profil",emoji:"👤"},
  {id:"report",label:"Signaler un problème",description:"Comportement, contenu ou litige",emoji:"🚩"},
+ {id:"recruitment",label:"Recrutement",description:"Candidature pour rejoindre l’équipe Mentora",emoji:"📋"},
  {id:"other",label:"Autre demande",description:"Toute autre question sur Mentora",emoji:"💬"},
 ];
 export const panelMarker="mentora-ticket-panel-v1";
