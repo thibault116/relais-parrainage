@@ -889,5 +889,5 @@
 }
 @media(max-width:900px){body.owner-chat-keyboard .owner-mobile-preview:has(:is(.mobile-dm.open,.community-page,.service-chat)) .mobile-app-content{padding-top:2px!important;padding-bottom:env(safe-area-inset-bottom)!important}}
 
-/* Private admin trial: the mobile header follows normal page scrolling. */
-@media(max-width:900px){.mobile-app.admin-scroll-header>.mobile-app-header{position:relative!important;top:auto!important}}
+/* The mobile header follows normal page scrolling. */
+@media(max-width:900px){.mobile-app.mobile-scroll-header>.mobile-app-header{position:relative!important;top:auto!important}}

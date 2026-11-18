@@ -34,7 +34,7 @@ export function workspaceGroups(mentor: boolean, moderator: boolean, owner: bool
         {label:"Demandes",icon:Inbox,screen:"requests"},
         {label:"Crédits",icon:Layers,screen:"credits"},
         {label:"Gérer mon profil",icon:UserRound,screen:"edit"},
-        ...(owner?[{label:"Guides",icon:BookOpen,screen:"guides",keywords:"ressources achat revente matériel photos annonces sourcing"}]:[]),
+        {label:"Guides",icon:BookOpen,screen:"guides",keywords:"ressources gratuites achat revente matériel photos annonces sourcing"},
         ...(mentor?[{label:"Prestations",icon:Layers,screen:"services"},{label:"Rémunération",icon:TrendingUp,screen:"payouts"}]:[]),
       ],
     },

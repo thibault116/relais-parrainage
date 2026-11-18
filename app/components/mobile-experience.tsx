@@ -193,7 +193,8 @@ export function MobileExperience({
   const completionNeeded = useMentorCompletion(false) && false;
   const extras = useFeature("mobileExtras"),
     dm = useFeature("privateMessaging"),
-    channels = useFeature("communityChannels");
+    channels = useFeature("communityChannels"),
+    guidesEnabled = useFeature("guides");
   const [mobileScreen, setScreen] = useState(() =>
     typeof window !== "undefined"
       ? new URLSearchParams(window.location.search).get("mobile") ||
@@ -527,7 +528,7 @@ export function MobileExperience({
       value={{ ids: bookmarks.map((p) => p.id), refresh: () => void load() }}
     >
       <div
-        className={`mobile-app owner-mobile-preview ${administrator ? "admin-scroll-header" : ""} ${desktopScreen ? "desktop-experience" : ""} ${screen === "community" && channel !== null ? "mobile-chat-view" : ""}`}
+        className={`mobile-app owner-mobile-preview mobile-scroll-header ${desktopScreen ? "desktop-experience" : ""} ${screen === "community" && channel !== null ? "mobile-chat-view" : ""}`}
       >
         {toast && (
           <aside className="in-app-message" role="status">
@@ -599,7 +600,7 @@ export function MobileExperience({
           </div>
         )}
         <Content className="mobile-app-content">
-          {screen === "guides" && (administrator ? <MemberGuides onBack={back} onNavigate={slug=>go("guides",slug?{guide:slug}:{})}/> : <p>Accès réservé au compte administrateur principal.</p>)}
+          {screen === "guides" && (guidesEnabled ? <MemberGuides onBack={back} onNavigate={slug=>go("guides",slug?{guide:slug}:{})}/> : <p>Les guides ne sont pas disponibles pour ce compte.</p>)}
           {screen === "legalGuide" && (
             <>
               <button className="mobile-back" onClick={back}>

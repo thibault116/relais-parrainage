@@ -1,14 +1,13 @@
 export const memberRelease = {
-  id: "2026-11-17-prestations-credits",
+  id: "2026-11-18-guides-gratuits",
   discordAudience: "public",
-  title: "Les prestations arrivent sur Mentora",
+  title: "Les guides gratuits arrivent sur Mentora",
   notes: [
-    "Nouveautés : crée ou réserve une prestation et achète tes crédits aux prix de lancement.",
-    "Améliorations : retrouve tes demandes, crédits et profil sur l’accueil ; le menu Général rassemble tes accès utiles.",
-    "Nouveautés : la fin d’une prestation est confirmée par les deux membres avant de rendre la rémunération disponible.",
-    "Corrections : la saisie des messages privés et de la communauté occupe moins de place sur téléphone.",
+    "Nouveautés : 4 guides gratuits pour tous : débuter dans l’achat-revente, choisir son matériel, réussir ses photos et annonces, et trouver son stock.",
+    "Améliorations : retrouve les guides dans Menu → Général → Guides, avec lecture continue, plein écran, téléchargement et lien à partager.",
+    "Corrections : sur téléphone, le bandeau du haut défile avec la page et ne masque plus les contenus.",
   ],
-  guideUrl: "/?mobile=credits#profile",
-  guideLabel: "Découvrir les crédits",
+  guideUrl: "/?mobile=guides#workspace",
+  guideLabel: "Découvrir les guides gratuits",
 };
 export const retiredMemberReleaseIds = [] as string[];

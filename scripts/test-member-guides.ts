@@ -23,7 +23,7 @@ try{
  const request=(download=false)=>new Request(`http://localhost/api/guides/se-lancer-achat-revente${download?'?download=1':''}`),params=(slug:string)=>({params:Promise.resolve({slug})});
  for(const u of [null,{id:'member',email:'member@example.com'},{id:'moderator',email:'moderator@example.com'},{id:'owner',email:'thibault.cordiez@hotmail.com'}]){
   session=u?{user:u}:null;if(u?.id==='moderator')await query('INSERT INTO moderators(user_id) VALUES($1)',[u.id]);
-  assert.equal((await list(request())).status,403);assert.equal((await content(request(),params('se-lancer-achat-revente'))).status,403);assert.equal((await content(request(true),params('se-lancer-achat-revente'))).status,403);
+  const expected=u?200:401;assert.equal((await list(request())).status,expected);assert.equal((await content(request(),params('se-lancer-achat-revente'))).status,expected);assert.equal((await content(request(true),params('se-lancer-achat-revente'))).status,expected);
  }
  await query('INSERT INTO moderators(user_id) VALUES($1)',['owner']);session={user:{id:'owner',email:'thibault.cordiez@hotmail.com'}};
  const index=await list(request());assert.equal(index.status,200);assert.equal((await index.json()).guides.length,4);
@@ -31,6 +31,6 @@ try{
  assert.equal((await content(request(),params('../../.env.local'))).status,404);
  const pdf=await content(request(true),params('materiel-indispensable'));assert.equal(pdf.headers.get('content-type'),'application/pdf');assert.equal(Buffer.from(await pdf.arrayBuffer()).subarray(0,4).toString(),'%PDF');
  const html=await content(request(true),params('photos-et-annonces'));assert.match(html.headers.get('content-disposition')!,/attachment/);assert((await html.text()).includes('data:image/png;base64,'));
- assert(!workspaceGroups(false,false,false,true).some(g=>g.items.some(i=>i.screen==='guides')));assert(workspaceGroups(true,true,true,true).find(g=>g.title==='Général')!.items.some(i=>i.screen==='guides'));
- sessionMock.mock.restore();console.log('PASS: four guides and images, private API and downloads, principal-only access, unknown slugs, share links and navigation.');
+ assert(workspaceGroups(false,false,false,true).some(g=>g.items.some(i=>i.screen==='guides')));assert(workspaceGroups(true,true,true,true).find(g=>g.title==='Général')!.items.some(i=>i.screen==='guides'));
+ sessionMock.mock.restore();console.log('PASS: four guides and images, authenticated API and downloads, all member roles, unknown slugs, share links and navigation.');
 }finally{mock.restoreAll();const db=database();if(db instanceof DatabaseSync)db.close();process.chdir(cwd);await rm(directory,{recursive:true,force:true});}
