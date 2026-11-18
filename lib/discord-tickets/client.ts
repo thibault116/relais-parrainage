@@ -3,8 +3,12 @@ export type DiscordApi=<T=Record<string,unknown>>(path:string,method?:string,bod
 export const discordApi:DiscordApi=async<T>(path:string,method="GET",body?:unknown)=>{
  if(!/^\/(guilds|channels|users|oauth2|invites)\/[a-zA-Z0-9/@_-]+(?:\?(?:limit=100(?:&before=\d{15,22})?|with_counts=true))?$/.test(path))throw Error("Chemin Discord refusé.");
  const token=process.env.DISCORD_TICKET_BOT_TOKEN;if(!token)throw Error("Token du bot manquant.");
+ for(let attempt=0;attempt<3;attempt++){
  const r=await fetch(`https://discord.com/api/v10${path}`,{method,headers:{Authorization:`Bot ${token}`,"Content-Type":"application/json"},body:body===undefined?undefined:JSON.stringify(body),redirect:"error",cache:"no-store",signal:AbortSignal.timeout(12000)});
+ if(r.status===429&&attempt<2){const d=await r.json().catch(()=>({}));const seconds=Number(d.retry_after||r.headers.get('retry-after'));if(Number.isFinite(seconds)&&seconds>0&&seconds<=10){await new Promise(resolve=>setTimeout(resolve,Math.ceil(seconds*1000)+100));continue;}}
  if(!r.ok)throw new DiscordFailure(r.status);return (r.status===204?null:await r.json()) as T;
+ }
+ throw new DiscordFailure(429);
 };
 export async function finishInteraction(application:string,token:string,content:string){
  if(!/^\d{15,22}$/.test(application)||!/^[\w.-]{10,300}$/.test(token))return;
