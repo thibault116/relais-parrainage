@@ -14,7 +14,7 @@ const cwd=process.cwd(),directory=await mkdtemp(join(tmpdir(),'mentora-discord-g
 try{
  await migrateDiscordTickets();await migrateDiscordCommunity();
  await query("INSERT INTO discord_ticket_config(id,guild_id,panel_channel,owner_id,bot_id,updated_at) VALUES('main','guild','panel','owner','bot','now')");
- const channels:any[]=[{id:'category',name:'📚┃guide',type:4}],messages:any[]=[];let creates=0,posts=0;
+ const channels:any[]=[{id:'category',name:'📚┃GUIDES GRATUITS',type:4}],messages:any[]=[];let creates=0,posts=0;
  const api:DiscordApi=async<T>(path:string,method='GET',body?:unknown)=>{
   if(path==='/guilds/guild')return {owner_id:'owner'} as T;
   if(path==='/guilds/guild/roles')return [] as T;

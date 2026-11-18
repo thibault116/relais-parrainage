@@ -15,7 +15,7 @@ export function guidePanel(slug:string){
 }
 export async function publishGuideChannels(api:DiscordApi=discordApi){
  const {c,channels}=await communityInventory(api);
- const categories=channels.filter(ch=>ch.type===4&&['guide','guides'].includes(normalized(ch.name)));
+ const categories=channels.filter(ch=>ch.type===4&&['guide','guides','guide gratuit','guides gratuits'].includes(normalized(ch.name)));
  if(categories.length!==1)throw Error('Crée une seule catégorie « guide » dans ton serveur Discord, puis réessaie.');
  const parent=categories[0],published=[];
  for(const g of memberGuides){
