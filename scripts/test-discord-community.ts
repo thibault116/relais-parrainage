@@ -18,6 +18,8 @@ try{
  assert.equal(channelKind('📜┃règles'),'rules');assert.equal(textChunks(content).join(''),content);assert(textChunks(content).every(x=>x.length<=3900));
  const original={id:sourceId,author:{id:owner},type:0,content,attachments:[]};let deleted=0,sent:any[]=[],counter=0,rolePermissions='0',roleWrites=0;
  const fake:DiscordApi=async<T>(path:string,method='GET',data:any=undefined)=>{
+  if(path===`/channels/${channel}`)return {id:channel,guild_id:guild,name:'📜┃règles',permission_overwrites:[]} as T;
+  if(path===`/channels/${channel}/permissions/${bot}`&&method==='PUT')return null as T;
   if(path===`/guilds/${guild}`)return {owner_id:owner} as T;
   if(path===`/guilds/${guild}?with_counts=true`)return {approximate_member_count:31} as T;
   if(path===`/guilds/${guild}/channels`)return [{id:channel,name:'📜┃règles',type:0},{id:welcome,name:'👋┃bienvenue',type:0}] as T;
