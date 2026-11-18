@@ -1,0 +1,5 @@
+import {timingSafeEqual} from 'node:crypto';
+import {z} from 'zod';
+import {sendWelcome} from '@/lib/discord-community/service';
+export const runtime='nodejs';export const maxDuration=60;
+export async function POST(r:Request){const expected=Buffer.from(`Bearer ${process.env.DISCORD_TICKET_BOT_TOKEN||''}`),actual=Buffer.from(r.headers.get('authorization')||'');if(!process.env.DISCORD_TICKET_BOT_TOKEN||actual.length!==expected.length||!timingSafeEqual(actual,expected))return new Response(null,{status:401});if(Number(r.headers.get('content-length')||0)>2000)return new Response(null,{status:413});try{const text=await r.text();if(Buffer.byteLength(text)>2000)return new Response(null,{status:413});const d=z.object({id:z.string().regex(/^[a-f0-9]{64}$/),guild:z.string().regex(/^\d{15,22}$/),user:z.string().regex(/^\d{15,22}$/),joined:z.string().datetime({offset:true})}).strict().parse(JSON.parse(text));if(Math.abs(Date.now()-Date.parse(d.joined))>600000)return new Response(null,{status:400});return Response.json(await sendWelcome(d));}catch{return Response.json({error:'Arrivée non confirmée.'},{status:400});}}

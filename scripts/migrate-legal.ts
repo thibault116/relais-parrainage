@@ -1,3 +1,4 @@
+import {migrateDiscordCommunity} from "../lib/discord-community/store";
 import {migrateDiscordTickets} from "../lib/discord-tickets/store";
 import {withMoneyMode} from "../lib/monetization/mode";
 import {migrateMonetization} from "../lib/monetization/store";
@@ -10,6 +11,7 @@ import { Pool } from "pg";
 try {
   await migrateLegal();
   await migrateDiscordTickets();
+  await migrateDiscordCommunity();
   await migrateChangelog();
   await migratePayoutTests();
   await withMoneyMode("test",()=>migrateMonetization());

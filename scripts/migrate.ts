@@ -1,3 +1,4 @@
+import {migrateDiscordCommunity} from "../lib/discord-community/store";
 import {migrateDiscordTickets} from "../lib/discord-tickets/store";
 import { migratePayoutTests } from "../lib/monetization/payout-tests";
 import { migrateChangelog } from "../lib/changelog/store";
@@ -46,6 +47,7 @@ await migrateMonetization();
 await migrateLegal();
 await migrateChangelog();
 await migrateDiscordTickets();
+  await migrateDiscordCommunity();
   await migratePayoutTests();
 console.log("Base Relais initialisée.");
 process.exit(0);

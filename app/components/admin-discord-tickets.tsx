@@ -1,4 +1,5 @@
 "use client";
+import {AdminDiscordCommunity} from "./admin-discord-community";
 import {useCallback,useEffect,useState} from "react";
 import {ticketCategories} from "@/lib/discord-tickets/shared";
 async function api(body?:unknown){const r=await fetch('/api/admin/discord-tickets',{cache:'no-store',...(body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{})});const d=await r.json().catch(()=>({error:"Le support est momentanément indisponible. Recharge la page."}));if(!r.ok)throw Error(d.error||'Support indisponible.');return d;}
@@ -16,5 +17,5 @@ export function AdminDiscordTickets(){
  <button className="commerce-primary" disabled={busy||!data?.config} onClick={()=>void act({action:'publish'})}>{data?.config?.panel_message?'Mettre à jour le panneau Discord':'Publier le panneau dans Discord'}</button>
  <p>Un ticket ouvert par membre. Les salons sont privés ; les administrateurs Discord conservent leur accès technique. Fermer un ticket le rend lisible sans supprimer son historique. Aucune annonce @everyone n’est envoyée.</p>
  {['uncertain','publishing'].includes(data?.config?.panel_state)&&<button className="commerce-row" disabled={busy} onClick={()=>void act({action:'recover-panel'})}>Retrouver le panneau existant sans le renvoyer</button>}
- <h2>Tickets récents</h2>{data?.tickets.map((t:any)=><article className="commerce-card" key={t.id}><strong>{ticketCategories.find(c=>c.id===t.category)?.label}</strong><p>{t.state} · {new Date(t.created_at).toLocaleString('fr-FR')}</p>{t.channel_id&&<a href={`https://discord.com/channels/${data.config.guild_id}/${t.channel_id}`} target="_blank" rel="noreferrer">Ouvrir dans Discord</a>}{['uncertain','creating','closing'].includes(t.state)&&<button className="commerce-row" disabled={busy} onClick={()=>void act({action:'recover-ticket',id:t.id})}>Vérifier le salon existant</button>}</article>)}</section>;
+ <h2>Tickets récents</h2>{data?.tickets.map((t:any)=><article className="commerce-card" key={t.id}><strong>{ticketCategories.find(c=>c.id===t.category)?.label}</strong><p>{t.state} · {new Date(t.created_at).toLocaleString('fr-FR')}</p>{t.channel_id&&<a href={`https://discord.com/channels/${data.config.guild_id}/${t.channel_id}`} target="_blank" rel="noreferrer">Ouvrir dans Discord</a>}{['uncertain','creating','closing'].includes(t.state)&&<button className="commerce-row" disabled={busy} onClick={()=>void act({action:'recover-ticket',id:t.id})}>Vérifier le salon existant</button>}</article>)}<AdminDiscordCommunity/></section>;
 }
