@@ -74,3 +74,12 @@ export async function recoverTicket(id:string,api:DiscordApi=discordApi){const c
  if(!messages.some(m=>m.author?.id===c.bot_id&&m.components?.some((r:any)=>r.components?.some((b:any)=>b.custom_id===`mentora:ticket:close:${id}`))))await api(`/channels/${found[0].id}/messages`,"POST",{nonce:`intro-${id}`,enforce_nonce:true,content:"Ticket Mentora retrouvé. Tu peux préciser ta demande ici et joindre tes captures.",allowed_mentions:{parse:[]},components:[{type:1,components:[{type:2,style:2,label:"Fermer le ticket",custom_id:`mentora:ticket:close:${id}`}]}]});
  }
  await query("UPDATE discord_tickets SET channel_id=$1,state=$2,active_key=$3,updated_at=$4 WHERE id=$5",[String(found[0].id),t.state==='closing'?'closed':'open',t.state==='closing'?null:`${c.guild_id}:${t.user_id}`,new Date().toISOString(),id]);return {ok:true};}
+export async function discoverTickets(api:DiscordApi=discordApi){
+ const guilds=await api<{id:string;name:string}[]>('/users/@me/guilds');
+ const matches=guilds.filter(g=>g.name.toLocaleLowerCase().trim()==='mentora');
+ if(matches.length!==1)throw Error('Le bot doit être installé sur ton serveur Mentora. Si plusieurs serveurs portent ce nom, renseigne les identifiants manuellement.');
+ const channels=await api<{id:string;name:string;type:number}[]>(`/guilds/${matches[0].id}/channels`);
+ const panels=channels.filter(c=>[0,5].includes(c.type)&&c.name.toLocaleLowerCase().includes('ticket')&&c.name.toLocaleLowerCase().includes('ouvrir'));
+ if(panels.length!==1)throw Error('Impossible d’identifier un unique salon ouvrir un ticket. Renseigne son identifiant manuellement.');
+ return {guild:matches[0].id,channel:panels[0].id,category:''};
+}
