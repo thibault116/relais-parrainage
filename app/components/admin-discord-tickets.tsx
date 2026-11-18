@@ -1,7 +1,7 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
 import {ticketCategories} from "@/lib/discord-tickets/shared";
-async function api(body?:unknown){const r=await fetch('/api/admin/discord-tickets',{cache:'no-store',...(body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{})});const d=await r.json();if(!r.ok)throw Error(d.error||'Support indisponible.');return d;}
+async function api(body?:unknown){const r=await fetch('/api/admin/discord-tickets',{cache:'no-store',...(body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{})});const d=await r.json().catch(()=>({error:"Le support est momentanément indisponible. Recharge la page."}));if(!r.ok)throw Error(d.error||'Support indisponible.');return d;}
 export function AdminDiscordTickets(){
  const [data,setData]=useState<any>(null),[guild,setGuild]=useState(''),[channel,setChannel]=useState(''),[category,setCategory]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[status,setStatus]=useState('');
  const load=useCallback(async()=>{const d=await api();setData(d);setGuild(d.config?.guild_id||'');setChannel(d.config?.panel_channel||'');setCategory(d.config?.category_id||'');},[]);
