@@ -18,6 +18,9 @@ import "./refonte-kit.css";
 import "./brand-violet.css";
 import "./workspace-desktop.css";
 import "./legal.css";
+import "./public-home.css";
+import "./motion.css";
+import { MotionProvider } from "./components/motion-system";
 import { SuggestionWidget } from "./components/suggestions";
 import { ReleaseNotes } from "./components/release-notes";
 import { UpdateBanner } from "./components/update-banner";
@@ -29,9 +32,19 @@ export const metadata: Metadata = {
     title: "Mentora",
     statusBarStyle: "black-translucent",
   },
-  title: "Mentora — L’entraide entre revendeurs.",
+  title: "Mentora — La marketplace des resellers.",
+  metadataBase: new URL("https://mentora-resell.vercel.app"),
+  openGraph: {
+    title: "Mentora — La marketplace des resellers.",
+    description:
+      "Revendeurs expérimentés, communauté et guides gratuits pour progresser dans l’achat-revente.",
+    type: "website",
+    locale: "fr_FR",
+    siteName: "Mentora",
+    images: [{ url: "/mentora-logo.png", alt: "Mentora" }],
+  },
   description:
-    "Progresse dans l’achat-revente de vêtements (resell) sur Vinted, Leboncoin, eBay ou Whatnot. Mentora relie revendeurs débutants et expérimentés.",
+    "Découvre des revendeurs expérimentés, une communauté d’entraide et quatre guides gratuits pour progresser dans l’achat-revente avec Mentora.",
 };
 export const viewport: Viewport = {
   themeColor: "#0b0612",
@@ -41,7 +54,11 @@ export const viewport: Viewport = {
 };
 export const maxDuration = 60;
 
-export default async function Layout({ children }: { children: React.ReactNode }) {
+export default async function Layout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const initialUserId = await ownerPreviewUserId();
   if (process.env.VERCEL_ENV === "production") after(automaticProductionCheck);
   const ownerPreview = initialUserId !== null;
@@ -56,20 +73,22 @@ export default async function Layout({ children }: { children: React.ReactNode }
       </head>
       <body>
         <OwnerPreviewProvider initialUserId={initialUserId}>
-        <LanguageProvider>
-          <AppearanceProvider>
-            <PwaProvider />
-            <UpdateBanner />
-            <CookieBanner />
-            <ReleaseNotes />
-            <PlatformProvider>
-              <BetaProvider>
-              {children}
-              <SuggestionWidget />
-            </BetaProvider>
-            </PlatformProvider>
-          </AppearanceProvider>
-        </LanguageProvider>
+          <LanguageProvider>
+            <AppearanceProvider>
+              <MotionProvider>
+                <PwaProvider />
+                <UpdateBanner />
+                <CookieBanner />
+                <ReleaseNotes />
+                <PlatformProvider>
+                  <BetaProvider>
+                    {children}
+                    <SuggestionWidget />
+                  </BetaProvider>
+                </PlatformProvider>
+              </MotionProvider>
+            </AppearanceProvider>
+          </LanguageProvider>
         </OwnerPreviewProvider>
       </body>
     </html>

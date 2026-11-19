@@ -1,4 +1,5 @@
 "use client";
+import {useMessageArrival} from "./motion-system";
 import {
   useCallback,
   useEffect,
@@ -150,6 +151,7 @@ export function Community({
     alive = useRef(true),
     sequence = useRef(0);
   const [mentionsOnly, setMentionsOnly] = useState(false);
+  useMessageArrival(thread,messages.map(m=>m.id),`${room}:${channel||""}:${mentionsOnly}`,!loading);
   useEffect(() => {
     setMentionsOnly(
       new URLSearchParams(window.location.search).has("communityMentions"),
@@ -469,6 +471,7 @@ export function Community({
             onTouchCancel={() => {
               swipe.current = null;
             }}
+            data-motion-message={message.id}
             id={`message-${message.id}`}
             key={message.id}
             className={`community-message${message.mine ? " is-mine" : ""}`}

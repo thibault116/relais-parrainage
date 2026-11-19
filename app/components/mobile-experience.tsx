@@ -1,4 +1,5 @@
 "use client";
+import {useScreenMotion,useNavigationIndicator,useMessageArrival} from "./motion-system";
 import {
   createContext,
   useContext,
@@ -523,6 +524,9 @@ export function MobileExperience({
               ].includes(screen)
             ? "menu"
             : "home";
+  const motionContent=useRef<HTMLDivElement>(null),motionDock=useRef<HTMLElement>(null);
+  useScreenMotion(motionContent,`${screen}:${profileTab}:${typeof window!=="undefined"?window.location.search:""}`,screen==="messages"||screen==="community");
+  useNavigationIndicator(motionDock,selected,true);
   return (
     <BookmarkContext.Provider
       value={{ ids: bookmarks.map((p) => p.id), refresh: () => void load() }}
@@ -599,7 +603,7 @@ export function MobileExperience({
             <button onClick={() => void load()}>Réessayer</button>
           </div>
         )}
-        <Content className="mobile-app-content">
+        <Content ref={motionContent} data-motion-surface className="mobile-app-content">
           {screen === "guides" && (guidesEnabled ? <MemberGuides onBack={back} onNavigate={slug=>go("guides",slug?{guide:slug}:{})}/> : <p>Les guides ne sont pas disponibles pour ce compte.</p>)}
           {screen === "legalGuide" && (
             <>
@@ -1035,7 +1039,8 @@ export function MobileExperience({
           )}
           {screen === "notes" && (extras ? <PairNotes pairs={active} /> : beta)}
         </Content>
-        {!desktopScreen && <nav className="mobile-app-dock" aria-label="Navigation mobile">
+        {!desktopScreen && <nav ref={motionDock} className="mobile-app-dock motion-dock" aria-label="Navigation mobile">
+          <span className="motion-nav-indicator" aria-hidden="true"/>
           {workspaceMain.map(({ screen: id, label, icon: Icon }) => (
             <button
               key={id}
@@ -1164,6 +1169,7 @@ function PrivateMessages({
     feed = useRef<HTMLDivElement>(null),
     generation = useRef(0),
     archived = useRef(false);
+  useMessageArrival(feed,messages.map(m=>String(m.id)),chatId);
   useEffect(() => {
     if (!chatId||ownerPreview) return;
     const app = dmContainer.current?.closest<HTMLElement>(".mobile-app");
@@ -1552,7 +1558,7 @@ function PrivateMessages({
               </button>
             )}
             {messages.map((m) => (
-              <article key={m.id} className={Number(m.mine) ? "mine" : ""}>
+              <article key={m.id} data-motion-message={String(m.id)} className={Number(m.mine) ? "mine" : ""}>
                 {m.image === 1 && (
                   <img
                     src={"/api/messages?file=" + m.id}

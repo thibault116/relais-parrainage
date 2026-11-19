@@ -1,11 +1,13 @@
 export const memberRelease = {
-  id: "2026-11-18-guides-lecture-app",
+  id: "2026-11-19-experience-fluide",
   discordAudience: "public",
-  title: "Les guides se lisent dans Mentora",
+  title: "Une expérience Mentora plus fluide",
   notes: [
-    "Correction : les guides gratuits se consultent dans Mentora, sans bouton de téléchargement. La lecture continue, le plein écran et les liens à partager restent disponibles.",
+    "Améliorations : l’accueil présente désormais la marketplace, les parcours Débutant et Parrain, la communauté et les quatre guides gratuits.",
+    "Améliorations : des transitions et interactions plus cohérentes accompagnent la navigation, les profils, les prestations et les messages, avec une option pour réduire les animations.",
+    "Corrections : les guides gratuits et les prestations rémunérées sont mieux distingués, et les liens de découverte retrouvent leur destination après connexion.",
   ],
-  guideUrl: "/?mobile=guides#workspace",
-  guideLabel: "Lire les guides gratuits",
+  guideUrl: "/#home",
+  guideLabel: "Découvrir le nouvel accueil",
 };
 export const retiredMemberReleaseIds = [] as string[];

@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {appendedMessageIds,clamp,sceneFrame,subscribeMotionFrame} from '../lib/motion';
+assert.equal(clamp(-5),0);assert.equal(clamp(4),1);assert.equal(sceneFrame(0,0).opacity,1);assert.equal(sceneFrame(0,1).opacity,0);
+assert.equal(sceneFrame(1,1).opacity,1);assert(sceneFrame(1,.5).transform.includes('rotateY'));
+assert.deepEqual(appendedMessageIds([],['a','b']),[],'Initial history stays still');
+assert.deepEqual(appendedMessageIds(['b','c'],['a','b','c']),[],'Older history does not animate');
+assert.deepEqual(appendedMessageIds(['b','c'],['a','b','c','d']),['d']);
+assert.deepEqual(appendedMessageIds(['b','c'],['b','c']),[],'Edits do not replay arrival');
+assert.deepEqual(appendedMessageIds(['a'],['other']),[],'Conversation replacement stays still');
+const handlers=new Map<string,Function>(),frames=new Map<number,FrameRequestCallback>();let added=0,removed=0,n=0;const calls:string[]=[];
+Object.assign(globalThis,{window:{addEventListener:(event:string,fn:Function)=>{handlers.set(event,fn);added++;},removeEventListener:(event:string)=>{handlers.delete(event);removed++;}},requestAnimationFrame:(fn:FrameRequestCallback)=>{frames.set(++n,fn);return n;},cancelAnimationFrame:(id:number)=>frames.delete(id)});
+const stopA=subscribeMotionFrame(()=>{calls.push('read-a');return()=>calls.push('write-a');});
+const stopB=subscribeMotionFrame(()=>{calls.push('read-b');return()=>calls.push('write-b');});assert.equal(added,2,'One scroll + one resize listener shared');assert.equal(frames.size,1,'A single frame is scheduled');
+const [id,fn]=[...frames][0];frames.delete(id);fn(0);assert.deepEqual(calls,['read-a','read-b','write-a','write-b'],'Batch reads before writes');
+stopA();assert.equal(removed,0);stopB();assert.equal(removed,2);assert.equal(handlers.size,0);assert.equal(frames.size,0);
+console.log('PASS: scrub frames, append-only message animation, one scroll scheduler, batched layout reads and full listener cleanup.');

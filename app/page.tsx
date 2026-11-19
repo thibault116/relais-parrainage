@@ -1,10 +1,11 @@
 "use client";
+import {useScreenMotion} from "./components/motion-system";
 import { PrivateServiceCatalog, PrivateServiceRequests } from "./components/private-services";
 import { useOwnerPreview } from "./components/owner-preview";
 import { PricingPreview } from "./components/pricing-preview";
 import { LegalLinks } from "./components/legal-links";
 import { OwnerPlanBadge } from "./components/owner-billing";
-import { ProductStory } from "./components/product-story";
+import { PublicLanding, PublicFAQ, HowMentoraWorks } from "./components/public-home";
 import {
   MobileExperience,
   MobileProfileActions,
@@ -222,6 +223,7 @@ export default function App() {
       ({ appearance: "settings", verification: "settings", emails: "settings",
          accompaniments: "pairs" }[profileTab] || profileTab) :
     view;
+  const motionMain=useRef<HTMLElement>(null);useScreenMotion(motionMain,`${view}:${activeDesktopScreen}:${profileTab}:${settingsSection}:${adminTab}`,view==="community");
   const openDesktop = useCallback((item: WorkspaceTarget, params: Record<string, string> = {}) => {
     const screen = item.screen;
     const route = workspaceRoutes[screen];
@@ -552,7 +554,7 @@ export default function App() {
           </div>
         </header>
       )}
-      <main id="workspace-content">
+      <main id="workspace-content" ref={motionMain}>
         {!phoneLayout && session && ["workspace", "menu", "community"].includes(view) && (
           <section className="wrap desktop-workspace-content" inert={!!preview}>
             <MobileExperience
@@ -633,376 +635,18 @@ export default function App() {
             }}
           />
         )}
-        {isPending && (
+        {isPending && view !== "home" && (
           <div className="empty">
             <LoaderCircle className="spin" />
             {translateUi(" Chargement\u2026")}
           </div>
         )}
-        {!isPending && view === "home" && (
-          <>
-            <section className="hero wrap">
-              <div className="hero-copy">
-                <span className="eyebrow">
-                  <span className="status-dot" />
-                  {translateUi(" LA COMMUNAUT\u00C9 DES RESELLERS")}
-                </span>
-                <h1>
-                  {translateUi("L\u2019entraide entre resellers commence ")}
-                  <span>{translateUi("ici.")}</span>
-                  <svg
-                    className="underline"
-                    viewBox="0 0 350 20"
-                    aria-hidden="true"
-                  >
-                    <path d="M4 12 Q160 -4 344 10 M20 18 Q170 5 315 15" />
-                  </svg>
-                </h1>
-                <p>
-                  {translateUi("Tu d\u00E9butes dans ")}
-                  <strong>
-                    {translateUi("l\u2019achat-revente de v\u00EAtements")}
-                  </strong>
-                  {translateUi(
-                    " ? \u00C9change avec des revendeurs exp\u00E9riment\u00E9s pour progresser sur Vinted, Leboncoin, eBay, Whatnot et bien d\u2019autres plateformes.",
-                  )}
-                </p>
-                <div className="hero-buttons">
-                  <Button
-                    onClick={() => {
-                      setRole("beginner");
-                      go("directory");
-                    }}
-                  >
-                    {translateUi("Trouver mon parrain ")}
-                    <ArrowUpRight size={19} />
-                  </Button>
-                  <Button secondary onClick={() => join("mentor")}>
-                    {translateUi("Devenir parrain")}
-                  </Button>
-                </div>
-                <div className="hero-proof">
-                  <span>
-                    <Check size={15} />
-                    {translateUi(" B\u00EAta gratuite pour le moment")}
-                  </span>
-                  <span>
-                    <Check size={15} />
-                    {translateUi(" Entraide entre membres")}
-                  </span>
-                </div>
-              </div>
-              <div
-                className="hero-art"
-                aria-label={translateUi(
-                  "Illustration d’un binôme : un débutant pose ses questions et un parrain partage son expérience",
-                )}
-              >
-                <div className="orbit orbit-one" />
-                <div className="orbit orbit-two" />
-                <div className="spark star-one">✳</div>
-                <div className="floating-note">
-                  <span className="status-dot" />
-                  {translateUi(" Un message peut tout d\u00E9bloquer.")}
-                </div>
-                <div className="person-card mentor-card">
-                  <span className="card-kicker">
-                    <Sparkles size={14} />
-                    {translateUi(" LE COUP DE POUCE")}
-                  </span>
-                  <div className="person-heading">
-                    <div className="illustrated-avatar purple">
-                      <span>✦</span>
-                    </div>
-                    <div>
-                      <h3>{translateUi("Ton futur parrain")}</h3>
-                      <span>
-                        {translateUi("D\u00E9j\u00E0 pass\u00E9 par l\u00E0.")}
-                      </span>
-                    </div>
-                    <span className="mini-check">
-                      <Check size={16} />
-                    </span>
-                  </div>
-                  <div className="mini-tags">
-                    <span>{translateUi("De l\u2019exp\u00E9rience")}</span>
-                    <span>{translateUi("De bons conseils")}</span>
-                  </div>
-                </div>
-                <div className="connector-line" />
-                <div className="chat-bubble bubble-one">
-                  {translateUi(
-                    "J\u2019ai trouv\u00E9 ma premi\u00E8re pi\u00E8ce.",
-                  )}
-                  <br />
-                  {translateUi("Tu m\u2019aides \u00E0 fixer le prix ? ")}
-                  <span>↗</span>
-                </div>
-                <div className="chat-bubble bubble-two">
-                  {translateUi("Bien s\u00FBr, on regarde \u00E7a ensemble ! ")}
-                  <CheckCheck size={16} />
-                </div>
-                <div className="person-card beginner-card">
-                  <span className="card-kicker">
-                    <Sprout size={14} />
-                    {translateUi(" LE PROCHAIN CHAPITRE")}
-                  </span>
-                  <div className="person-heading">
-                    <div className="illustrated-avatar peach">
-                      <span>↗</span>
-                    </div>
-                    <div>
-                      <h3>{translateUi("Toi, bien accompagn\u00E9.")}</h3>
-                      <span>
-                        {translateUi("Un cap apr\u00E8s l\u2019autre.")}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="progress-label">
-                    <span>
-                      {translateUi("La confiance, \u00E7a se construit.")}
-                    </span>
-                    <HeartHandshake size={17} />
-                  </div>
-                  <div className="mini-progress">
-                    <i />
-                    <i />
-                    <i />
-                    <i />
-                    <i />
-                  </div>
-                </div>
-                <span className="art-caption">
-                  {translateUi(
-                    "Un bin\u00F4me. Des \u00E9changes. De vraies avanc\u00E9es.",
-                  )}
-                </span>
-              </div>
-            </section>
-            <ProductStory onJoin={() => join("beginner")} />
-            <section className="wrap concrete-help">
-              <span className="eyebrow">
-                {translateUi(
-                  "CONCR\u00C8TEMENT, TON PARRAIN PEUT T\u2019AIDER \u00C0\u2026",
-                )}
-              </span>
-              <h2>
-                {translateUi("Des r\u00E9ponses \u00E0 tes vraies questions.")}
-              </h2>
-              <div className="help-grid">
-                {[
-                  [
-                    "01",
-                    "Choisir entre bot et fournisseur",
-                    "Comparer les méthodes de sourcing selon ton budget, ton temps disponible et les pièces que tu veux vendre. Tu comprends les coûts et les contraintes avant de te lancer.",
-                  ],
-                  [
-                    "02",
-                    "Améliorer tes annonces Vinted",
-                    "Revoir tes photos, ton titre, ta description et ton prix avec un regard expérimenté. Tu repars avec des modifications concrètes à appliquer.",
-                  ],
-                  [
-                    "03",
-                    "Débloquer une pièce qui ne se vend pas",
-                    "Comprendre ce qui freine la vente : prix, saison, demande, présentation… Puis décider quoi ajuster, sans promesse de vente garantie.",
-                  ],
-                  [
-                    "04",
-                    "Apprendre à vérifier tes articles",
-                    "Apprendre à observer étiquettes, coutures, références et finitions, puis chercher les bons points de comparaison. Pour devenir autonome et savoir quand demander une expertise spécialisée.",
-                  ],
-                ].map(([n, title, description]) => (
-                  <article key={n}>
-                    <span>{translateUi(n)}</span>
-                    <h3>{translateUi(title)}</h3>
-                    <p>{translateUi(description)}</p>
-                  </article>
-                ))}
-              </div>
-              <p className="small-text">
-                {translateUi(
-                  "Selon ses sp\u00E9cialit\u00E9s, ton parrain t\u2019explique sa d\u00E9marche par messages. Il t\u2019aide \u00E0 apprendre ; il ne certifie pas l\u2019authenticit\u00E9 de tes pi\u00E8ces.",
-                )}
-              </p>
-            </section>
-            <section className="promise-strip">
-              <div className="wrap promise-inner">
-                <span>
-                  <MessageCircle />
-                  {translateUi(" Des \u00E9changes sur Discord")}
-                </span>
-                <span>
-                  <Clock />
-                  {translateUi(" Pas d\u2019appels impos\u00E9s")}
-                </span>
-                <span>
-                  <Users />
-                  {translateUi(" Un r\u00E9seau qui grandit")}
-                </span>
-                <span>
-                  <HeartHandshake />
-                  {translateUi(" L\u2019exp\u00E9rience se partage")}
-                </span>
-              </div>
-            </section>
-            <section className="wrap section">
-              <div className="section-top">
-                <div>
-                  <span className="eyebrow">
-                    {translateUi("CHACUN SON POINT DE D\u00C9PART")}
-                  </span>
-                  <h2>{translateUi("Tu es au bon endroit.")}</h2>
-                </div>
-                <p>
-                  {translateUi("On a tous \u00E9t\u00E9 d\u00E9butants.")}
-                  <br />
-                  {translateUi("On peut tous faire la diff\u00E9rence.")}
-                </p>
-              </div>
-              <div className="role-grid">
-                <article className="role-card">
-                  <Icon>
-                    <Sprout />
-                  </Icon>
-                  <span className="role-label">
-                    {translateUi("JE D\u00C9MARRE")}
-                  </span>
-                  <h3>
-                    {translateUi("Moins de doutes.")}
-                    <br />
-                    {translateUi("Plus de premiers pas.")}
-                  </h3>
-                  <p>
-                    {translateUi(
-                      "Sourcing, prix, annonces, premi\u00E8res ventes\u2026 Pose tes questions \u00E0 quelqu\u2019un qui conna\u00EEt le chemin.",
-                    )}
-                  </p>
-                  <ul>
-                    <li>
-                      <Check />
-                      {translateUi(" Un interlocuteur qui te conna\u00EEt")}
-                    </li>
-                    <li>
-                      <Check />
-                      {translateUi(
-                        " Des conseils adapt\u00E9s \u00E0 tes objectifs",
-                      )}
-                    </li>
-                    <li>
-                      <Check />
-                      {translateUi(" Un accompagnement par messages")}
-                    </li>
-                  </ul>
-                  <button className="text-btn" onClick={() => join("beginner")}>
-                    {translateUi("Je cherche un parrain ")}
-                    <ArrowRight size={18} />
-                  </button>
-                </article>
-                <article className="role-card mentor-role">
-                  <Icon>
-                    <Sparkles />
-                  </Icon>
-                  <span className="role-label">
-                    {translateUi("JE TRANSMETS")}
-                  </span>
-                  <h3>
-                    {translateUi("Ton exp\u00E9rience a")}
-                    <br />
-                    {translateUi("de la valeur. Partage-la.")}
-                  </h3>
-                  <p>
-                    {translateUi(
-                      "Tu fais de l\u2019achat-revente depuis au moins 6 mois ? Aide un d\u00E9butant \u00E0 progresser et cr\u00E9e des liens qui durent.",
-                    )}
-                  </p>
-                  <ul>
-                    <li>
-                      <Check />
-                      {translateUi(" Tu choisis tes disponibilit\u00E9s")}
-                    </li>
-                    <li>
-                      <Check />
-                      {translateUi(" Tu fixes le nombre de places")}
-                    </li>
-                    <li>
-                      <Check />
-                      {translateUi(
-                        " Tu construis ton r\u00E9seau, naturellement",
-                      )}
-                    </li>
-                  </ul>
-                  <button className="text-btn" onClick={() => join("mentor")}>
-                    {translateUi("Je deviens parrain ")}
-                    <ArrowRight size={18} />
-                  </button>
-                </article>
-              </div>
-            </section>
-            <section className="wrap steps-section">
-              <div className="section-top">
-                <div>
-                  <span className="eyebrow">
-                    {translateUi("SIMPLE COMME UN BONJOUR")}
-                  </span>
-                  <h2>
-                    {translateUi("Le bon bin\u00F4me, en trois \u00E9tapes.")}
-                  </h2>
-                </div>
-                <button className="text-btn" onClick={() => go("guide")}>
-                  {translateUi("Comment \u00E7a marche ")}
-                  <ArrowUpRight size={18} />
-                </button>
-              </div>
-              <div className="steps-grid">
-                {[
-                  [
-                    "01",
-                    "Raconte-nous où tu en es.",
-                    "Crée ton profil et partage tes objectifs, tes spécialités et tes disponibilités.",
-                  ],
-                  [
-                    "02",
-                    "Trouve la bonne personne.",
-                    "Explore les profils. Un point commun, un rythme compatible : le contact commence ici.",
-                  ],
-                  [
-                    "03",
-                    "La suite se passe sur Discord.",
-                    "Ajoutez-vous, définissez votre rythme et avancez ensemble, un message à la fois.",
-                  ],
-                ].map(([n, t, d]) => (
-                  <article key={n}>
-                    <span className="step-num">{translateUi(n)}</span>
-                    <h3>{translateUi(t)}</h3>
-                    <p>{translateUi(d)}</p>
-                  </article>
-                ))}
-              </div>
-            </section>
-            <section className="wrap">
-              <div className="bottom-cta">
-                <span className="cta-spark">✳</span>
-                <div>
-                  <span className="eyebrow">
-                    {translateUi("LE R\u00C9SEAU COMMENCE \u00C0 DEUX.")}
-                  </span>
-                  <h2>
-                    {translateUi("Tu n\u2019as pas \u00E0 tout trouver seul.")}
-                  </h2>
-                  <p>
-                    {translateUi(
-                      "Le prochain message pourrait \u00EAtre le d\u00E9but d\u2019une belle rencontre.",
-                    )}
-                  </p>
-                </div>
-                <Button onClick={() => join("beginner")}>
-                  {translateUi("Cr\u00E9er mon profil ")}
-                  <ArrowUpRight size={19} />
-                </Button>
-              </div>
-            </section>
-          </>
-        )}
+        {view === "home" && <PublicLanding onJoin={join} discordUrl={DISCORD_GROUP} onOpen={(screen,slug)=>{
+          const target=screen==='services'?'discover':screen;
+          const params:Record<string,string>={...(screen==='services'?{services:'1'}:{}),...(slug?{guide:slug}:{})};
+          if(session){openDesktop({screen:target},params);return;}
+          const url=new URL(window.location.href);url.search='';url.searchParams.set('mobile',target);Object.entries(params).forEach(([key,value])=>url.searchParams.set(key,value));const route=workspaceRoutes[target];if(route?.[1])url.searchParams.set('profileTab',route[1]);url.hash=route?.[0]||(target==='community'?'community':'workspace');window.history.pushState({},'',url);setAuthMode('login');
+        }}/>}
         {!isPending && session && view === "directory" && (
           <Directory
             key={preview || "normal"}
@@ -1293,6 +937,7 @@ export default function App() {
       </main>
       {!inWorkspace && !isPending && (
         <>
+          {view !== "home" && <>
           <section className="wrap discord-community">
             <div>
               <span className="eyebrow">
@@ -1316,6 +961,7 @@ export default function App() {
               <ArrowUpRight size={17} />
             </a>
           </section>
+          </>}
           <footer className="footer wrap">
             <InstallMentora />
             <a className="brand" href="#home" onClick={() => go("home")}>
@@ -1327,12 +973,14 @@ export default function App() {
             </a>
             <p>{translateUi("On avance mieux ensemble.")}</p>
             <button onClick={() => go("guide")}>
-              {translateUi("La charte d\u2019entraide")}
+              {translateUi("Comment ça marche")}
             </button>
             <span>
               {translateUi("Une initiative ind\u00E9pendante, entre membres.")}
             </span>
+            <a className="footer-free-guides" href="/?mobile=guides#workspace">{translateUi("4 guides gratuits")}</a>
             <LegalLinks />
+            {view==="home"&&<p className="landing-footer-disclosure">{translateUi("Crédits achetés séparément, sans abonnement. Les prestations sont distinctes des guides gratuits. Aucun résultat de vente n’est garanti.")}</p>}
           </footer>
         </>
       )}
@@ -1346,6 +994,16 @@ export default function App() {
           onSuccess={() => {
             setAuthMode(null);
             const params = new URLSearchParams(window.location.search);
+            const requestedScreen = params.get("mobile") || "";
+            if (authMode === "login" && (workspaceRoutes[requestedScreen] || desktopExperienceScreens.has(requestedScreen))) {
+              const retained: Record<string, string> = {};
+              for (const key of ["services", "guide", "chat", "network"]) {
+                const value = params.get(key);
+                if (value) retained[key] = value;
+              }
+              openDesktop({ screen: requestedScreen }, retained);
+              return;
+            }
             const target =
               authMode === "signup" || params.has("profileTab")
                 ? "profile"
@@ -3140,177 +2798,7 @@ function DeleteProfile({ onDeleted }: { onDeleted: () => void }) {
     </div>
   );
 }
-function Guide({ onJoin }: { onJoin: () => void }) {
-  return (
-    <section className="wrap guide">
-      <div className="page-heading">
-        <span className="eyebrow">
-          {translateUi("L\u2019ENTRAIDE, TOUT SIMPLEMENT")}
-        </span>
-        <h1>
-          {translateUi("Un bin\u00F4me aujourd\u2019hui.")}
-          <br />
-          <span>{translateUi("Un r\u00E9seau pour demain.")}</span>
-        </h1>
-        <p>
-          {translateUi(
-            "Quand les questions se perdent parmi des centaines de messages, un interlocuteur d\u00E9di\u00E9 peut faire toute la diff\u00E9rence.",
-          )}
-        </p>
-      </div>
-      <div className="guide-intro">
-        <Icon>
-          <HeartHandshake />
-        </Icon>
-        <div>
-          <h2>{translateUi("Le principe de Mentora")}</h2>
-          <p>
-            {translateUi(
-              "Un membre exp\u00E9riment\u00E9 accompagne un d\u00E9butant en achat-revente de v\u00EAtements. Il r\u00E9pond \u00E0 ses questions, partage son exp\u00E9rience et l\u2019aide \u00E0 avancer. Les \u00E9changes se passent sur Discord, sans obligation d\u2019appel, selon le rythme choisi ensemble.",
-            )}
-          </p>
-          <p>
-            {translateUi(
-              "\u00C0 mesure que les d\u00E9butants progressent, les liens restent. Et ceux qui ont \u00E9t\u00E9 aid\u00E9s peuvent, \u00E0 leur tour, transmettre. C\u2019est ainsi qu\u2019un r\u00E9seau d\u2019entraide se construit.",
-            )}
-          </p>
-        </div>
-      </div>
-      <div className="guide-grid">
-        {[
-          [
-            Sprout,
-            "Pour les débutants",
-            "Tu n’as pas besoin d’avoir déjà vendu. Présente ton point de départ, tes objectifs et ce qui te bloque. Choisis un parrain dont la spécialité et le rythme te correspondent.",
-          ],
-          [
-            Sparkles,
-            "Pour les parrains",
-            "Au moins 6 mois de pratique, de la disponibilité et l’envie d’aider. Tu indiques ton expérience, ton chiffre d’affaires si tu le souhaites et le nombre de débutants que tu peux accueillir.",
-          ],
-          [
-            Clock,
-            "La durée, c’est vous qui la fixez",
-            "Deux semaines, un mois, plusieurs mois ou sans date de fin : les préférences du profil servent de point de départ. Confirmez la durée et les horaires ensemble sur Discord.",
-          ],
-          [
-            EyeOff,
-            "Un profil visible seulement quand il le faut",
-            "Tu as trouvé ton binôme ou tu n’as plus de disponibilité ? Masque ton profil depuis « Mon profil ». Il disparaît de l’annuaire et son contact n’est plus accessible. Tu peux le réactiver à tout moment.",
-          ],
-        ].map(([I, title, text]) => {
-          const Component = I as typeof Sprout;
-          return (
-            <article key={String(title)}>
-              <Icon>
-                <Component />
-              </Icon>
-              <h3>{translateUi(String(title))}</h3>
-              <p>{translateUi(String(text))}</p>
-            </article>
-          );
-        })}
-      </div>
-      <section className="guide-intro">
-        <div>
-          <h2>{translateUi("Une note apr\u00E8s l\u2019accompagnement")}</h2>
-          <p>
-            {translateUi(
-              "Dans l\u2019annuaire, le d\u00E9butant clique sur \u00AB Choisir ce parrain \u00BB. Le parrain accepte depuis \u00AB Mon profil \u00BB, dans \u00AB Demandes \u00BB. \u00C0 la fin, l\u2019un des deux clique sur \u00AB Terminer l\u2019accompagnement \u00BB. Le d\u00E9butant peut alors publier une note de 1 \u00E0 5 \u00E9toiles, une seule fois pour ce bin\u00F4me. La moyenne et le nombre de notes apparaissent sur la fiche du parrain.",
-            )}
-          </p>
-          <p>
-            {translateUi(
-              "Les notes proviennent de bin\u00F4mes confirm\u00E9s sur Mentora. Elles refl\u00E8tent l\u2019exp\u00E9rience des membres, sans v\u00E9rifier le contenu de leurs \u00E9changes sur Discord. Un profil masqu\u00E9 reste absent de l\u2019annuaire.",
-            )}
-          </p>
-        </div>
-      </section>
-      <section className="charter">
-        <span className="eyebrow">{translateUi("LA CHARTE MENTORA")}</span>
-        <h2>
-          {translateUi("De bonnes rencontres,")}
-          <br />
-          {translateUi("avec de bonnes bases.")}
-        </h2>
-        <div className="charter-grid">
-          {[
-            [
-              "01",
-              "De l’entraide, pas une prestation.",
-              "Le parrainage Mentora est gratuit. Aucune vente de coaching ni demande d’argent en échange d’une réponse.",
-            ],
-            [
-              "02",
-              "Du respect, des deux côtés.",
-              "Un parrain n’est pas disponible 24 h/24. Respectez les créneaux, les limites et le délai de réponse convenus.",
-            ],
-            [
-              "03",
-              "De l’expérience, pas des promesses.",
-              "Les résultats et le chiffre d’affaires sont déclaratifs. Aucun montant de ventes ni bénéfice n’est garanti.",
-            ],
-            [
-              "04",
-              "De la confiance, sans tout partager.",
-              "Ne partagez ni mots de passe, ni documents d’identité, ni données bancaires. Gardez vos échanges privés et respectez le consentement de chacun.",
-            ],
-            [
-              "05",
-              "La liberté de faire une pause.",
-              "Chacun peut arrêter ou ajuster l’accompagnement. Prévenez votre binôme simplement et mettez à jour votre profil.",
-            ],
-            [
-              "06",
-              "Un cadre bienveillant.",
-              "En cas de comportement inapproprié, interrompez l’échange, bloquez la personne sur Discord et contactez la modération de votre formation.",
-            ],
-          ].map(([n, t, d]) => (
-            <article key={n}>
-              <span>{translateUi(n)}</span>
-              <div>
-                <h3>{translateUi(t)}</h3>
-                <p>{translateUi(d)}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-      <section className="verification-panel">
-        <h2>
-          {translateUi(
-            "Un badge fond\u00E9 sur un dossier, pas seulement sur l\u2019anciennet\u00E9.",
-          )}
-        </h2>
-        <p>
-          {translateUi(
-            "Pour demander le badge \u00AB Dossier v\u00E9rifi\u00E9 \u00BB, le parrain renseigne son exp\u00E9rience, ses plateformes, son volume de ventes, ses domaines d\u2019aide et sa motivation. La mod\u00E9ration examine ses justificatifs de fa\u00E7on confidentielle avant de prendre une d\u00E9cision.",
-          )}
-        </p>
-        <p>
-          {translateUi(
-            "Le badge affiche les domaines examin\u00E9s et la date de v\u00E9rification. Sans validation, le profil indique \u00AB Exp\u00E9rience d\u00E9clar\u00E9e \u00B7 non v\u00E9rifi\u00E9e \u00BB. Ce contr\u00F4le ne garantit pas les r\u00E9sultats, la p\u00E9dagogie ou l\u2019authenticit\u00E9 d\u2019un article.",
-          )}
-        </p>
-      </section>
-      <FAQ />
-      <div className="bottom-cta">
-        <div>
-          <h2>{translateUi("Pr\u00EAt \u00E0 faire le premier pas ?")}</h2>
-          <p>
-            {translateUi(
-              "Pr\u00E9sente-toi. Quelqu\u2019un a peut-\u00EAtre exactement le conseil qu\u2019il te faut.",
-            )}
-          </p>
-        </div>
-        <Button onClick={onJoin}>
-          {translateUi("Rejoindre Mentora ")}
-          <ArrowUpRight size={18} />
-        </Button>
-      </div>
-    </section>
-  );
-}
+function Guide({onJoin}:{onJoin:()=>void}) { return <HowMentoraWorks onJoin={onJoin}/>; }
 function MentorAvailability({ profile }: { profile: PublicProfile }) {
   const active = profile.activeCount ?? 0;
   const remaining = Math.max(0, profile.capacity - active);
@@ -3331,43 +2819,4 @@ function MentorAvailability({ profile }: { profile: PublicProfile }) {
     </p>
   );
 }
-function FAQ() {
-  return (
-    <section className="faq">
-      <span className="eyebrow">
-        {translateUi("ON R\u00C9POND \u00C0 TES QUESTIONS")}
-      </span>
-      <h2>{translateUi("Avant de te lancer.")}</h2>
-      {[
-        [
-          "Dois-je avoir un certain chiffre d’affaires pour être parrain ?",
-          "Non. Le badge est attribué après un examen confidentiel du questionnaire et des justificatifs par la modération. Deux types de justificatifs différents sont conseillés si possible. L’ancienneté et le chiffre d’affaires déclarés ne suffisent pas à obtenir un badge.",
-        ],
-        [
-          "Est-ce que Mentora envoie une demande d’amis automatiquement ?",
-          "Non. Après acceptation de votre demande, tu copies le pseudo de ton binôme et l’ajoutes dans Discord. Si le membre a renseigné son identifiant numérique, un bouton ouvre directement son profil Discord.",
-        ],
-        [
-          "Puis-je accompagner plusieurs débutants ?",
-          "Oui. Indique le nombre maximum de débutants que tu peux accompagner en même temps, jusqu’à 10. Les accompagnements acceptés et en cours sont déduits automatiquement. Une place se libère à la fin de chaque accompagnement. Avec une capacité réglée sur 0, ton profil ne figure plus dans l’annuaire.",
-        ],
-        [
-          "Qui peut voir mes informations ?",
-          "Le site et les profils visibles sont publics, sauf les pseudos Discord qui sont réservés aux binômes dont la demande a été acceptée. Ton adresse e-mail n’est jamais affichée dans l’annuaire. Tu peux modifier, masquer ou supprimer ton profil depuis ton espace.",
-        ],
-        [
-          "Est-ce le site officiel de la formation ?",
-          "Mentora est une initiative indépendante entre membres. Il ne remplace ni la formation ni son équipe, et ne prétend pas être affilié à ses créateurs.",
-        ],
-      ].map(([q, a]) => (
-        <details key={q}>
-          <summary>
-            {translateUi(q)}
-            <ChevronDown size={18} />
-          </summary>
-          <p>{translateUi(a)}</p>
-        </details>
-      ))}
-    </section>
-  );
-}
+function FAQ() { return <div className="mentora-landing landing-container landing-section"><PublicFAQ/></div>; }

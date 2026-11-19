@@ -1,4 +1,5 @@
 "use client";
+import {useMessageArrival} from "./motion-system";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {useMobileChatViewport} from "./use-mobile-chat-viewport";
 import { ArrowLeft, Send, MessageCircle } from "lucide-react";
@@ -114,6 +115,7 @@ export function ServiceConversation({
   useEffect(()=>{if(data&&!data.selfTest)setRole(data.viewerRole);},[data?.viewerRole,data?.selfTest]);
   const container = useRef<HTMLElement>(null);
   useMobileChatViewport(container,true);
+  useMessageArrival(feed,(data?.messages||[]).map(m=>m.id),id,!!data);
 
   useEffect(() => {
     let live = true;
@@ -185,6 +187,7 @@ export function ServiceConversation({
         {data?.messages.map((m) => (
           <article
             key={m.id}
+            data-motion-message={m.id}
             className={`service-chat-bubble ${m.role === "system" ? "system" : m.role === role ? "mine" : ""}`}
           >
             <small>

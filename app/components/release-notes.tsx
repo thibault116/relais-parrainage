@@ -1,12 +1,19 @@
 "use client";
 import { useEffect, useRef } from "react";
+import { authClient } from "@/lib/auth-client";
 import { Sparkles } from "lucide-react";
 import { memberRelease, retiredMemberReleaseIds } from "@/lib/member-release";
 import { t } from "./language";
 const storageKey = "mentora-member-release";
 export function ReleaseNotes() {
   const dialog = useRef<HTMLDialogElement>(null);
+  const { data: session, isPending } = authClient.useSession();
+  const userId = session?.user.id;
   useEffect(() => {
+    if (isPending || !userId) {
+      dialog.current?.close();
+      return;
+    }
     let seen = false;
     try {
       const stored = localStorage.getItem(storageKey);
@@ -25,7 +32,7 @@ export function ReleaseNotes() {
     };
     window.addEventListener("storage", sync);
     return () => window.removeEventListener("storage", sync);
-  }, []);
+  }, [isPending, userId]);
   function acknowledge() {
     try {
       localStorage.setItem(storageKey, memberRelease.id);
