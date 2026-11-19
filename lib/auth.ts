@@ -1,4 +1,5 @@
 import {SITE_ORIGIN,LEGACY_SITE_ORIGINS} from "./site";
+import { sendPasswordReset } from "./password-reset";
 import { deleteMobileMember } from "./mobile-space";
 import { deleteSuggestions } from "./suggestions";
 import { deleteProfilePhoto } from "./profile-photo";
@@ -20,6 +21,9 @@ function createAuth() {
       enabled: true,
       minPasswordLength: 12,
       maxPasswordLength: 128,
+      resetPasswordTokenExpiresIn: 30 * 60,
+      revokeSessionsOnPasswordReset: true,
+      sendResetPassword: sendPasswordReset,
     },
     rateLimit: {
       enabled: true,
@@ -29,6 +33,8 @@ function createAuth() {
       customRules: {
         "/sign-in/email": { window: 60, max: 5 },
         "/sign-up/email": { window: 60, max: 5 },
+        "/request-password-reset": { window: 60, max: 3 },
+        "/reset-password": { window: 60, max: 5 },
       },
     },
     user: {

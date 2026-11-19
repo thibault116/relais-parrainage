@@ -1,7 +1,8 @@
 import {updateLinkValues} from "./site";
 import { enqueuePush } from "./push";
 import { readPlatformSettings } from "./platform-settings";
-import nodemailer from "nodemailer";
+import { createMailTransport, emailConfigured } from "./mail-transport";
+export { createMailTransport, emailConfigured } from "./mail-transport";
 import { query } from "./db";
 import {
   MAIL_FROM,
@@ -12,7 +13,6 @@ import {
 } from "./email-templates";
 const iso = () => new Date().toISOString();
 const future = (ms: number) => new Date(Date.now() + ms).toISOString();
-export const emailConfigured = () => !!process.env.GMAIL_APP_PASSWORD;
 export async function enqueueMail(
   eventId: string,
   userId: string | null,
@@ -179,20 +179,6 @@ export async function processEvents() {
     }
     await query("UPDATE email_events SET processed=1 WHERE id=$1", [id]);
   }
-}
-export function createMailTransport() {
-  return nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: {
-      user: MAIL_FROM,
-      pass: process.env.GMAIL_APP_PASSWORD!.replace(/\s/g, ""),
-    },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
-  });
 }
 export async function runEmailWorker() {
   if (!emailConfigured()) return { configured: false, sent: 0 };

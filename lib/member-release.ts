@@ -1,9 +1,9 @@
 export const memberRelease = {
-  id: "2026-11-19-nouveau-domaine",
+  id: "2026-11-19-recuperation-mot-de-passe",
   discordAudience: "public",
-  title: "La nouvelle adresse de Mentora",
+  title: "Retrouve l’accès à ton compte",
   notes: [
-    "Amélioration : Mentora dispose de sa nouvelle adresse officielle, www.mentora-resell.app. Les liens des guides et des messages automatiques utilisent ce domaine.",
+    "Amélioration : un lien « Mot de passe oublié ? » permet de recevoir un e-mail Mentora et de choisir un nouveau mot de passe.",
   ],
   guideUrl: "/#home",
   guideLabel: "Ouvrir Mentora",

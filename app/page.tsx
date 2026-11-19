@@ -200,6 +200,12 @@ export default function App() {
   const [authMode, setAuthMode] = useState<"login" | "signup" | null>(null);
   useEffect(() => {
     const login = () => setAuthMode("login");
+    if (new URLSearchParams(window.location.search).get("connexion") === "1") {
+      login();
+      const url = new URL(window.location.href);
+      url.searchParams.delete("connexion");
+      window.history.replaceState({}, "", url);
+    }
     window.addEventListener("mentora-login", login);
     return () => window.removeEventListener("mentora-login", login);
   }, []);
@@ -1298,6 +1304,9 @@ function AuthModal({
             )}
           </button>
         </form>
+        {mode === "login" && (
+          <p className="auth-switch"><a href="/mot-de-passe-oublie">Mot de passe oublié ?</a></p>
+        )}
         <p className="auth-switch">
           {translateUi(
             mode === "signup" ? "Déjà membre ?" : "Pas encore membre ?",
