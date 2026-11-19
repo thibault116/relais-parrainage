@@ -12,7 +12,7 @@ import {
 } from "./components/mobile-experience";
 import { useFeature, BetaSettings } from "./components/beta";
 import { OnboardingSummary } from "./components/onboarding-summary";
-import { ProfileForm as NewProfileForm } from "./components/onboarding";
+import { ProfileForm as NewProfileForm } from "./components/intake-journey";
 import { t as translateUi } from "@/app/components/language";
 import { BrandLogo } from "./components/brand-logo";
 import {
@@ -55,10 +55,12 @@ import {
   initialProfile,
   specialties,
   times,
+  profileExperienceLabel,
   type Profile,
   type ProfileInput,
   type PublicProfile,
 } from "@/lib/profile";
+import { methods as intakeMethods } from "@/lib/intake";
 import {
   Accompaniments,
   RatingSummary,
@@ -211,6 +213,7 @@ export default function App() {
   }, []);
   const [focusMember, setFocusMember] = useState<PublicProfile | null>(null);
   const [role, setRole] = useState<"mentor" | "beginner">("beginner");
+  useEffect(()=>{if(authMode==="signup")window.location.assign("/inscription");},[authMode]);
   const [settingsSection, setSettingsSection] = useState(() =>
     typeof window !== "undefined"
       ? new URLSearchParams(window.location.search).get("settingsSection") ||
@@ -990,7 +993,7 @@ export default function App() {
           </footer>
         </>
       )}
-      {authMode && (
+      {authMode === "login" && (
         <AuthModal
           mode={authMode}
           setMode={setAuthMode}
@@ -1000,6 +1003,7 @@ export default function App() {
           onSuccess={() => {
             setAuthMode(null);
             const params = new URLSearchParams(window.location.search);
+            if(params.has("reprendreInscription")){window.location.assign(`/inscription?role=${params.get("reprendreInscription")==="mentor"?"mentor":"beginner"}`);return;}
             const requestedScreen = params.get("mobile") || "";
             if (authMode === "login" && (workspaceRoutes[requestedScreen] || desktopExperienceScreens.has(requestedScreen))) {
               const retained: Record<string, string> = {};
@@ -1011,7 +1015,7 @@ export default function App() {
               return;
             }
             const target =
-              authMode === "signup" || params.has("profileTab")
+              params.has("profileTab")
                 ? "profile"
                 : window.location.hash === "#workspace"
                   ? "workspace"
@@ -1934,10 +1938,7 @@ function ProfileCard({
   own?: boolean;
   canRequest?: boolean;
 }) {
-  const experience =
-    p.experience >= 12
-      ? `${Math.floor(p.experience / 12)} an${p.experience >= 24 ? "s" : ""} d’expérience`
-      : `${p.experience} mois d’expérience`;
+  const experience = profileExperienceLabel(p);
   return (
     <article className="member-card redesigned-card">
       {!own && <MobileProfileActions profileId={p.id} compact />}
@@ -2289,6 +2290,7 @@ function Directory({
                 {translateUi(s)}
               </option>
             ))}
+            <optgroup label="Méthodes d’achat">{intakeMethods.map(method=><option key={method.id} value={`method:${method.id}`}>{method.label}</option>)}</optgroup>
           </select>
         </label>
         <label className="filter-select">
@@ -2573,8 +2575,7 @@ function Directory({
               <div>
                 <small>{translateUi("Exp\u00E9rience")}</small>
                 <strong>
-                  {selected.experience}
-                  {translateUi(" mois")}
+                  {profileExperienceLabel(selected)}
                 </strong>
               </div>
 
@@ -2615,8 +2616,7 @@ function Directory({
               <div>
                 <small>{translateUi("Exp\u00E9rience")}</small>
                 <strong>
-                  {selected.experience}
-                  {translateUi(" mois")}
+                  {profileExperienceLabel(selected)}
                 </strong>
               </div>
 

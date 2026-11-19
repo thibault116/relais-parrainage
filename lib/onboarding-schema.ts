@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { publicIntake, type IntakeAnswers } from "./intake";
 export const categories = [
   "Luxe",
   "Sneakers",
@@ -121,17 +122,20 @@ export function experienceMonths(start: string, now = new Date()) {
   if (m < 1 || m > 12 || y < 1970 || y > now.getUTCFullYear()) return -1;
   return (now.getUTCFullYear() - y) * 12 + now.getUTCMonth() - (m - 1);
 }
-export function proofIds(d: Onboarding) {
+export type ProfileQuestionnaire = Onboarding | IntakeAnswers;
+export function proofIds(d: ProfileQuestionnaire): string[] {
+  if(d.version===2)return d.legacy?proofIds(d.legacy):[];
   return d.role === "mentor"
     ? [...d.months.flatMap((m) => m.files), ...(d.flexFile ? [d.flexFile] : [])]
     : [];
 }
-export function publicAnswers(d: Onboarding) {
-  if (d.role === "beginner") return d;
+export function publicAnswers(d: ProfileQuestionnaire) {
+  if(d.version===2)return publicIntake(d);
+  if (d.role === "beginner") { const {cash,...rest}=d;void cash;return rest; }
   const { flexFile, months, ...rest } = d;
   return {
     ...rest,
-    hasFlexImage: !!flexFile,
+    hasFlexImage: !!flexFile || !!("hasFlexImage" in d && d.hasFlexImage),
     months: months.map(({ files, ...numbers }) => {
       void files;
       return numbers;

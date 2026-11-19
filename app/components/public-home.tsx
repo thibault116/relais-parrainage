@@ -223,13 +223,10 @@ export function PublicLanding({
               {t("Découvrir Mentora")}
               <ArrowRight size={19} />
             </a>
-            <button
-              className="landing-secondary"
-              onClick={() => onOpen("discover")}
-            >
-              {t("Explorer les parrains")}
+            <a className="landing-secondary" href="/inscription">
+              {t("Nous rejoindre")}
               <ArrowUpRight size={18} />
-            </button>
+            </a>
           </div>
           <div className="landing-hero-footnote">
             <span>

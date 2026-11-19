@@ -10,7 +10,9 @@ export async function GET(request: Request) {
       [id],
     );
     if (!row) return json({ error: "Image indisponible." }, 404);
-    const a = JSON.parse(String(row.answers));
+    const saved = JSON.parse(String(row.answers));
+    const a = saved.version===2?saved.legacy:saved;
+    if(!a)return json({error:"Image indisponible."},404);
     if (a.role !== "mentor" || !a.flexFile)
       return json({ error: "Image indisponible." }, 404);
     const [f] = await query(

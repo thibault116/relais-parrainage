@@ -1,6 +1,8 @@
 import { canUseFeature } from "@/lib/beta";
-import type { Onboarding } from "@/lib/onboarding-schema";
+import type { ProfileQuestionnaire } from "@/lib/onboarding-schema";
 import { publicAnswers, experienceMonths } from "@/lib/onboarding-schema";
+import { intakeProfile } from "@/lib/intake-profile";
+import { termsVersion } from "@/lib/legal-versions";
 import {
   readOnboarding,
   needsOnboarding,
@@ -62,11 +64,11 @@ export async function PUT(request: Request) {
     if (blocked) return blocked;
     const u = await user(request);
     if (!u) return json({ error: "Connexion requise." }, 401);
-    const body = await request.json();
+    let body = await request.json();
     const existing = (
-      await query("SELECT id,role FROM profiles WHERE user_id=$1", [u.id])
+      await query("SELECT * FROM profiles WHERE user_id=$1", [u.id])
     )[0];
-    let questionnaire: Onboarding | undefined;
+    let questionnaire: ProfileQuestionnaire | undefined;
     const newQuestionnaireEnabled = await canUseFeature(u.id, "onboardingV2");
     if (body.questionnaire && !newQuestionnaireEnabled)
       return json(
@@ -92,7 +94,7 @@ export async function PUT(request: Request) {
         return json({ error: (e as Error).message }, 400);
       }
     }
-    if (questionnaire?.role === "mentor") {
+    if (questionnaire?.role === "mentor" && questionnaire.version===1) {
       body.experience = experienceMonths(questionnaire.started);
       if (
         body.specialty?.includes("Autre") &&
@@ -100,10 +102,17 @@ export async function PUT(request: Request) {
       )
         return json({ error: "Précise ton autre spécialité." }, 400);
     }
+    if(questionnaire?.version===2){
+      if(existing&&existing.role!==questionnaire.role)return json({error:"Tes réponses doivent correspondre à ton profil actuel. Change de parcours avant d’enregistrer."},400);
+      if(!existing&&(body.termsAccepted!==true||body.termsVersion!==termsVersion))return json({error:"Accepte les conditions d’utilisation et consulte la politique de confidentialité."},400);
+      const accepted={termsAccepted:body.termsAccepted,termsVersion:body.termsVersion};
+      const base=intakeProfile(questionnaire,existing?decode(existing):null,body.name||u.name);
+      body={...base,questionnaire,...accepted,...Object.fromEntries(["discord","discordId","name","bio","visible","age","duration","responseTime"].filter(k=>body[k]!==undefined).map(k=>[k,body[k]]))};
+    }
     const parsed = profileSchema.safeParse(body);
     if (!parsed.success)
       return json({ error: parsed.error.issues[0].message }, 400);
-    const { discord, consent, ...details } = parsed.data;
+    const { discord: suppliedDiscord, consent, ...details } = parsed.data;
     void consent;
     const rows = await query("SELECT * FROM profiles WHERE user_id=$1", [u.id]);
     const savedDetails = {
@@ -114,8 +123,11 @@ export async function PUT(request: Request) {
           ? JSON.parse(String(rows[0].details)).resell
           : undefined,
       photo: rows[0] ? JSON.parse(String(rows[0].details)).photo : undefined,
+      discordPending: !suppliedDiscord,
     };
+    const discord = suppliedDiscord || (rows[0] && JSON.parse(String(rows[0].details)).discordPending ? String(rows[0].discord) : `pending_${crypto.randomUUID().replaceAll('-','').slice(0,24)}`);
     const id = String(rows[0]?.id || crypto.randomUUID());
+    if(questionnaire?.version===2&&!existing)await query("CREATE TABLE IF NOT EXISTS profile_terms_acceptances(user_id TEXT PRIMARY KEY,version TEXT NOT NULL,accepted_at TEXT NOT NULL)");
     await inTransaction(async (q) => {
       await q(
         `INSERT INTO profiles (id,user_id,discord,role,name,details,visible,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(user_id) DO UPDATE SET discord=excluded.discord,role=excluded.role,name=excluded.name,details=excluded.details,visible=excluded.visible,updated_at=excluded.updated_at`,
@@ -131,6 +143,7 @@ export async function PUT(request: Request) {
         ],
       );
       if (questionnaire) await saveOnboarding(u.id, questionnaire, q);
+      if(questionnaire?.version===2&&!existing)await q("INSERT INTO profile_terms_acceptances(user_id,version,accepted_at) VALUES($1,$2,$3) ON CONFLICT(user_id) DO NOTHING",[u.id,termsVersion,new Date().toISOString()]);
       else if (existing && existing.role !== details.role)
         await q("DELETE FROM onboarding_answers WHERE user_id=$1", [u.id]);
     });

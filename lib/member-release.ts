@@ -1,9 +1,10 @@
 export const memberRelease = {
-  id: "2026-11-19-recuperation-mot-de-passe",
+  id: "2026-11-19-parcours-inscription",
   discordAudience: "public",
-  title: "Retrouve l’accès à ton compte",
+  title: "Un parcours adapté à toi",
   notes: [
-    "Amélioration : un lien « Mot de passe oublié ? » permet de recevoir un e-mail Mentora et de choisir un nouveau mot de passe.",
+    "Amélioration : choisis ton parcours Débutant ou Parrain, puis découvre une inscription adaptée à ton expérience avec la création du compte à la fin. Les comptes existants conservent leur accès et leurs réponses.",
+    "Amélioration : retrouve et modifie tes informations et préférences depuis ton profil. Ton budget et tes objectifs financiers restent privés.",
   ],
   guideUrl: "/#home",
   guideLabel: "Ouvrir Mentora",

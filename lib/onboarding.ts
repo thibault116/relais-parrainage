@@ -4,10 +4,14 @@ import {
   completedMonths,
   experienceMonths,
   proofIds,
-  type Onboarding,
+  type ProfileQuestionnaire,
 } from "./onboarding-schema";
+import { intakeSchema } from "./intake";
 export const REQUIRED_ONBOARDING_REVISION = "2026-11-04-refresh";
 export async function needsOnboarding(userId: string) {
+  // Existing profiles keep access, even when their old confirmation revision is
+  // missing. New profiles are still validated on their first server-side save.
+  if((await query("SELECT user_id FROM profiles WHERE user_id=$1",[userId])).length)return false;
   const rows = await query(
     "SELECT user_id FROM onboarding_confirmations WHERE user_id=$1 AND revision=$2",
     [userId, REQUIRED_ONBOARDING_REVISION],
@@ -15,6 +19,7 @@ export async function needsOnboarding(userId: string) {
   return rows.length === 0;
 }
 export async function migrateOnboarding() {
+  await query("CREATE TABLE IF NOT EXISTS profile_terms_acceptances(user_id TEXT PRIMARY KEY,version TEXT NOT NULL,accepted_at TEXT NOT NULL)");
   await query(
     "CREATE TABLE IF NOT EXISTS mentor_portfolios(user_id TEXT PRIMARY KEY,bio TEXT NOT NULL DEFAULT '')",
   );
@@ -33,7 +38,7 @@ export async function migrateOnboarding() {
 }
 export async function readOnboarding(
   userId: string,
-): Promise<Onboarding | null> {
+): Promise<ProfileQuestionnaire | null> {
   const [row] = await query(
     "SELECT answers FROM onboarding_answers WHERE user_id=$1",
     [userId],
@@ -45,6 +50,13 @@ export async function validateOnboarding(
   input: unknown,
   role: string,
 ) {
+  if(input&&typeof input==='object'&&'version' in input&&input.version===2){
+    const parsed=intakeSchema.safeParse(input);
+    if(!parsed.success)throw Error(parsed.error.issues[0].message);
+    if(parsed.data.role!==role)throw Error("Le questionnaire doit correspondre au type de profil.");
+    const previous=await readOnboarding(userId);
+    return {...parsed.data,...(previous?.version===1?{legacy:previous}:previous?.version===2&&previous.legacy?{legacy:previous.legacy}:{})};
+  }
   const cleaned =
     input &&
     typeof input === "object" &&
@@ -77,7 +89,7 @@ export async function validateOnboarding(
 }
 export async function saveOnboarding(
   userId: string,
-  d: Onboarding,
+  d: ProfileQuestionnaire,
   q: typeof query = query,
 ) {
   const now = new Date().toISOString();

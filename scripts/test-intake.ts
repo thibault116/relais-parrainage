@@ -1,0 +1,486 @@
+import assert from "node:assert/strict";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { spawnSync } from "node:child_process";
+import { DatabaseSync } from "node:sqlite";
+import {
+  freshIntake,
+  intakeQuestions,
+  intakeSchema,
+  reconcileIntake,
+  questionError,
+  type IntakeAnswers,
+} from "../lib/intake";
+import { proofIds } from "../lib/onboarding-schema";
+import { initialProfile, publicProfile, decode } from "../lib/profile";
+import { termsVersion } from "../lib/legal-versions";
+import { getAuth } from "../lib/auth";
+import { query, database } from "../lib/db";
+import { GET as me, PUT as put } from "../app/api/me/route";
+import { GET as directory } from "../app/api/profiles/route";
+import { GET as follows } from "../app/api/follows/route";
+if (process.env.DATABASE_URL || process.env.VERCEL)
+  throw Error("Local isolated tests only");
+const repo = process.cwd(),
+  dir = await mkdtemp(join(tmpdir(), "mentora-intake-")),
+  base = "http://localhost:3000";
+const env: NodeJS.ProcessEnv = {
+  ...process.env,
+  TSX_TSCONFIG_PATH: join(repo, "tsconfig.json"),
+};
+delete env.GMAIL_APP_PASSWORD;
+delete env.VAPID_PRIVATE_KEY;
+const migration = spawnSync(
+  process.execPath,
+  [
+    "--import",
+    join(repo, "node_modules/tsx/dist/loader.mjs"),
+    join(repo, "scripts/migrate.ts"),
+  ],
+  { cwd: dir, env, encoding: "utf8" },
+);
+if (migration.status !== 0) throw Error(migration.stderr);
+process.chdir(dir);
+delete process.env.GMAIL_APP_PASSWORD;
+delete process.env.VAPID_PRIVATE_KEY;
+function fixture(role: "beginner" | "mentor", experienced = false) {
+  const d = freshIntake(role);
+  d.financialGoal = 9374.5;
+  d.selections[role === "mentor" ? "experience" : "level"] = [
+    role === "mentor" ? "1to2" : experienced ? "sales" : "never",
+  ];
+  for (const q of intakeQuestions(d)) {
+    if (q.options && !d.selections[q.id])
+      d.selections[q.id] = [q.options[0].id];
+  }
+  return d;
+}
+const a = fixture("beginner"),
+  b = fixture("beginner", true),
+  m = fixture("mentor");
+function req(path: string, body?: unknown, cookie = "") {
+  return new Request(base + path, {
+    method: body ? "PUT" : "GET",
+    headers: {
+      Origin: base,
+      "Content-Type": "application/json",
+      ...(cookie ? { cookie } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+}
+async function save(
+  d: IntakeAnswers,
+  cookie: string,
+  extra: Record<string, unknown> = {},
+) {
+  const r = await put(
+    req(
+      "/api/me",
+      {
+        role: d.role,
+        name: "Membre de test",
+        questionnaire: d,
+        termsAccepted: true,
+        termsVersion,
+        ...extra,
+      },
+      cookie,
+    ),
+  );
+  return { status: r.status, data: await r.json() };
+}
+async function account(i: number) {
+  const r = await getAuth().handler(
+    new Request(base + "/api/auth/sign-up/email", {
+      method: "POST",
+      headers: {
+        Origin: base,
+        "Content-Type": "application/json",
+        "x-forwarded-for": `198.51.100.${i}`,
+      },
+      body: JSON.stringify({
+        name: "Membre de test",
+        email: `intake${i}@example.invalid`,
+        password: "Local-intake-password-2026!",
+      }),
+    }),
+  );
+  assert.equal(r.status, 200);
+  const d = await r.json();
+  return {
+    id: d.user.id,
+    cookie: r.headers
+      .getSetCookie()
+      .map((v) => v.split(";")[0])
+      .join("; "),
+  };
+}
+try {
+  assert.equal(intakeQuestions(a).length, 10);
+  assert.equal(intakeQuestions(b).length, 9);
+  assert.equal(intakeQuestions(m).length, 8);
+  assert(!intakeQuestions(b).some((q) => q.id === "deadline"));
+  assert(
+    !intakeQuestions(b)
+      .find((q) => q.id === "goal")!
+      .options!.some((o) => o.id === "first_sales"),
+  );
+  assert(
+    !intakeQuestions(b)
+      .find((q) => q.id === "budget")!
+      .options!.some((o) => o.id === "own_items"),
+  );
+  for (const d of [a, b, m]) assert(intakeSchema.safeParse(d).success);
+  const changed = reconcileIntake({
+    ...a,
+    selections: { ...a.selections, level: ["regular"], budget: ["own_items"] },
+  });
+  assert(!changed.selections.deadline);
+  assert(!changed.selections.goal);
+  assert(!changed.selections.budget);
+  assert.deepEqual(changed.selections.platforms, a.selections.platforms);
+  assert.equal(changed.financialGoal, a.financialGoal);
+  assert(
+    !intakeSchema.safeParse({
+      ...b,
+      selections: { ...b.selections, deadline: ["week"] },
+    }).success,
+  );
+  const otherBefore = {
+    ...a,
+    selections: { ...a.selections, goal: ["other"] },
+    other: { goal: "Mon objectif personnel" },
+  };
+  const otherAfter = reconcileIntake(
+    {
+      ...otherBefore,
+      selections: { ...otherBefore.selections, level: ["sales"] },
+    },
+    otherBefore,
+  );
+  assert(!otherAfter.selections.goal);
+  assert(!otherAfter.other.goal);
+  for (const amount of [-1, Infinity, NaN, 1e10, "500", null])
+    assert(!intakeSchema.safeParse({ ...a, financialGoal: amount }).success);
+  assert(intakeSchema.safeParse({ ...a, financialGoal: 25000.75 }).success);
+  assert(
+    !intakeSchema.safeParse({
+      ...m,
+      selections: { ...m.selections, experience: ["under6"] },
+    }).success,
+  );
+  for (const [choice, n, ok] of [
+    ["4to5", undefined, false],
+    ["4to5", 5, true],
+    ["4to5", 6, false],
+    ["over5", 5, false],
+    ["over5", 7, true],
+    ["other", 10, true],
+    ["other", 11, false],
+  ] as const)
+    assert.equal(
+      intakeSchema.safeParse({
+        ...m,
+        selections: { ...m.selections, capacity: [choice] },
+        capacityExact: n,
+      }).success,
+      ok,
+    );
+  assert(
+    !intakeSchema.safeParse({
+      ...a,
+      selections: { ...a.selections, availability: ["variable", "evening"] },
+    }).success,
+  );
+  const custom = {
+    ...a,
+    selections: {
+      ...a.selections,
+      platforms: ["vinted", "other"],
+      budget: ["other"],
+    },
+    other: {
+      platforms: "Plateforme personnelle",
+      budget: "BUDGET_PRIVE_UNIQUE",
+    },
+  };
+  assert(intakeSchema.safeParse(custom).success);
+  assert(!intakeSchema.safeParse({ ...custom, other: {} }).success);
+  const novice = await account(1),
+    experienced = await account(2),
+    mentor = await account(3),
+    legacy = await account(4);
+  assert.equal((await query("SELECT * FROM profiles")).length, 0);
+  assert.equal(
+    (await save(a, novice.cookie, { termsAccepted: false })).status,
+    400,
+  );
+  assert.equal(
+    (await save(a, novice.cookie, { termsVersion: "invalid" })).status,
+    400,
+  );
+  const savedA = await save(custom, novice.cookie),
+    savedB = await save(b, experienced.cookie),
+    savedM = await save(m, mentor.cookie);
+  for (const s of [savedA, savedB, savedM])
+    assert.equal(s.status, 200, JSON.stringify(s.data));
+  assert.equal(savedA.data.profile.discord, "");
+  assert.equal(savedB.data.profile.discord, "");
+  assert.equal(
+    (await query("SELECT * FROM profile_terms_acceptances")).length,
+    3,
+  );
+  const own = await (await me(req("/api/me", undefined, novice.cookie))).json();
+  assert.equal(own.profile.questionnaire.financialGoal, 9374.5);
+  assert.deepEqual(own.profile.questionnaire.selections.platforms, [
+    "vinted",
+    "other",
+  ]);
+  assert.equal(own.profile.questionnaire.other.budget, "BUDGET_PRIVE_UNIQUE");
+  const edited = {
+    ...custom,
+    financialGoal: 25000.75,
+    selections: { ...custom.selections, methods: ["manual", "bot"] },
+  };
+  assert.equal((await save(edited, novice.cookie)).status, 200);
+  const readBack = await (
+    await me(req("/api/me", undefined, novice.cookie))
+  ).json();
+  assert.equal(readBack.profile.questionnaire.financialGoal, 25000.75);
+  assert.deepEqual(readBack.profile.questionnaire.selections.methods, [
+    "manual",
+    "bot",
+  ]);
+  assert.equal((await me(req("/api/me"))).status, 401);
+  assert.equal(
+    (await put(req("/api/me", { role: "beginner", questionnaire: a }))).status,
+    401,
+  );
+  assert.equal(
+    (
+      await put(
+        new Request(base + "/api/me", {
+          method: "PUT",
+          headers: {
+            Origin: "https://bad.example",
+            "Content-Type": "application/json",
+            cookie: novice.cookie,
+          },
+          body: JSON.stringify({ questionnaire: a }),
+        }),
+      )
+    ).status,
+    403,
+  );
+  const wrong = await save({ ...m, role: "mentor" }, novice.cookie);
+  assert.equal(wrong.status, 400);
+  const observedOther = await (
+    await me(req("/api/me?user_id=" + novice.id, undefined, experienced.cookie))
+  ).json();
+  assert.equal(observedOther.profile.id, savedB.data.profile.id);
+  const legacyQ = {
+    version: 1,
+    role: "beginner",
+    categories: ["Vintage"],
+    categoryOther: "",
+    experienceText: "Je réalise déjà quelques ventes par mois.",
+    objectives: "Je souhaite apprendre à mieux présenter mes annonces.",
+    support: ["Conseils ponctuels"],
+    supportOther: "",
+    blocker: "Je ne sais pas encore estimer certains articles.",
+    exchange: "Appel",
+    cash: 123456.78,
+  };
+  const old = await put(
+    req(
+      "/api/me",
+      {
+        ...initialProfile,
+        name: "Profil historique",
+        discord: "legacy_profile",
+        bio: legacyQ.experienceText,
+        goals: legacyQ.objectives,
+        questionnaire: legacyQ,
+      },
+      legacy.cookie,
+    ),
+  );
+  assert.equal(old.status, 200);
+  const oldP = (await old.json()).profile;
+  await query("DELETE FROM onboarding_confirmations WHERE user_id=$1", [
+    legacy.id,
+  ]);
+  const oldAccess = await (
+    await me(req("/api/me", undefined, legacy.cookie))
+  ).json();
+  assert.equal(oldAccess.requiresQuestionnaire, false);
+  assert.equal(oldAccess.profile.questionnaire.version, 1);
+  const editOld = await put(
+    req(
+      "/api/me",
+      {
+        ...initialProfile,
+        role: "beginner",
+        name: "Profil historique",
+        discord: "legacy_profile",
+        bio: legacyQ.experienceText,
+        goals: legacyQ.objectives,
+      },
+      legacy.cookie,
+    ),
+  );
+  assert.equal(
+    editOld.status,
+    200,
+    "Existing members must not be forced to answer the new questionnaire",
+  );
+  assert.equal((await save(a, legacy.cookie)).status, 200);
+  const migrated = await (
+    await me(req("/api/me", undefined, legacy.cookie))
+  ).json();
+  assert.equal(migrated.profile.id, oldP.id);
+  assert.equal(migrated.profile.questionnaire.legacy.cash, legacyQ.cash);
+  assert.equal(migrated.profile.bio, legacyQ.experienceText);
+  const proof = "12345678-1234-4234-8234-123456789abc";
+  const proofList = proofIds({
+    ...m,
+    legacy: { version: 1, role: "mentor", flexFile: proof, months: [] } as any,
+  });
+  assert.deepEqual(proofList, [proof]);
+  assert.equal(
+    (await query("SELECT * FROM verifications")).length,
+    0,
+    "Onboarding must never approve a mentor",
+  );
+  await query(
+    "INSERT INTO verifications(user_id,revision,status,dossier,feedback,submitted_at,reviewed_at,reviewer_id) VALUES($1,'historic','approved','{}','',$2,$2,'historic-reviewer')",
+    [mentor.id, new Date().toISOString()],
+  );
+  const legacyMentor = {
+    version: 1,
+    role: "mentor",
+    started: "2020-01",
+    record: 10000,
+    platforms: "Vinted et eBay",
+    brands: "Marques déjà connues par ce compte",
+    model: "Niche",
+    audience: ["Débutants"],
+    calls: true,
+    flexText: "Une réussite historique à conserver",
+    flexFile: proof,
+    months: [],
+    categories: ["Luxe"],
+  };
+  await query(
+    "INSERT INTO verification_files(id,user_id,name,mime,size,stored_path,created_at) VALUES($1,$2,'historic.png','image/png',1,'local-test-only',$3)",
+    [proof, mentor.id, new Date().toISOString()],
+  );
+  const oldMentor = await put(
+    req(
+      "/api/me",
+      {
+        ...initialProfile,
+        role: "mentor",
+        name: "Parrain historique",
+        discord: "historic_mentor",
+        bio: "Biographie historique du parrain.",
+        goals: "Transmettre mes connaissances.",
+        experience: 12,
+        questionnaire: legacyMentor,
+      },
+      mentor.cookie,
+    ),
+  );
+  assert.equal(oldMentor.status, 200);
+  assert.equal((await save(m, mentor.cookie)).status, 200);
+  const preserved = await (
+    await me(req("/api/me", undefined, mentor.cookie))
+  ).json();
+  assert.equal(preserved.profile.questionnaire.legacy.flexFile, proof);
+  assert.equal(preserved.profile.verification.reviewedAt.length > 0, true);
+  assert.equal(
+    (
+      await query("SELECT status FROM verifications WHERE user_id=$1", [
+        mentor.id,
+      ])
+    )[0].status,
+    "approved",
+  );
+  assert.deepEqual(proofIds(preserved.profile.questionnaire), [proof]);
+  for (const role of ["mentor", "beginner"]) {
+    const publicData = await (
+      await directory(req("/api/profiles?role=" + role))
+    ).json();
+    const text = JSON.stringify(publicData);
+    for (const secret of [
+      "financialGoal",
+      "BUDGET_PRIVE_UNIQUE",
+      "25000.75",
+      "123456.78",
+      '"legacy"',
+      '"questionnaire"',
+    ])
+      assert(!text.includes(secret), secret);
+    for (const p of publicData.profiles) {
+      assert.equal(p.budget, "Non précisé");
+      assert(!p.resell.selections.budget);
+      assert(!p.resell.other.budget);
+    }
+  }
+  const filter = await (
+    await directory(req("/api/profiles?role=beginner&specialty=method:bot"))
+  ).json();
+  assert(filter.profiles.some((p: any) => p.id === savedA.data.profile.id));
+  const detail = await (
+    await directory(
+      req("/api/profiles?role=beginner&profile=" + savedA.data.profile.id),
+    )
+  ).json();
+  assert.equal(detail.profile.id, savedA.data.profile.id);
+  assert(!JSON.stringify(detail).includes("25000.75"));
+  assert(!JSON.stringify(detail).includes("BUDGET_PRIVE_UNIQUE"));
+  const searchPrivate = await (
+    await directory(req("/api/profiles?role=beginner&q=BUDGET_PRIVE_UNIQUE"))
+  ).json();
+  assert.equal(searchPrivate.total, 0);
+  const historical = publicProfile(
+    decode({
+      id: "legacy",
+      role: "beginner",
+      name: "Legacy",
+      discord: "private",
+      visible: 1,
+      details: JSON.stringify({
+        ...initialProfile,
+        budget: "500 € et plus",
+        resell: legacyQ,
+      }),
+    }),
+  );
+  assert(!JSON.stringify(historical).includes("123456.78"));
+  assert.equal(historical.budget, "Non précisé");
+  await query(
+    "INSERT INTO follows(follower_id,followed_id,created_at) VALUES($1,$2,$3)",
+    [mentor.id, novice.id, new Date().toISOString()],
+  );
+  const publicFollows = await (
+    await follows(req("/api/follows", undefined, mentor.cookie))
+  ).json();
+  assert(!JSON.stringify(publicFollows).includes("25000.75"));
+  assert(
+    questionError(
+      { ...m, selections: { ...m.selections, experience: ["under6"] } },
+      intakeQuestions(m)[0],
+    ).includes("six mois"),
+  );
+  console.log(
+    "PASS: both beginner branches, mentor eligibility, conditional reconciliation, precise capacity, multiple/other answers, numeric goals, final profile creation, durable save/read/edit, private money in directory/detail/follows/search, old account/data/proof compatibility, legal version, authorization and no automatic verification. No remote data or e-mails used.",
+  );
+} finally {
+  const db = database();
+  if (db instanceof DatabaseSync) db.close();
+  process.chdir(repo);
+  await rm(dir, { recursive: true, force: true });
+}

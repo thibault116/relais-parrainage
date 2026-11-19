@@ -3,9 +3,11 @@ import { useEffect, useState } from "react";
 import {
   monthLabel,
   publicAnswers,
-  type Onboarding,
+  type ProfileQuestionnaire,
   type PublicOnboarding,
 } from "@/lib/onboarding-schema";
+import { answerLabels, intakeQuestions, type IntakeAnswers } from "@/lib/intake";
+import { proofIds } from "@/lib/onboarding-schema";
 export function OnboardingSummary({
   data,
   profileId,
@@ -14,6 +16,7 @@ export function OnboardingSummary({
   profileId?: string;
 }) {
   if (!data) return null;
+  if(data.version===2)return <section className="verification-panel"><h3>Parcours et préférences</h3>{intakeQuestions(data as IntakeAnswers).filter(q=>q.kind!=="money"&&q.id!=="budget").map(q=><p key={q.id}><strong>{q.title}</strong><br/>{answerLabels(data,q).join(" · ")}</p>)}</section>;
   const money = (v: number) =>
     v.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
   return (
@@ -92,9 +95,6 @@ export function OnboardingSummary({
           <p>
             <strong>Échange préféré :</strong> {data.exchange}
           </p>
-          <p>
-            <strong>Trésorerie disponible :</strong> {money(data.cash)}
-          </p>
         </>
       )}
     </section>
@@ -103,7 +103,7 @@ export function OnboardingSummary({
 export function AdminOnboarding() {
   const [page, setPage] = useState(0),
     [items, setItems] = useState<
-      { name: string; userId: string; answers: Onboarding }[]
+      { name: string; userId: string; answers: ProfileQuestionnaire }[]
     >([]),
     [more, setMore] = useState(false),
     [error, setError] = useState("");
@@ -130,8 +130,9 @@ export function AdminOnboarding() {
     <section className="verification-panel">
       <h2>Questionnaires d’inscription</h2>
       <p>
-        Les captures sont privées. Vérifie les mois et les quatre indicateurs
-        avant d’attribuer le badge dans le dossier de vérification habituel.
+        Les réponses privées et les preuves historiques sont réservées aux accès
+        autorisés. La validation des parrains reste gérée dans leur dossier de
+        vérification habituel ; ce questionnaire n’accorde aucun badge.
       </p>
       {error && <p role="alert">{error}</p>}
       {items.map((item) => (
@@ -141,7 +142,9 @@ export function AdminOnboarding() {
             {item.answers.role === "mentor" ? "Parrain" : "Débutant"}
           </summary>
           <OnboardingSummary data={publicAnswers(item.answers)} />
-          {item.answers.role === "mentor" && (
+          {item.answers.version===2&&<p>Objectif financier privé : {item.answers.financialGoal?.toLocaleString("fr-FR")} € / mois</p>}
+          {item.answers.version===2&&item.answers.legacy&&<details><summary>Réponses et preuves historiques conservées</summary><OnboardingSummary data={publicAnswers(item.answers.legacy)}/>{proofIds(item.answers).map((id,i)=><p key={id}><a href={`/api/verification-files?id=${id}`} target="_blank" rel="noopener noreferrer">Consulter la preuve historique {i+1}</a></p>)}</details>}
+          {item.answers.version===1&&item.answers.role === "mentor" && (
             <>
               {item.answers.months.map((m) => (
                 <p key={m.month}>

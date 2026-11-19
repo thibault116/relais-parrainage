@@ -1,5 +1,6 @@
-import type { Onboarding, PublicOnboarding } from "./onboarding-schema";
+import { publicAnswers, type ProfileQuestionnaire, type PublicOnboarding } from "./onboarding-schema";
 import { normalizeDate } from "./profile-dates";
+import { levels, mentorExperience } from "./intake";
 import { z } from "zod";
 export const specialties = [
   "Vintage",
@@ -27,10 +28,11 @@ export const profileSchema = z
       .string()
       .trim()
       .toLowerCase()
-      .min(2)
+      .min(0)
       .max(32)
+      .refine(v=>!v||v.length>=2,"Le pseudo Discord doit contenir au moins 2 caractères.")
       .regex(
-        /^[a-z0-9_.]+$/,
+        /^[a-z0-9_.]*$/,
         "Utilise ton nom d’utilisateur Discord, sans @ ni espaces.",
       )
       .refine(
@@ -113,7 +115,7 @@ export const profileSchema = z
 export type ProfileInput = z.infer<typeof profileSchema>;
 export type Profile = Omit<ProfileInput, "consent"> & {
   resell?: PublicOnboarding;
-  questionnaire?: Onboarding | null;
+  questionnaire?: ProfileQuestionnaire | null;
   id: string;
   memberSince?: string | null;
   lastActiveAt?: string | null;
@@ -175,14 +177,19 @@ export function decode(row: Record<string, unknown>): Profile {
     id: String(row.id),
     name: String(row.name),
     role: row.role,
-    discord: String(row.discord),
+    discord: details.discordPending ? "" : String(row.discord),
     visible: row.visible === 1,
   };
 }
 export function publicProfile(p: Profile): PublicProfile {
-  const { discord, discordId, questionnaire, ...safe } = p;
+  const { discord, discordId, questionnaire, budget, ...safe } = p;
+  void budget;
   void questionnaire;
   void discord;
   void discordId;
-  return safe;
+  return { ...safe, budget:"Non précisé" as const, resell:p.resell ? publicAnswers(p.resell as ProfileQuestionnaire) : undefined };
+}
+export function profileExperienceLabel(p: Pick<Profile,"experience"|"resell">){
+  if(p.resell?.version===2){const q=p.resell;return (q.role==="mentor"?mentorExperience:levels).find(o=>o.id===q.selections[q.role==="mentor"?"experience":"level"]?.[0])?.label||"Expérience non précisée";}
+  return p.experience>=12?`${Math.floor(p.experience/12)} an${p.experience>=24?"s":""} d’expérience`:`${p.experience} mois d’expérience`;
 }

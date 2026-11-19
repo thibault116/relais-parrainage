@@ -3,6 +3,7 @@ import { followCountsSQL } from "@/lib/follows";
 import { getPublicVerifications } from "@/lib/verification";
 import { query } from "@/lib/db";
 import { decode, publicProfile } from "@/lib/profile";
+import { publicIntakeText } from "@/lib/intake";
 import { json, user } from "@/lib/http";
 export const runtime = "nodejs";
 export async function GET(request: Request) {
@@ -86,11 +87,11 @@ export async function GET(request: Request) {
     profiles = profiles.filter(
       (p) =>
         (!search ||
-          `${p.name} ${p.bio} ${p.references}`
+          `${p.name} ${p.bio} ${p.references} ${p.resell?.version===2?publicIntakeText(p.resell):""}`
             .toLocaleLowerCase("fr")
             .includes(search)) &&
         (!specialty ||
-          p.specialty.includes(specialty as (typeof p.specialty)[number])) &&
+          (specialty.startsWith("method:")?(p.resell?.version===2?p.resell.selections.methods?.includes(specialty.slice(7)):p.specialty.includes(({bot:"Bot",flea:"Brocante",luxury:"Luxe"} as Record<string,string>)[specialty.slice(7)] as typeof p.specialty[number])):p.specialty.includes(specialty as (typeof p.specialty)[number]))) &&
         (!time || p.availability === time),
     );
     const page = Math.max(
