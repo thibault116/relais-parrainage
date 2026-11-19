@@ -21,6 +21,7 @@ import "./workspace-desktop.css";
 import "./legal.css";
 import "./public-home.css";
 import "./motion.css";
+import "./discovery.css";
 import { MotionProvider } from "./components/motion-system";
 import { SuggestionWidget } from "./components/suggestions";
 import { ReleaseNotes } from "./components/release-notes";

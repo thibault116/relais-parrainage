@@ -51,7 +51,7 @@ import { useMentorCompletion } from "./mentor-portfolio";
 import { Community } from "./community";
 import { t } from "./language";
 import {
-  workspaceMain, workspaceGroups, workspaceRoutes as routes, type WorkspaceItem, type WorkspaceTarget,
+  memberScreen, workspaceMain, workspaceGroups, workspaceRoutes as routes, type WorkspaceItem, type WorkspaceTarget,
 } from "./workspace-destinations";
 import type { Profile } from "@/lib/profile";
 type Row = Record<string, any>;
@@ -75,6 +75,17 @@ export async function mobileApi(url: string, body?: unknown) {
   if (!r.ok) throw Error(d.error || "Connexion impossible. Réessaie.");
   return d;
 }
+// Discovery shares one bookmark read on desktop and reuses the mobile scope.
+export function ProfileBookmarkScope({children}:{children:ReactNode}) {
+  const inherited = useContext(BookmarkContext);
+  const enabled = useFeature("mobileExtras");
+  const [ids,setIds] = useState<string[]>([]);
+  const refresh = useCallback(()=> {
+    if (enabled && !inherited) void mobileApi("/api/mobile").then(d=>setIds(d.bookmarks.map((p:Row)=>p.id))).catch(()=>{});
+  },[enabled,inherited]);
+  useEffect(()=> { refresh(); },[refresh]);
+  return <BookmarkContext.Provider value={inherited || {ids,refresh}}>{children}</BookmarkContext.Provider>;
+}
 export function MobileProfileActions({
   profileId,
   compact = false,
@@ -93,7 +104,7 @@ export function MobileProfileActions({
       setSaved(bookmarks.ids.includes(profileId));
       return;
     }
-    if (enabled && (!compact || window.matchMedia("(max-width:900px)").matches))
+    if (enabled)
       mobileApi("/api/mobile")
         .then((d) => setSaved(d.bookmarks.some((p: Row) => p.id === profileId)))
         .catch(() => {});
@@ -202,7 +213,7 @@ export function MobileExperience({
         (view === "community" ? "community" : "home")
       : "home",
   );
-  const screen = desktopScreen ?? mobileScreen;
+  const screen = memberScreen(desktopScreen ?? mobileScreen, typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("services") || "" : "");
   const [pairs, setPairs] = useState<Row[]>([]),
     [lists, setLists] = useState<Row[]>([]),
     [notices, setNotices] = useState<Row[]>([]),
@@ -339,6 +350,7 @@ export function MobileExperience({
   }, [desktopScreen]);
   const go = useCallback(
     (next: string, params: Record<string, string> = {}) => {
+      next = memberScreen(next, params.services);
       setScreen(next);
       setError("");
       setChannel(null);
@@ -353,6 +365,7 @@ export function MobileExperience({
       url.searchParams.set("mobile", next);
       url.searchParams.delete("services");
       url.searchParams.delete("guide");
+      url.searchParams.delete("member");
       url.hash =
         routes[next]?.[0] || (next === "community" ? "community" : "profile");
       url.searchParams.delete("chat");
@@ -419,7 +432,7 @@ export function MobileExperience({
     }
     const restore = () => {
       const params = new URLSearchParams(window.location.search);
-      const next = params.get("mobile") || "home";
+      const next = memberScreen(params.get("mobile") || "home", params.get("services") || "");
       setScreen(next);
       setChannel(null);
       setChat(params.get("chat") || "");
@@ -449,7 +462,7 @@ export function MobileExperience({
   ) {
     const Icon = icon;
     return (
-      <button className="mobile-tile" onClick={() => go(next==="discoverServices"?"discover":next,next==="discoverServices"?{services:"1"}:{})}>
+      <button className="mobile-tile" onClick={() => go(next==="discoverServices"?"marketplace":next)}>
         <Icon />
         <span>
           <strong>{t(label)}</strong>
@@ -496,34 +509,9 @@ export function MobileExperience({
       </button>
     </section>
   );
-  const Content = desktopScreen ? "div" : "main";
   const legacyMode = !!routes[screen];
-  const selected =
-    screen === "discover" || screen === "requests"
-      ? "discover"
-      : screen === "messages"
-        ? "messages"
-        : screen === "community"
-          ? "community"
-          : [
-                "guides",
-                "joinOffers",
-                "legalGuide",
-                "billing",
-                "credits",
-                "services",
-                "payouts",
-                "menu",
-                "profile",
-                "edit",
-                "settings",
-                "help",
-                "saved",
-                "following",
-                "admin",
-              ].includes(screen)
-            ? "menu"
-            : "home";
+  const Content = desktopScreen || legacyMode ? "div" : "main";
+  const selected = ["home","marketplace","community","messages"].includes(screen) ? screen : "";
   const motionContent=useRef<HTMLDivElement>(null),motionDock=useRef<HTMLElement>(null);
   useScreenMotion(motionContent,`${screen}:${profileTab}:${typeof window!=="undefined"?window.location.search:""}`,screen==="messages"||screen==="community");
   useNavigationIndicator(motionDock,selected,true);
@@ -565,6 +553,7 @@ export function MobileExperience({
             <strong>Mentora</strong>
             <OwnerPlanBadge enabled={true} />
           </button>
+          <button className="mobile-icon" aria-label="Ouvrir le menu" onClick={()=>go("menu")}><Menu size={22}/></button>
           <button
             className="mobile-icon"
             aria-label="Notifications"
@@ -653,20 +642,7 @@ export function MobileExperience({
               )}
             </>
           )}
-          {screen === "home" && (
-            <>
-              <h1>
-                Bonjour {name.split(" ")[0]} <span>👋</span>
-              </h1>
-              <div className="home-actions">
-                {tile("Mes demandes","Consulter mes demandes",MessageCircle,"requests")}
-                {tile("Acheter des crédits","Mon portefeuille Mentora",Layers,"credits")}
-                {profile?.role==="mentor" ? tile("Mes prestations","Créer et gérer mes prestations",Layers,"services") : tile("Prestations disponibles","Trouver une aide adaptée",Search,"discoverServices")}
-                {tile("Gérer mon profil","Modifier mes informations",UserRound,"edit")}
-              </div>
-              {loading && <p role="status">Chargement…</p>}
-            </>
-          )}
+          {screen === "marketplace" && <section className="service-marketplace"><header className="discovery-heading"><span className="eyebrow">MARKETPLACE MENTORA</span><h1>Des services pour progresser<span>.</span></h1><p>Découvre les prestations proposées par les membres.</p></header><PrivateServiceCatalog/></section>}
           {screen === "profile" && (
             <>
               <button className="mobile-back" onClick={back}>
@@ -941,10 +917,10 @@ export function MobileExperience({
             ))}
           {legacyMode && (
             <>
-              <button className="mobile-back" onClick={back}>
+              {screen !== "home" && <button className="mobile-back" onClick={back}>
                 <ChevronLeft size={18} />
                 Retour
-              </button>
+              </button>}
               {screen === "pairs" && (
                 <>
                   <h1>
@@ -1004,9 +980,9 @@ export function MobileExperience({
                 <section className="mobile-note">
                   <h2>Ton espace mobile</h2>
                   <p>
-                    <strong>Accueil</strong> rassemble tes actions et ta
-                    progression. <strong>Découvrir</strong> permet de chercher
-                    un binôme et de retrouver tes demandes.
+                    <strong>Accueil</strong> permet de découvrir les membres.
+                    <strong> Prestations</strong> rassemble les services disponibles.
+                    Retrouve tes demandes, tes crédits et les guides dans le menu.
                   </p>
                   <p>
                     Dans <strong>Communauté</strong>, tu échanges uniquement
@@ -1022,19 +998,12 @@ export function MobileExperience({
                   </p>
                   <p>
                     Retrouve les réglages, l’aide et le programme bêta dans{" "}
-                    <strong>Profil → Paramètres</strong>.
+                    <strong>Menu → Paramètres</strong>.
                   </p>
                 </section>
               )}
               <div className="mobile-legacy">{legacy}</div>
-              {screen === "discover" &&
-                tile(
-                  "Mes demandes",
-                  `${pending.length} en attente`,
-                  Inbox,
-                  "requests",
-                  pending.length,
-                )}
+
             </>
           )}
           {screen === "notes" && (extras ? <PairNotes pairs={active} /> : beta)}

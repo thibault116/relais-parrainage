@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef } from "react";
-import { ArrowUpRight, LogOut, Search } from "lucide-react";
+import { ArrowUpRight, LogOut, Search, Menu } from "lucide-react";
 import { useNavigationIndicator } from "./motion-system";
 import { CommunityBadge } from "./community";
 import { t } from "./language";
@@ -58,7 +58,7 @@ export function WorkspaceNav({
   const extras = useFeature("mobileExtras");
   const groups = [
     { title: "Navigation", items: workspaceMain },
-    { title: "Mon compte", items: workspaceProfile },
+    { title: "Mon compte", items: [{label:"Menu",icon:Menu,screen:"menu"}, ...workspaceProfile] },
     ...workspaceGroups(mentor, moderator, owner, extras),
   ];
   return (

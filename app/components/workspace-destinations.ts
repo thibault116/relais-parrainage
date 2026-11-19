@@ -20,10 +20,9 @@ export type WorkspaceItem = WorkspaceTarget & {
 
 export const workspaceMain: WorkspaceItem[] = [
   { label: "Accueil", icon: Home, screen: "home" },
-  { label: "Découvrir", icon: Search, screen: "discover" },
+  { label: "Prestations", icon: Layers, screen: "marketplace" },
   { label: "Communauté", icon: Users, screen: "community" },
   { label: "Messages", icon: MessageCircle, screen: "messages" },
-  { label: "Menu", icon: Menu, screen: "menu" },
 ];
 
 export function workspaceGroups(mentor: boolean, moderator: boolean, owner: boolean, extras: boolean) {
@@ -35,7 +34,7 @@ export function workspaceGroups(mentor: boolean, moderator: boolean, owner: bool
         {label:"Crédits",icon:Layers,screen:"credits"},
         {label:"Gérer mon profil",icon:UserRound,screen:"edit"},
         {label:"Guides",icon:BookOpen,screen:"guides",keywords:"ressources gratuites achat revente matériel photos annonces sourcing"},
-        ...(mentor?[{label:"Prestations",icon:Layers,screen:"services"},{label:"Rémunération",icon:TrendingUp,screen:"payouts"}]:[]),
+        ...(mentor?[{label:"Mes prestations",icon:Layers,screen:"services"},{label:"Rémunération",icon:TrendingUp,screen:"payouts"}]:[]),
       ],
     },
     {
@@ -88,6 +87,7 @@ export const workspaceProfile: WorkspaceItem[] = [
 ];
 
 export const workspaceRoutes: Record<string, [string, string?]> = {
+  home: ["directory"],
   discover: ["directory"],
   edit: ["profile", "edit"],
   settings: ["profile", "appearance"],
@@ -101,6 +101,11 @@ export const workspaceRoutes: Record<string, [string, string?]> = {
 };
 
 export const desktopExperienceScreens = new Set([
-  "home", "profile", "saved", "notifications", "notes", "messages",
+  "marketplace", "profile", "saved", "notifications", "notes", "messages",
   "community", "guides", "legalGuide", "joinOffers", "billing", "credits", "services", "payouts",
 ]);
+
+// Preserve links shared before the marketplace had its own destination.
+export function memberScreen(screen: string, services = "") {
+  return screen === "discover" ? (services === "1" ? "marketplace" : "home") : screen;
+}

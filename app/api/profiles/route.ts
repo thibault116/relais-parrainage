@@ -1,3 +1,4 @@
+import { matchesDiscovery } from "@/lib/profile-discovery";
 import { profileTimingSQL } from "@/lib/profile-timing";
 import { followCountsSQL } from "@/lib/follows";
 import { getPublicVerifications } from "@/lib/verification";
@@ -50,9 +51,9 @@ export async function GET(request: Request) {
       });
     }
     const role =
-      url.searchParams.get("role") === "beginner" ? "beginner" : "mentor";
+      url.searchParams.get("role") === "all" || (url.searchParams.has("profile") && !url.searchParams.has("role")) ? "all" : url.searchParams.get("role") === "beginner" ? "beginner" : "mentor";
     const rows = await query(
-      `SELECT p.*, ${profileTimingSQL}, ${followCountsSQL}, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='active') AS active_count, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed') AS completed_count, (SELECT AVG(a.rating * 1.0) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed' AND NOT EXISTS (SELECT 1 FROM hidden_ratings h WHERE h.accompaniment_id=a.id)) AS rating_average, (SELECT COUNT(a.rating) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed' AND NOT EXISTS (SELECT 1 FROM hidden_ratings h WHERE h.accompaniment_id=a.id)) AS rating_count FROM profiles p WHERE visible=1 AND role=$1 AND NOT EXISTS (SELECT 1 FROM profile_blocks b WHERE b.user_id=p.user_id) ORDER BY updated_at DESC`,
+      `SELECT p.*, ${profileTimingSQL}, ${followCountsSQL}, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='active') AS active_count, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed') AS completed_count, (SELECT AVG(a.rating * 1.0) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed' AND NOT EXISTS (SELECT 1 FROM hidden_ratings h WHERE h.accompaniment_id=a.id)) AS rating_average, (SELECT COUNT(a.rating) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed' AND NOT EXISTS (SELECT 1 FROM hidden_ratings h WHERE h.accompaniment_id=a.id)) AS rating_count FROM profiles p WHERE visible=1 AND ($1='all' OR role=$1) AND NOT EXISTS (SELECT 1 FROM profile_blocks b WHERE b.user_id=p.user_id) ORDER BY updated_at DESC`,
       [role],
     );
     const verifications = await getPublicVerifications(
@@ -69,7 +70,7 @@ export async function GET(request: Request) {
       }))
       .filter(
         (p) =>
-          !!url.searchParams.get("profile") ||
+          url.searchParams.get("discovery") === "social" || !!url.searchParams.get("profile") ||
           p.role !== "mentor" ||
           p.capacity > 0,
       )
@@ -87,12 +88,12 @@ export async function GET(request: Request) {
     profiles = profiles.filter(
       (p) =>
         (!search ||
-          `${p.name} ${p.bio} ${p.references} ${p.resell?.version===2?publicIntakeText(p.resell):""}`
+          `${p.name} ${p.bio} ${p.references} ${p.specialty.join(" ")} ${p.resell?.version===2?publicIntakeText(p.resell):""}`
             .toLocaleLowerCase("fr")
             .includes(search)) &&
         (!specialty ||
           (specialty.startsWith("method:")?(p.resell?.version===2?p.resell.selections.methods?.includes(specialty.slice(7)):p.specialty.includes(({bot:"Bot",flea:"Brocante",luxury:"Luxe"} as Record<string,string>)[specialty.slice(7)] as typeof p.specialty[number])):p.specialty.includes(specialty as (typeof p.specialty)[number]))) &&
-        (!time || p.availability === time),
+        (!time || p.availability === time) && matchesDiscovery(p, url.searchParams),
     );
     const page = Math.max(
       0,

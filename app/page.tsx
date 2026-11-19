@@ -8,7 +8,7 @@ import { OwnerPlanBadge } from "./components/owner-billing";
 import { PublicLanding, PublicFAQ, HowMentoraWorks } from "./components/public-home";
 import {
   MobileExperience,
-  MobileProfileActions,
+  MobileProfileActions, ProfileBookmarkScope,
 } from "./components/mobile-experience";
 import { useFeature, BetaSettings } from "./components/beta";
 import { OnboardingSummary } from "./components/onboarding-summary";
@@ -60,7 +60,7 @@ import {
   type ProfileInput,
   type PublicProfile,
 } from "@/lib/profile";
-import { methods as intakeMethods } from "@/lib/intake";
+import { discoveryFilters, discoveryTags } from "@/lib/profile-discovery";
 import {
   Accompaniments,
   RatingSummary,
@@ -140,7 +140,7 @@ async function api(path: string, options: RequestInit = {}) {
 import { TodoLists } from "./components/todo-lists";
 import { WorkspaceNav } from "./components/workspace-nav";
 import {
-  desktopExperienceScreens, workspaceRoutes, type WorkspaceTarget,
+  desktopExperienceScreens, memberScreen, workspaceRoutes, type WorkspaceTarget,
 } from "./components/workspace-destinations";
 export default function App() {
   const ownerPreview = useOwnerPreview();
@@ -226,7 +226,7 @@ export default function App() {
   const [desktopChat, setDesktopChat] = useState("");
   const activeDesktopScreen =
     view === "workspace" ? desktopScreen :
-    view === "directory" ? "discover" :
+    view === "directory" ? "home" :
     view === "moderation" ? "admin" :
     view === "profile" ?
       ({ appearance: "settings", verification: "settings", emails: "settings",
@@ -234,11 +234,11 @@ export default function App() {
     view;
   const motionMain=useRef<HTMLElement>(null);useScreenMotion(motionMain,`${view}:${activeDesktopScreen}:${profileTab}:${settingsSection}:${adminTab}`,view==="community");
   const openDesktop = useCallback((item: WorkspaceTarget, params: Record<string, string> = {}) => {
-    const screen = item.screen;
+    const screen = memberScreen(item.screen, params.services);
     const route = workspaceRoutes[screen];
     const next = (route?.[0] || (screen === "community" || screen === "menu" ? screen : "workspace")) as View;
     const url = new URL(window.location.href);
-    for (const key of ["mobile", "chat", "profileTab", "settingsSection", "adminTab", "network", "member", "guide"]) url.searchParams.delete(key);
+    for (const key of ["mobile", "chat", "profileTab", "settingsSection", "adminTab", "network", "member", "guide", "services"]) url.searchParams.delete(key);
     url.searchParams.set("mobile", screen);
     if (route?.[1]) url.searchParams.set("profileTab", route[1]);
     if (item.settingsSection) url.searchParams.set("settingsSection", item.settingsSection);
@@ -315,13 +315,13 @@ export default function App() {
       const fragment = window.location.hash.slice(1);
       const hash = fragment === "tarifs" ? "pricing" : fragment;
       const params = new URLSearchParams(window.location.search);
-      const screen = params.get("mobile") || "";
+      const screen = memberScreen(params.get("mobile") || "", params.get("services") || "");
       const desktop = !window.matchMedia("(max-width: 900px)").matches;
       const auxiliary = desktop && desktopExperienceScreens.has(screen) &&
         (hash === "workspace" || hash === "profile" || (screen === "community" && hash === "community"));
-      setView(auxiliary && screen !== "community" ? "workspace" :
+      setView((!screen && hash === "workspace") || (screen === "home" && ["profile","workspace","directory"].includes(hash)) ? "directory" : screen === "marketplace" ? "workspace" : auxiliary && screen !== "community" ? "workspace" :
         Object.hasOwn(views, hash) ? (hash as View) : "home");
-      setDesktopScreen(auxiliary ? screen : "home");
+      setDesktopScreen(auxiliary || screen === "marketplace" ? screen : "home");
       setDesktopChat(params.get("chat") || "");
       const tab = params.get("profileTab");
       if (tab && ["verification", "following", "edit", "accompaniments", "requests", "emails", "appearance", "tasks"].includes(tab))
@@ -581,6 +581,7 @@ export default function App() {
               onOpenProfile={async (id, memberRole) => {
                 try {
                   const data = await api(`/api/profiles?role=${memberRole}&profile=${encodeURIComponent(id)}`);
+                  openDesktop({screen:"home"});
                   setFocusMember(data.profile);
                 } catch (error) {
                   notify((error as Error).message);
@@ -651,7 +652,7 @@ export default function App() {
           </div>
         )}
         {view === "home" && <PublicLanding onJoin={join} discordUrl={DISCORD_GROUP} onOpen={(screen,slug)=>{
-          const target=screen==='services'?'discover':screen;
+          const target=screen==='services'?'marketplace':screen;
           const params:Record<string,string>={...(screen==='services'?{services:'1'}:{}),...(slug?{guide:slug}:{})};
           if(session){openDesktop({screen:target},params);return;}
           const url=new URL(window.location.href);url.search='';url.searchParams.set('mobile',target);Object.entries(params).forEach(([key,value])=>url.searchParams.set(key,value));const route=workspaceRoutes[target];if(route?.[1])url.searchParams.set('profileTab',route[1]);url.hash=route?.[0]||(target==='community'?'community':'workspace');window.history.pushState({},'',url);setAuthMode('login');
@@ -665,7 +666,6 @@ export default function App() {
             onFollowChange={refreshProfile}
             initialTarget={focusMember}
             own={profile}
-            initialRole={(preview || role) === "mentor" ? "beginner" : "mentor"}
             onJoin={() => setAuthMode("signup")}
             onProfile={() => go("profile")}
             notify={notify}
@@ -1925,109 +1925,15 @@ function LegacyProfileForm({
     </div>
   );
 }
-function ProfileCard({
-  p,
-  onOpen,
-  own = false,
-  canRequest = false,
-  pauseVerification = false,
-}: {
-  pauseVerification?:boolean;
-  p: PublicProfile;
-  onOpen: () => void;
-  own?: boolean;
-  canRequest?: boolean;
-}) {
-  const experience = profileExperienceLabel(p);
-  return (
-    <article className="member-card redesigned-card">
-      {!own && <MobileProfileActions profileId={p.id} compact />}
-      <div className="mentor-card-head">
-        <Avatar profile={p} />
-        <div className="mentor-card-title">
-          <h3>{p.name}</h3>
-          <p>
-            {translateUi(
-              p.role === "mentor" ? (
-                <>
-                  {!pauseVerification&&<ShieldCheck size={17}/>}
-                  {pauseVerification?"Parrain":translateUi(
-                    p.verification ? "Parrain vérifié" : "Parrain non vérifié",
-                  )}{" "}
-                  · {translateUi(experience)}
-                </>
-              ) : p.availableSince ? (
-                "Revendeur débutant · cherche un parrain"
-              ) : (
-                "Revendeur débutant · accompagné"
-              ),
-            )}
-          </p>
-        </div>
-        <AvailabilityBadge profile={p} />
-      </div>
-      <div className="mini-tags">
-        {p.specialty.map((s) => (
-          <span key={s}>{translateUi(s)}</span>
-        ))}
-        {p.references && <span>{p.references.split(",")[0].slice(0, 50)}</span>}
-      </div>
-      <FollowCounts profile={p} />
-      <p className="card-quote">« {p.bio} »</p>
-      {p.role === "mentor" ? (
-        <>
-          <div className="card-stats">
-            <div>
-              <strong>
-                {translateUi(
-                  p.ratingCount
-                    ? `${Number(p.ratingAverage).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}/5`
-                    : "—",
-                )}
-              </strong>
-              <span>
-                {translateUi(
-                  p.ratingCount ? `${p.ratingCount} avis` : "Pas encore d’avis",
-                )}
-              </span>
-            </div>
-            <div>
-              <strong>{p.completedCount ?? 0}</strong>
-              <span>{translateUi("Bin\u00F4mes termin\u00E9s")}</span>
-            </div>
-            <div>
-              <strong>
-                {translateUi(p.responseTime.replace("Sous ", ""))}
-              </strong>
-              <span>{translateUi("D\u00E9lai annonc\u00E9")}</span>
-            </div>
-          </div>
-          <p className="card-active">
-            {p.activeCount ?? 0}
-            {translateUi(" accompagnement")}
-            {translateUi((p.activeCount ?? 0) > 1 ? "s" : "")}
-            {translateUi(" en cours")}
-          </p>
-          <div className="card-teaching">
-            <h4>{translateUi("Ce qu\u2019il peut t\u2019apprendre")}</h4>
-            <p>
-              {p.teaching ||
-                "Ses conseils précis sont à définir ensemble selon ses spécialités."}
-            </p>
-          </div>
-        </>
-      ) : (
-        <div className="card-teaching">
-          <h4>{translateUi("Ses objectifs")}</h4>
-          <p>{p.goals}</p>
-        </div>
-      )}
-      <button className="card-btn" onClick={onOpen}>
-        {translateUi(own ? "Modifier mon profil" : "Découvrir le profil")}{" "}
-        <ArrowUpRight size={17} />
-      </button>
-    </article>
-  );
+function DiscoveryCard({p,onOpen,canSave}:{p:PublicProfile;onOpen:()=>void;canSave:boolean}) {
+  const available = p.role === "mentor" && p.capacity > (p.activeCount || 0);
+  return <article className="discovery-card">
+    {canSave && <MobileProfileActions profileId={p.id} compact/>}
+    <div className="discovery-card-head"><Avatar profile={p}/><div><h2>{p.name}<span className="discovery-role">{p.role === "mentor" ? "Parrain" : "Débutant"}</span></h2><p>{profileExperienceLabel(p)}</p></div></div>
+    {p.bio && <p className="discovery-bio">{p.bio}</p>}
+    <div className="discovery-tags">{discoveryTags(p).map(tag=><span key={tag}>{tag}</span>)}</div>
+    <footer><span className={available ? "discovery-available" : "discovery-status"}>{p.role === "mentor" ? available ? "✓ Disponible pour aider" : "Aucune place disponible" : "Membre de la communauté"}</span><button className="btn secondary" onClick={onOpen}>Voir le profil <ArrowRight size={17}/></button></footer>
+  </article>;
 }
 function Directory({
   privateServices=false,
@@ -2036,7 +1942,6 @@ function Directory({
   initialTarget,
   session,
   own,
-  initialRole,
   onJoin,
   onProfile,
   notify,
@@ -2047,17 +1952,14 @@ function Directory({
   initialTarget: PublicProfile | null;
   session: boolean;
   own: Profile | null;
-  initialRole: "mentor" | "beginner";
   onJoin: () => void;
   onProfile: () => void;
   notify: (s: string) => void;
 }) {
-  const [role, setRole] = useState(initialTarget?.role || initialRole);
-  const [showServices,setShowServices]=useState(()=>typeof window!=="undefined"&&new URLSearchParams(window.location.search).get("services")==="1");
+  const [role, setRole] = useState<"all"|"mentor"|"beginner">("all");
+  const [advanced, setAdvanced] = useState<Record<string,string>>({});
   const [search, setSearch] = useState("");
-  const [specialty, setSpecialty] = useState("");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [time, setTime] = useState("");
   const [page, setPage] = useState(0);
   const [profiles, setProfiles] = useState<PublicProfile[]>([]);
   const [total, setTotal] = useState(0);
@@ -2103,10 +2005,8 @@ function Directory({
     const timer = setTimeout(async () => {
       try {
         const q = new URLSearchParams({
-          role,
+          ...advanced, discovery: "social", role,
           q: search,
-          specialty,
-          time,
           page: String(page),
         });
         const d = await api("/api/profiles?" + q);
@@ -2124,7 +2024,7 @@ function Directory({
       live = false;
       clearTimeout(timer);
     };
-  }, [role, search, specialty, time, page, reload]);
+  }, [role, search, advanced, page, reload]);
   useEffect(() => {
     if (!selected) return;
     const esc = (e: KeyboardEvent) => {
@@ -2158,10 +2058,8 @@ function Directory({
     setSwitching(true);
     try {
       const q = new URLSearchParams({
-        role,
+        ...advanced, discovery: "social", role,
         q: search,
-        specialty,
-        time,
         page: String(targetPage),
       });
       const d = await api("/api/profiles?" + q);
@@ -2197,138 +2095,17 @@ function Directory({
     };
   }, [selected?.id, own?.id, session, preview]);
   return (
-    <section className="wrap directory">
-      <div className="directory-heading">
-        <div className="page-heading">
-          <span className="eyebrow">
-            {translateUi("LES BONNES PERSONNES, AU BON MOMENT")}
-          </span>
-          <h1>
-            {translateUi("Trouve ton bin\u00F4me")}
-            <span>.</span>
-          </h1>
-          <p>
-            {translateUi(
-              "Des revendeurs d\u00E9butants et exp\u00E9riment\u00E9s, r\u00E9unis pour progresser dans l\u2019achat-revente.",
-            )}
-          </p>
-        </div>
-        <div className="directory-doodle">
-          <Users size={40} />
-          <span>
-            {translateUi("\u00C7a commence")}
-            <br />
-            {translateUi("par un bonjour.")}
-          </span>
-        </div>
-      </div>
-      <div className="directory-tabs">
-        <button
-          className={!showServices && role === "mentor" ? "selected" : ""}
-          onClick={() => {
-            setShowServices(false);
-            setRole("mentor");
-            setPage(0);
-          }}
-        >
-          <Sparkles size={18} />
-          {translateUi(" Les parrains")}
-        </button>
-        {(!privateServices || own?.role!=="beginner")&&<button
-          className={!showServices && role === "beginner" ? "selected" : ""}
-          onClick={() => {
-            setShowServices(false);
-            setRole("beginner");
-            setPage(0);
-          }}
-        >
-          <Sprout size={18} />
-          {translateUi(" Les d\u00E9butants")}
-        </button>}
-        {privateServices&&<button className={showServices?"selected":""} onClick={()=>setShowServices(true)}>Prestations</button>}
-      </div>
-      {showServices?<PrivateServiceCatalog/>:<>
-      <div
-        className={`filters ${showMobileFilters ? "mobile-filters-open" : ""}`}
-      >
-        <div className="search-field">
-          <Search size={19} />
-          <input
-            aria-label={translateUi("Rechercher un membre")}
-            placeholder={translateUi("Un prénom, une marque, un mot-clé…")}
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(0);
-            }}
-          />
-        </div>
-        <button
-          type="button"
-          className="mobile-filter-toggle"
-          aria-label="Afficher les filtres"
-          aria-expanded={showMobileFilters}
-          onClick={() => setShowMobileFilters((v) => !v)}
-        >
-          <SlidersHorizontal size={19} />
-        </button>
-        <label className="filter-select">
-          <SlidersHorizontal size={16} />
-          <select
-            aria-label={translateUi("Spécialité")}
-            value={specialty}
-            onChange={(e) => {
-              setSpecialty(e.target.value);
-              setPage(0);
-            }}
-          >
-            <option value="">
-              {translateUi("Toutes les sp\u00E9cialit\u00E9s")}
-            </option>
-            {specialties.map((s) => (
-              <option key={s} value={s}>
-                {translateUi(s)}
-              </option>
-            ))}
-            <optgroup label="Méthodes d’achat">{intakeMethods.map(method=><option key={method.id} value={`method:${method.id}`}>{method.label}</option>)}</optgroup>
-          </select>
-        </label>
-        <label className="filter-select">
-          <Clock size={16} />
-          <select
-            aria-label={translateUi("Disponibilités")}
-            value={time}
-            onChange={(e) => {
-              setTime(e.target.value);
-              setPage(0);
-            }}
-          >
-            <option value="">
-              {translateUi("Toutes les disponibilit\u00E9s")}
-            </option>
-            {times.map((s) => (
-              <option key={s} value={s}>
-                {translateUi(s)}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <div className="results-label">
-        <span>
-          {translateUi(
-            busy
-              ? "Recherche en cours…"
-              : `${total} ${role === "mentor" ? "parrain" : "débutant"}${total > 1 ? "s" : ""} disponible${total > 1 ? "s" : ""}`,
-          )}
-        </span>
-        {!privateServices&&<span>
-          <ShieldCheck size={14} />
-          {translateUi(
-            " Badges v\u00E9rifi\u00E9s apr\u00E8s examen \u00B7 autres informations d\u00E9claratives",
-          )}
-        </span>}
-      </div>
+    <ProfileBookmarkScope><section className="wrap directory member-discovery">
+      <header className="discovery-heading">
+        <span className="eyebrow">DÉCOUVRIR LA COMMUNAUTÉ</span>
+        <h1>Trouve les bonnes personnes<span>.</span></h1>
+        <p>Échange avec des resellers, débutants comme expérimentés.</p>
+      </header>
+      <div className="discovery-search search-field"><Search size={22}/><input type="search" aria-label="Rechercher un membre, une compétence" placeholder="Rechercher un membre, une compétence…" value={search} onChange={e=>{setSearch(e.target.value);setPage(0);}}/></div>
+      <div className="discovery-filter-title"><span>Explorer les profils</span><button className="btn secondary" aria-expanded={showMobileFilters} aria-controls="discovery-filters" onClick={()=>setShowMobileFilters(v=>!v)}><SlidersHorizontal size={17}/>Filtres{Object.values(advanced).filter(Boolean).length ? ` · ${Object.values(advanced).filter(Boolean).length}` : ""}</button></div>
+      <div className="discovery-role-filters" aria-label="Types de membres">{([["all","Tous les profils"],["mentor","Parrains"],["beginner","Débutants"]] as const).map(([value,label])=><button key={value} aria-pressed={role===value} className={role===value?"selected":""} onClick={()=>{setRole(value);setPage(0);}}>{label}</button>)}</div>
+      {showMobileFilters && <div id="discovery-filters" className="discovery-advanced">{discoveryFilters.map(filter=><label key={filter.key}>{filter.label}<select value={advanced[filter.key] || ""} onChange={e=>{setAdvanced(v=>({...v,[filter.key]:e.target.value}));setPage(0);}}><option value="">Toutes les réponses</option>{filter.options.map(option=><option key={option.id} value={option.id}>{option.label}</option>)}</select></label>)}<button className="btn secondary" onClick={()=>{setAdvanced({});setSearch("");setRole("all");setPage(0);}}>Réinitialiser les filtres</button></div>}
+      <div className="results-label" aria-live="polite"><span>Membres à découvrir</span><span>{busy ? "Recherche…" : `${total} profil${total>1?"s":""}`}</span></div>
       {error ? (
         <div className="empty">
           <CircleHelp />
@@ -2347,13 +2124,7 @@ function Directory({
       ) : profiles.length ? (
         <div className="member-grid">
           {profiles.map((p) => (
-            <ProfileCard
-              key={p.id}
-              pauseVerification={privateServices}
-              p={p}
-              onOpen={() => open(p)}
-              canRequest={own?.role === "beginner" && p.id !== own.id}
-            />
+            <DiscoveryCard key={p.id} p={p} onOpen={()=>open(p)} canSave={session && own?.id !== p.id}/>
           ))}
         </div>
       ) : (
@@ -2364,25 +2135,24 @@ function Directory({
           </div>
           <h2>
             {translateUi(
-              search || specialty || time
+              search || Object.values(advanced).some(Boolean)
                 ? "Pas encore de profil pour ces critères."
                 : "Les belles rencontres commencent avec les premiers membres.",
             )}
           </h2>
           <p>
             {translateUi(
-              search || specialty || time
-                ? "Essaie une autre spécialité ou élargis tes disponibilités."
-                : `L’annuaire attend ses premiers ${role === "mentor" ? "parrains" : "débutants"}. Crée ton profil et fais connaître Mentora aux membres de ta formation.`,
+              search || Object.values(advanced).some(Boolean)
+                ? "Essaie un autre mot-clé ou réinitialise les filtres."
+                : "Les premiers membres apparaîtront ici dès que leur profil sera visible.",
             )}
           </p>
           <Button
             onClick={
-              search || specialty || time
+              search || Object.values(advanced).some(Boolean)
                 ? () => {
+                    setAdvanced({});
                     setSearch("");
-                    setSpecialty("");
-                    setTime("");
                     setPage(0);
                   }
                 : session
@@ -2391,7 +2161,7 @@ function Directory({
             }
           >
             {translateUi(
-              search || specialty || time
+              search || Object.values(advanced).some(Boolean)
                 ? "Réinitialiser les filtres"
                 : "Créer mon profil",
             )}{" "}
@@ -2440,7 +2210,6 @@ function Directory({
           </p>
         </div>
       </div>
-      </>}
       {selected && (
         <div
           className="modal-backdrop"
@@ -2761,7 +2530,7 @@ function Directory({
           </section>
         </div>
       )}
-    </section>
+    </section></ProfileBookmarkScope>
   );
 }
 function DeleteProfile({ onDeleted }: { onDeleted: () => void }) {
