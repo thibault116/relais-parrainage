@@ -1,9 +1,10 @@
 "use client";
+import {ServiceDetailPage} from "./service-detail-page";
 import {openServiceChat} from "./service-conversations";
 import {servicePriceCents} from "@/lib/monetization/catalog";
 import {useCallback,useEffect,useRef,useState,type ReactNode} from "react";
-import {ArrowLeft,ChevronRight,MessageCircle,Search,Send,X} from "lucide-react";
-type Service={id:string;data:{title:string;description:string;credits:number;published:boolean;image?:string};profile?:{id:string;name:string;role:string}};
+import {ArrowLeft,ChevronRight,MessageCircle,Search,Send} from "lucide-react";
+export type Service={id:string;data:{title:string;description:string;credits:number;published:boolean;image?:string;category?:string;duration?:number;calls?:number;followup?:string};profile?:{id:string;name:string;role:string}};
 type Booking={id:string;owner_id:string;profile_id:string;name:string;snapshot:Service["data"];credits:number;status:string;notes:string;reason:string;created_at:string;side:"mentor"|"buyer";selfTest:boolean};
 type Data={stats:{reviews:number;satisfaction:number|null;completed:number};profile?:{id:string;name:string;role:string};services:Service[];requests:Booking[]};
 async function api(body?:unknown,profileId?:string){const r=await fetch(`/api/admin/prestations${profileId?`?profile=${profileId}`:""}`,{cache:"no-store",...(body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{})});const d=await r.json();if(!r.ok)throw Error(d.error||"Prestations indisponibles.");return d;}
@@ -14,23 +15,40 @@ function Author({profile}:{profile:Data["profile"]}){return profile?<a className
 export function PrivateServiceCatalog({profileId}:{profileId?:string}){
  const [data,setData]=useState<Data|null>(null),[error,setError]=useState(""),[search,setSearch]=useState(""),[sort,setSort]=useState("recent"),[selected,setSelected]=useState<Service|null>(null),[compose,setCompose]=useState(false),[notes,setNotes]=useState(""),[busy,setBusy]=useState(false),[sent,setSent]=useState(false);
  const key=useRef(""),dialog=useRef<HTMLDialogElement>(null);
+ const reset=useCallback(()=>{dialog.current?.close();setSelected(null);setCompose(false);setSent(false);setNotes("");setError("");},[]);
+ const open=useCallback((s:Service)=>{setSelected(s);setCompose(false);setSent(false);setNotes("");setError("");key.current=crypto.randomUUID();},[]);
  useEffect(()=>{let live=true;void api(undefined,profileId).then(d=>{if(live)setData(d);}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[profileId]);
  useEffect(()=>{if(selected&&!dialog.current?.open)dialog.current?.showModal();},[selected]);
- function close(){dialog.current?.close();setSelected(null);setCompose(false);setSent(false);setNotes("");setError("");}
- async function request(){if(!selected||busy)return;setBusy(true);setError("");try{await api({action:"request",id:selected.id,key:key.current,notes});setSent(true);}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
+ useEffect(()=> {
+   if(!data) return;
+   const restore=()=> {
+     const id=new URLSearchParams(window.location.search).get("service");
+     const service=data.services.find(s=>s.id===id&&s.data.published);
+     if(service)open(service);else reset();
+   };
+   restore();window.addEventListener("popstate",restore);
+   return ()=>window.removeEventListener("popstate",restore);
+ },[data,open,reset]);
+ function select(s:Service){const url=new URL(window.location.href);url.searchParams.set("service",s.id);window.history.pushState({...window.history.state,mentoraService:s.id},"",url);open(s);}
+ function close(useHistory=true){
+   if(useHistory&&window.history.state?.mentoraService===selected?.id)window.history.back();
+   else {const url=new URL(window.location.href);url.searchParams.delete("service");window.history.replaceState(window.history.state,"",url);}
+   reset();
+ }
+ async function request(){if(!selected||busy)return;setBusy(true);setError("");try{await api({action:"request",id:selected.id,key:key.current,notes});setSent(true);window.dispatchEvent(new Event("mentora-billing-updated"));}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  if(profileId&&data&&data.profile?.id!==profileId)return null;
  let services=(data?.services||[]).filter(s=>s.data.published&&`${s.data.title} ${s.data.description}`.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
  if(sort!=="recent")services=[...services].sort((a,b)=>sort==="asc"?a.data.credits-b.data.credits:b.data.credits-a.data.credits);
  return <section className="private-services" aria-label={profileId?"Ses prestations":"Découvrir les prestations"}>
  {profileId?<><div className="service-profile-stats"><div><strong>{data?.stats.reviews||0}</strong><small>Avis</small></div><div><strong>{data?.stats.completed||0}</strong><small>Prestations réalisées</small></div><div><strong>{data?.stats.satisfaction===null?"—":`${data?.stats.satisfaction||0} %`}</strong><small>Satisfaction · avis ≥ 4/5</small></div></div><h3>Ses prestations</h3></>:<div className="service-search"><label><Search size={18}/><input aria-label="Rechercher une prestation" placeholder="Rechercher une prestation…" value={search} onChange={e=>setSearch(e.target.value)}/></label><select aria-label="Trier les prestations" value={sort} onChange={e=>setSort(e.target.value)}><option value="recent">Récentes</option><option value="asc">Prix croissant</option><option value="desc">Prix décroissant</option></select></div>}
  {error&&!selected&&<p role="alert">{error}</p>}{!data&&!error&&<p role="status">Chargement…</p>}{data&&!services.length&&<p>Aucune prestation visible pour le moment.</p>}
- <div className="service-catalog-list">{services.map(s=><article className="service-catalog-card service-listing" key={s.id}><button className="service-main" onClick={()=>{setSelected(s);key.current=crypto.randomUUID();setError("");}}><Picture service={s.data}/><span><strong>{s.data.title}</strong><small>{s.data.description}</small><b>{s.data.credits.toLocaleString("fr-FR")} crédits</b></span><ChevronRight size={18}/></button><Author profile={s.profile}/></article>)}</div>
- <dialog ref={dialog} className="service-detail-dialog" aria-label="Détail de la prestation" onCancel={e=>{e.preventDefault();if(!busy)close();}} onClose={()=>setSelected(null)}>
- {selected&&<><header><button className="commerce-icon" aria-label={compose?"Retour à la prestation":"Fermer la prestation"} disabled={busy} onClick={()=>compose?setCompose(false):close()}>{compose?<ArrowLeft/>:<X/>}</button><strong>{sent?"Demande envoyée":compose?"Détail de la demande":"Prestation"}</strong></header>
- {!compose&&selected.data.image&&<img className="service-detail-image" src={`/api/admin/prestations?image=${selected.data.image}`} alt={selected.data.title}/>}
- <h2>{selected.data.title}</h2><b className="service-price">{selected.data.credits} crédits</b><Author profile={selected.profile}/>
- {sent?<><p role="status">Ta demande se trouve dans Demandes → Prestations.</p><button className="commerce-primary" onClick={()=>{close();window.dispatchEvent(new CustomEvent("mentora-mobile",{detail:{screen:"requests"}}));}}>Voir mes demandes</button></>:compose?<form onSubmit={e=>{e.preventDefault();void request();}}><label>Précisions sur mon besoin (facultatif)<textarea rows={4} maxLength={1000} value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Ta situation, tes objectifs ou les points à préciser…"/></label><small>{notes.length}/1 000</small><div className="commerce-card"><h3>Rappel de la prestation</h3><p>{selected.data.description}</p></div><button className="commerce-primary" disabled={busy}><Send size={18}/>Envoyer la demande</button></form>:<><h3>Description</h3><p className="service-description">{selected.data.description}</p><button className="commerce-primary" onClick={()=>setCompose(true)}><Send size={18}/>Envoyer une demande</button></>}
- {error&&<p role="alert">{error}</p>}</>}
+ <div className="service-catalog-list">{services.map(s=><article className="service-catalog-card service-listing" key={s.id}><button className="service-main" onClick={()=>select(s)}><Picture service={s.data}/><span><strong>{s.data.title}</strong><small>{s.data.description}</small><b>{s.data.credits.toLocaleString("fr-FR")} crédits</b></span><ChevronRight size={18}/></button><Author profile={s.profile}/></article>)}</div>
+ <dialog ref={dialog} className="service-detail-dialog service-page-dialog" aria-label="Détail de la prestation" onCancel={e=>{e.preventDefault();if(!busy)close();}} onClose={()=>setSelected(null)}>
+ {selected&&<ServiceDetailPage service={selected} stage={sent?"sent":compose?"request":"detail"} busy={busy} onBack={()=>compose&&!sent?setCompose(false):close()} onRequest={()=>setCompose(true)}>
+ {sent?<><p role="status">Ta demande se trouve dans Demandes → Prestations.</p><button className="commerce-primary" onClick={()=>{close(false);window.dispatchEvent(new CustomEvent("mentora-mobile",{detail:{screen:"requests"}}));}}>Voir mes demandes</button></>:<form onSubmit={e=>{e.preventDefault();void request();}}><label>Précisions sur mon besoin (facultatif)<textarea rows={4} maxLength={1000} value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Ta situation, tes objectifs ou les points à préciser…"/></label><small>{notes.length}/1 000</small><div className="commerce-card"><h2>Rappel de la prestation</h2><p className="service-description">{selected.data.description}</p></div><button className="commerce-primary" disabled={busy}><Send size={18}/>{busy?"Envoi en cours…":"Envoyer la demande"}</button></form>}
+ {error&&<p role="alert">{error}</p>}
+ </ServiceDetailPage>}
+
  </dialog></section>;
 }
 export function PrivateServiceRequests({children}:{children:ReactNode}){

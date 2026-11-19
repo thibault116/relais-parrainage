@@ -238,7 +238,7 @@ export default function App() {
     const route = workspaceRoutes[screen];
     const next = (route?.[0] || (screen === "community" || screen === "menu" ? screen : "workspace")) as View;
     const url = new URL(window.location.href);
-    for (const key of ["mobile", "chat", "profileTab", "settingsSection", "adminTab", "network", "member", "guide", "services"]) url.searchParams.delete(key);
+    for (const key of ["mobile", "chat", "profileTab", "settingsSection", "adminTab", "network", "member", "guide", "services", "service"]) url.searchParams.delete(key);
     url.searchParams.set("mobile", screen);
     if (route?.[1]) url.searchParams.set("profileTab", route[1]);
     if (item.settingsSection) url.searchParams.set("settingsSection", item.settingsSection);
@@ -1007,7 +1007,7 @@ export default function App() {
             const requestedScreen = params.get("mobile") || "";
             if (authMode === "login" && (workspaceRoutes[requestedScreen] || desktopExperienceScreens.has(requestedScreen))) {
               const retained: Record<string, string> = {};
-              for (const key of ["services", "guide", "chat", "network"]) {
+              for (const key of ["services", "guide", "chat", "network", "service"]) {
                 const value = params.get(key);
                 if (value) retained[key] = value;
               }

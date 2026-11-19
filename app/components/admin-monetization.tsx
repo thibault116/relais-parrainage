@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Plus, FileText, ArrowLeft, Check, MessageCircle } from "lucide-react";
+import { Plus, FileText, ArrowLeft, Check, MessageCircle, Pencil, Trash2 } from "lucide-react";
 import { ManualBankForm, ManualBankHistory } from "./manual-bank";
 import { TestSalesAcceptance } from "./test-sales-acceptance";
 import {CreditPromotion} from "./credit-promotion";
@@ -233,13 +233,13 @@ export function AdminMonetization({
                 : "Mes crédits"}
         </h1>
         <small>
-          {data.mode === "test"
+          {view === "services" ? "Publie, modifie ou masque tes prestations." : data.mode === "test"
             ? "TEST PRIVÉ · Aucun paiement réel"
             : data.owner?"PAIEMENTS RÉELS · Compte admin":"Paiement sécurisé"}
         </small>
       </header>
-      {data.mode==="live"&&data.provider&&!data.provider.ready&&<p role="status">{data.provider.message}</p>}
-      {data.owner&&data.mode==="live"&&data.provider?.canRepairWebhook&&<button className="commerce-row" disabled={busy} onClick={()=>void send({action:"configure-live-webhook"})}>Compléter le webhook Stripe réel</button>}
+      {view!=="services"&&data.mode==="live"&&data.provider&&!data.provider.ready&&<p role="status">{data.provider.message}</p>}
+      {view!=="services"&&data.owner&&data.mode==="live"&&data.provider?.canRepairWebhook&&<button className="commerce-row" disabled={busy} onClick={()=>void send({action:"configure-live-webhook"})}>Compléter le webhook Stripe réel</button>}
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {view === "wallet" && (
@@ -505,13 +505,15 @@ export function AdminMonetization({
                   />
                 </label>
                 <p className="service-euro-preview">Ta rémunération prévue : {euro(Math.round(form.credits*data.payoutRate))}.</p>
-                <label className="commerce-check">
+                <label className="service-visibility-toggle">
                   <input
                     type="checkbox"
+                    role="switch"
                     checked={form.published}
                     onChange={(e) => field("published", e.target.checked)}
                   />
-                  Visible sur mon profil
+                  <span className="service-switch-track" aria-hidden="true"/>
+                  <span>Visible sur mon profil et dans les prestations</span>
                 </label>
                 <button
                   className="commerce-primary"
@@ -534,8 +536,15 @@ export function AdminMonetization({
                 <Plus />
                 Ajouter une prestation
               </button>
-              {data.services.map((s) => (
-                <article className="commerce-card" key={s.id}>
+              <div className="mentor-services-summary"><span>{data.services.length} prestation{data.services.length>1?"s":""}</span><span>{data.services.filter(s=>s.data.published).length} visible{data.services.filter(s=>s.data.published).length>1?"s":""}</span></div>
+              {!data.services.length && <div className="commerce-card mentor-service-empty"><h2>Ta première prestation</h2><p>Un titre, une description, un prix en crédits. Publie-la quand tu es prêt.</p></div>}
+              <div className="mentor-service-list">{data.services.map((s) => (
+                <article className="commerce-card mentor-service-card" key={s.id}>
+                  <div className="mentor-service-card-heading"><div><h2>{s.data.title}</h2><span className={s.data.published ? "service-public-state" : "service-hidden-state"}>{s.data.published ? "Visible" : "Masquée"}</span></div>
+                  <label className="service-visibility-toggle service-visibility-compact">
+                    <input type="checkbox" role="switch" aria-label={`Rendre ${s.data.title} visible`} checked={s.data.published} disabled={busy} onChange={e=>void send({action:"save",id:s.id,service:{...s.data,published:e.target.checked}})}/>
+                    <span className="service-switch-track" aria-hidden="true"/>
+                  </label></div>
                   {s.data.image && (
                     <img
                       className="service-editor-image"
@@ -543,27 +552,13 @@ export function AdminMonetization({
                       alt=""
                     />
                   )}
-                  <h2>{s.data.title}</h2>
-                  <p>
+                  <p className="mentor-service-description">{s.data.description}</p>
+                  <p className="mentor-service-price">
                     {s.data.credits.toLocaleString("fr-FR")} crédits ·{" "}
                     {euro(Math.round(s.data.credits * data.payoutRate))} pour
                     toi
                   </p>
-                  <label className="commerce-check">
-                    <input
-                      type="checkbox"
-                      checked={s.data.published}
-                      disabled={busy}
-                      onChange={(e) =>
-                        void send({
-                          action: "save",
-                          id: s.id,
-                          service: { ...s.data, published: e.target.checked },
-                        })
-                      }
-                    />
-                    Visible sur mon profil
-                  </label>
+                  <div className="mentor-service-actions">
                   <button
                     className="commerce-row"
                     onClick={() => {
@@ -572,17 +567,18 @@ export function AdminMonetization({
                       setEditing(true);
                     }}
                   >
-                    Modifier
+                    <Pencil size={16}/>Modifier
                   </button>
                   <button
                     className="commerce-row danger"
                     disabled={busy}
                     onClick={() => void send({ action: "delete", id: s.id })}
                   >
-                    Supprimer
+                    <Trash2 size={16}/>Supprimer
                   </button>
+                  </div>
                 </article>
-              ))}
+              ))}</div>
               <h2>Prestations en cours</h2>
               {ongoing.length ? (
                 ongoing.map((b) => (

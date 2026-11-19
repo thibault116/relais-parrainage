@@ -366,6 +366,7 @@ export function MobileExperience({
       url.searchParams.delete("services");
       url.searchParams.delete("guide");
       url.searchParams.delete("member");
+      url.searchParams.delete("service");
       url.hash =
         routes[next]?.[0] || (next === "community" ? "community" : "profile");
       url.searchParams.delete("chat");
