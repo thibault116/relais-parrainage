@@ -3,7 +3,7 @@ import { legalContact, termsVersion, testSalesVersion } from "@/lib/legal-versio
 export const contact = <a href={`mailto:${legalContact}`}>{legalContact}</a>;
 export const documents: Record<string, React.ReactNode> = {
   "mentions-legales": <>
-    <p>Mentora est un service d’entraide entre revendeurs. Son adresse publique est <a href="https://mentora-resell.vercel.app/">mentora-resell.vercel.app</a>.</p>
+    <p>Mentora est un service d’entraide entre revendeurs. Son adresse publique est <a href="https://www.mentora-resell.app/">www.mentora-resell.app</a>.</p>
     <h2>Éditeur et publication</h2>
     <p>Contact Mentora : {contact}.</p>
     <p className="legal-note">Restent à renseigner après vérification : identité et statut de l’éditeur, adresse et téléphone, responsable de publication et, selon le statut, immatriculation, capital et numéro de TVA. Ces mentions sont incomplètes.</p>

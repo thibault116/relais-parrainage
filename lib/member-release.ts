@@ -1,13 +1,11 @@
 export const memberRelease = {
-  id: "2026-11-19-experience-fluide",
+  id: "2026-11-19-nouveau-domaine",
   discordAudience: "public",
-  title: "Une expérience Mentora plus fluide",
+  title: "La nouvelle adresse de Mentora",
   notes: [
-    "Améliorations : l’accueil présente désormais la marketplace, les parcours Débutant et Parrain, la communauté et les quatre guides gratuits.",
-    "Améliorations : des transitions et interactions plus cohérentes accompagnent la navigation, les profils, les prestations et les messages, avec une option pour réduire les animations.",
-    "Corrections : les guides gratuits et les prestations rémunérées sont mieux distingués, et les liens de découverte retrouvent leur destination après connexion.",
+    "Amélioration : Mentora dispose de sa nouvelle adresse officielle, www.mentora-resell.app. Les liens des guides et des messages automatiques utilisent ce domaine.",
   ],
   guideUrl: "/#home",
-  guideLabel: "Découvrir le nouvel accueil",
+  guideLabel: "Ouvrir Mentora",
 };
 export const retiredMemberReleaseIds = [] as string[];

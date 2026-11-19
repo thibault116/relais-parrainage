@@ -1,3 +1,4 @@
+import {updateSiteLinks} from "./site";
 import {readFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {createDecipheriv} from 'node:crypto';
@@ -18,5 +19,5 @@ export async function guideDocument(slug:string){
  html=html.replace(/<a\b([^>]*?)href="([^"]+)"([^>]*)>/gi,(_,a:string,href:string,b:string)=>{if(!/^https:\/\//i.test(href))throw Error('Lien du guide refusé.');return `<a ${a}href="${href}"${b} target="_blank" rel="noopener noreferrer">`;});
  const head=`<meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><title>${guide.title}</title>`;
  html=html.replace(/<head>/i,`<head>${head}`).replace(/<\/head>/i,`<style>${responsive}</style></head>`);
- return {slug:guide.slug,title:guide.title,html,missing,pdf:'pdf' in guide};
+ return {slug:guide.slug,title:guide.title,html:updateSiteLinks(html),missing,pdf:'pdf' in guide};
 }

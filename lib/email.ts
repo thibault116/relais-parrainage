@@ -1,3 +1,4 @@
+import {updateLinkValues} from "./site";
 import { enqueuePush } from "./push";
 import { readPlatformSettings } from "./platform-settings";
 import nodemailer from "nodemailer";
@@ -315,7 +316,7 @@ export async function runEmailWorker() {
           to,
           replyTo: MAIL_FROM,
           messageId: `<${Buffer.from(String(job.id)).toString("base64url")}@mentora-resell.vercel.app>`,
-          ...message,
+          ...updateLinkValues(message),
           disableFileAccess: true,
           disableUrlAccess: true,
         });

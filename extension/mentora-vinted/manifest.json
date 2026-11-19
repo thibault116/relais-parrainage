@@ -7,7 +7,8 @@
   "permissions": ["storage", "alarms"],
   "host_permissions": [
     "https://www.vinted.fr/*",
-    "https://mentora-resell.vercel.app/*"
+    "https://mentora-resell.vercel.app/*",
+    "https://www.mentora-resell.app/*"
   ],
   "background": { "service_worker": "background.js", "type": "module" },
   "action": { "default_popup": "popup.html", "default_title": "Mentora CRM" },

@@ -1,6 +1,7 @@
+import {SITE_ORIGIN} from "../site";
 import { z } from "zod";
 
-export const applicationUrl = "https://mentora-resell.vercel.app";
+export const applicationUrl = SITE_ORIGIN;
 export const repository = "thibault116/relais-parrainage";
 export const shaSchema = z.string().regex(/^[a-f0-9]{40}$/);
 export const categories = ["Nouveautés", "Améliorations", "Corrections"] as const;

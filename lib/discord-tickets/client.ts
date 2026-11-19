@@ -1,7 +1,7 @@
 export class DiscordFailure extends Error{constructor(public status:number,code?:number,context?:string){super(`Discord indisponible (${status}${code?` / ${code}`:""})${context?` : ${context}`:""}.`);}}
 export type DiscordApi=<T=Record<string,unknown>>(path:string,method?:string,body?:unknown)=>Promise<T>;
 export const discordApi:DiscordApi=async<T>(path:string,method="GET",body?:unknown)=>{
- if(!/^\/(guilds|channels|users|oauth2|invites)\/[a-zA-Z0-9/@_-]+(?:\?(?:limit=100(?:&before=\d{15,22})?|with_counts=true))?$/.test(path))throw Error("Chemin Discord refusé.");
+ if(!/^\/channels\/\d{15,22}\/(?:threads\/archived\/public|users\/@me\/threads\/archived\/private)\?limit=100(?:&before=[\dTZ:.%+\-]+)?$/.test(path)&&!/^\/guilds\/\d{15,22}\/threads\/active$/.test(path)&&!/^\/(guilds|channels|users|oauth2|invites)\/[a-zA-Z0-9/@_-]+(?:\?(?:limit=100(?:&before=\d{15,22})?|with_counts=true))?$/.test(path))throw Error("Chemin Discord refusé.");
  const token=process.env.DISCORD_TICKET_BOT_TOKEN;if(!token)throw Error("Token du bot manquant.");
  for(let attempt=0;attempt<3;attempt++){
  const r=await fetch(`https://discord.com/api/v10${path}`,{method,headers:{Authorization:`Bot ${token}`,"Content-Type":"application/json"},body:body===undefined?undefined:JSON.stringify(body),redirect:"error",cache:"no-store",signal:AbortSignal.timeout(12000)});

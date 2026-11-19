@@ -2,7 +2,7 @@
 import {createHash} from 'node:crypto';
 const token=process.env.DISCORD_TICKET_BOT_TOKEN;
 const guild=process.env.DISCORD_WELCOME_GUILD_ID||'1563252744738050100';
-const endpoint='https://mentora-resell.vercel.app/api/discord/member-events';
+const endpoint='https://www.mentora-resell.app/api/discord/member-events';
 if(!token||!/^\d{15,22}$/.test(guild))throw Error('Configure le token du bot et le serveur dans les variables sécurisées de l’hébergeur.');
 let socket,session='',sequence=null,resumeUrl='',heartbeat,acked=true,stopping=false,reconnectTimer,backoff=1000;
 const pending=new Map();

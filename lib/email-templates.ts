@@ -1,5 +1,6 @@
+import {SITE_ORIGIN} from "./site";
 export const MAIL_FROM = "mentora.officiel@gmail.com";
-export const MAIL_SITE = "https://mentora-resell.vercel.app";
+export const MAIL_SITE = SITE_ORIGIN;
 export const mailKinds = [
   "reengagement",
   "request_received",

@@ -47,7 +47,7 @@ try {
     assert(!r.html.includes("<script>"));
     assert(r.html.includes("&lt;script&gt;"));
     assert(r.subject.startsWith("[TEST Mentora]"));
-    assert(r.text.includes("https://mentora-resell.vercel.app"));
+    assert(r.text.includes("https://www.mentora-resell.app"));
   }
   for (const [id, role] of [
     [m, "mentor"],

@@ -1,8 +1,9 @@
+import {SITE_ORIGIN} from "../site";
 import {query} from '../db';
 import {memberGuides,guideLink} from '../guides-catalog';
 import {communityInventory,normalized} from './service';
 import {discordApi,type DiscordApi} from '../discord-tickets/client';
-const root='https://mentora-resell.vercel.app';
+const root=SITE_ORIGIN;
 const summaries:Record<string,string>={
  'se-lancer-achat-revente':'Comment démarrer avec ou sans budget, préparer ses premières ventes et poser les bases de son activité.',
  'materiel-indispensable':'Les indispensables pour préparer les vêtements, ranger son stock et expédier ses ventes, avec des liens vers le matériel.',

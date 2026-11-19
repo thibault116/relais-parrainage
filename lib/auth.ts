@@ -1,3 +1,4 @@
+import {SITE_ORIGIN,LEGACY_SITE_ORIGINS} from "./site";
 import { deleteMobileMember } from "./mobile-space";
 import { deleteSuggestions } from "./suggestions";
 import { deleteProfilePhoto } from "./profile-photo";
@@ -13,7 +14,8 @@ function createAuth() {
     secret:
       process.env.BETTER_AUTH_SECRET ||
       "local-development-only-relais-keep-out-of-production",
-    baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+    baseURL: process.env.VERCEL_ENV === "production" ? SITE_ORIGIN : process.env.BETTER_AUTH_URL || "http://localhost:3000",
+    trustedOrigins: [SITE_ORIGIN, ...LEGACY_SITE_ORIGINS],
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 12,

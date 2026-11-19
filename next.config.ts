@@ -13,14 +13,12 @@ const config: NextConfig = {
   },
   serverExternalPackages: ["pg"],
   async redirects() {
-    return [
-      {
-        source: "/:path((?!api/cron/emails).*)",
-        has: [{ type: "host", value: "relais-parrainage\\.vercel\\.app" }],
-        destination: "https://mentora-resell.vercel.app/:path*",
-        permanent: true,
-      },
-    ];
+    return ["relais-parrainage\\.vercel\\.app"].map(host => ({
+      source: "/:path((?!api/).*)",
+      has: [{ type: "host" as const, value: host }],
+      destination: "https://www.mentora-resell.app/:path*",
+      permanent: true,
+    }));
   },
   async headers() {
     return [

@@ -17,7 +17,7 @@ Les dates non identifiables sont exclues des statistiques. Les totaux concernent
 L'extension ne contourne aucun contrôle et s'arrête en cas de connexion requise ou de contrôle détecté. Vinted restreint les outils automatisés ; aucun risque nul de restriction de compte n'est garanti. https://www.vinted.fr/terms-and-conditions
 
 DONNÉES
-Seuls l'identifiant du compte, les identifiants des commandes, titres, liens/photos, prix, statuts et dates reconnus sont transmis à https://mentora-resell.vercel.app. Pas de messages, coordonnées d'acheteurs, mots de passe ou cookies.
+Seuls l'identifiant du compte, les identifiants des commandes, titres, liens/photos, prix, statuts et dates reconnus sont transmis à https://www.mentora-resell.app. Pas de messages, coordonnées d'acheteurs, mots de passe ou cookies.
 La clé est enregistrée uniquement dans le stockage local de l'extension, inaccessible aux scripts de lecture des pages. Révoquer la clé dans Mentora coupe l'accès aux imports. Effacer les paramètres dans l'extension arrête la lecture et retire sa clé locale.
 
 MISE À JOUR

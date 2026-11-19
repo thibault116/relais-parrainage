@@ -1,4 +1,4 @@
-const API = "https://mentora-resell.vercel.app/api/crm/sync";
+const API = "https://www.mentora-resell.app/api/crm/sync";
 const MARK = "#mentora-crm";
 const ALARM = "mentora-sales";
 let serial = Promise.resolve();

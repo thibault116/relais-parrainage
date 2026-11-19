@@ -1,3 +1,4 @@
+import {updateSiteLinks} from "./site";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { query } from "./db";
@@ -172,7 +173,7 @@ export async function runLegalMailWorker() {
     try {
       await transport.sendMail({
         from: legalContact, to: String(job.recipient), subject: String(job.subject),
-        text: String(job.body), messageId: `<${createHash("sha256").update(String(id)).digest("hex")}@mentora-resell.vercel.app>`,
+        text: updateSiteLinks(String(job.body)), messageId: `<${createHash("sha256").update(String(id)).digest("hex")}@mentora-resell.vercel.app>`,
       });
       await query("UPDATE legal_mail SET sent_at=$1, recipient='', body='' WHERE id=$2 AND lease_until=$3",
         [new Date().toISOString(), String(id), lease]);

@@ -1,3 +1,4 @@
+import {SITE_ORIGIN, LEGACY_SITE_ORIGINS} from "../site";
 import {billingLive,liveReadiness,liveSecretKey} from "./mode";
 import Stripe from "stripe";
 export function stripeTest() {
@@ -16,7 +17,7 @@ export function appOrigin() {
   const url = new URL(
     process.env.MENTORA_BILLING_ORIGIN ||
       process.env.BETTER_AUTH_URL ||
-      "https://mentora-resell.vercel.app",
+      SITE_ORIGIN,
   );
   if (
     url.protocol !== "https:" &&
@@ -24,7 +25,7 @@ export function appOrigin() {
     url.hostname !== "localhost"
   )
     throw Error("Origine invalide");
-  return url.origin;
+  return LEGACY_SITE_ORIGINS.some(origin => origin === url.origin) ? SITE_ORIGIN : url.origin;
 }
 export const returnUrl = (page: "admin" | "billing" | "credits" = "admin") =>
   page === "admin"

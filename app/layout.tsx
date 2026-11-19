@@ -1,3 +1,4 @@
+import {SITE_ORIGIN} from "@/lib/site";
 import { after } from "next/server";
 import { automaticProductionCheck } from "@/lib/changelog/service";
 import { ownerPreviewUserId } from "@/lib/owner-preview";
@@ -33,7 +34,7 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
   },
   title: "Mentora — La marketplace des resellers.",
-  metadataBase: new URL("https://mentora-resell.vercel.app"),
+  metadataBase: new URL(SITE_ORIGIN),
   openGraph: {
     title: "Mentora — La marketplace des resellers.",
     description:
