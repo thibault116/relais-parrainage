@@ -11,6 +11,7 @@ import type {DiscordApi} from '../lib/discord-tickets/client';
 if(process.env.DATABASE_URL||process.env.VERCEL)throw Error('Local isolated test only');
 assert.equal(updateSiteLinks('https://mentora-resell.vercel.app/?mobile=guides&guide=photos-et-annonces#workspace'),SITE_ORIGIN+'/?mobile=guides&guide=photos-et-annonces#workspace');
 assert.equal(updateSiteLinks('https://relais-parrainage.vercel.app/path?q=a#x'),SITE_ORIGIN+'/path?q=a#x');
+assert.equal(updateSiteLinks('Lien : https://mentora-resell.vercel.app. Merci !'),'Lien : '+SITE_ORIGIN+'. Merci !');
 for(const url of ['https://mentora-resell.vercel.app.evil.example','https://other.example','mail@mentora-resell.vercel.app'])assert.equal(updateSiteLinks(url),url);
 assert.equal(updateSiteLinks(SITE_ORIGIN),SITE_ORIGIN);assert.equal(updateSiteLinks('mentora-resell.vercel.app'),new URL(SITE_ORIGIN).host);
 assert.deepEqual(updateLinkValues({url:'https://mentora-resell.vercel.app',n:2}),{url:SITE_ORIGIN,n:2});

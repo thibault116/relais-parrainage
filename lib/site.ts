@@ -7,8 +7,8 @@ export const LEGACY_SITE_ORIGINS = [
 ] as const;
 export function updateSiteLinks(text: string) {
   return text
-    .replace(/https?:\/\/(?:mentora-resell\.vercel\.app|relais-parrainage\.vercel\.app)(?![\w.-])/gi, SITE_ORIGIN)
-    .replace(/(?<![\w@./-])(?:mentora-resell\.vercel\.app|relais-parrainage\.vercel\.app)(?![\w.-])/gi, SITE_HOST);
+    .replace(/https?:\/\/(?:mentora-resell\.vercel\.app|relais-parrainage\.vercel\.app)(?![\w-]|\.[\w-])/gi, SITE_ORIGIN)
+    .replace(/(?<![\w@./-])(?:mentora-resell\.vercel\.app|relais-parrainage\.vercel\.app)(?![\w-]|\.[\w-])/gi, SITE_HOST);
 }
 export function updateLinkValues<T>(value: T): T {
   if (typeof value === "string") return updateSiteLinks(value) as T;

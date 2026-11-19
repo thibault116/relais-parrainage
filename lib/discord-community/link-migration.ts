@@ -13,6 +13,12 @@ export function messagePatch(m:Message){
  const embed=(e:any)=>Object.fromEntries(Object.entries({title:e.title,description:e.description,url:e.url,timestamp:e.timestamp,color:e.color,fields:e.fields,author:e.author?{name:e.author.name,url:e.author.url,icon_url:e.author.icon_url}:undefined,footer:e.footer?{text:e.footer.text,icon_url:e.footer.icon_url}:undefined,image:e.image?{url:e.image.url}:undefined,thumbnail:e.thumbnail?{url:e.thumbnail.url}:undefined}).filter(([,v])=>v!==undefined));
  const before={content:m.content||'',embeds:(m.embeds||[]).map(embed),components:m.components||[]};
  const after=updateLinkValues(before);
+ // Give migrated media a distinct cache key: Discord can retain the previous
+ // thumbnail URL when two domains serve identical image bytes.
+ for(let i=0;i<after.embeds.length;i++)for(const key of ['image','thumbnail'] as const){
+  const media=after.embeds[i][key];
+  if(media?.url&&media.url!==before.embeds[i][key]?.url){const u=new URL(media.url);u.searchParams.set('domain','mentora-resell.app');media.url=u.toString();}
+ }
  return JSON.stringify(before)!==JSON.stringify(after)?{before,after,patch:{...after,allowed_mentions:{parse:[] as string[]}}}:null;
 }
 export async function linkChannels(api:DiscordApi=discordApi){
