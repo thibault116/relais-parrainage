@@ -24,6 +24,18 @@ try{
  const scan=await scanLinks('c','',fake);assert.equal(scan.matches.length,2);assert.equal(scan.matches[1].editable,false);
  await assert.rejects(()=>scanLinks('foreign','',fake),/extérieur/);await assert.rejects(()=>replaceMessageLinks('owner','c','u',fake),/auteur/);
  assert.equal((await replaceMessageLinks('owner','c','m',fake)).state,'updated');assert.equal(writes,1);assert.equal((await replaceMessageLinks('owner','c','m',fake)).state,'unchanged');assert.equal(writes,1);assert.equal((await query("SELECT * FROM discord_link_changes WHERE state='updated'")).length,1);assert.equal(messagePatch(msg),null);
+ let retained=true,cleared=false;
+ msg.embeds=[{thumbnail:{url:'https://mentora-resell.vercel.app/icons/icon-192.png'}}];
+ const cached:DiscordApi=async<T>(path:string,method='GET',body?:any)=>{
+  if(method==='PATCH'&&path==='/channels/c/messages/m'){
+   assert.deepEqual(body.allowed_mentions,{parse:[]});
+   if(body.embeds.length===0){cleared=true;retained=false;}
+   if(!retained)Object.assign(msg,body);
+   return structuredClone(msg) as T;
+  }
+  return fake<T>(path,method,body);
+ };
+ assert.equal((await replaceMessageLinks('owner','c','m',cached)).state,'updated');assert(cleared);assert.equal(messagePatch(msg),null);assert(msg.embeds[0].thumbnail.url.startsWith(SITE_ORIGIN));
  const session=mock.method(getAuth().api,'getSession',async()=>null);assert.equal((await routeGet(new Request('https://www.mentora-resell.app/api/admin/discord-links'))).status,403);assert.equal((await routePost(new Request('https://www.mentora-resell.app/api/admin/discord-links',{method:'POST'}))).status,403);session.mock.restore();
  console.log('PASS: canonical links, guide paths/query/hash preserved, foreign hosts unchanged, author/guild controls, no mentions, archived audit and idempotent updates.');
 }finally{const db=database();if(db instanceof DatabaseSync)db.close();process.chdir(cwd);await rm(dir,{recursive:true,force:true});}

@@ -43,7 +43,14 @@ export async function replaceMessageLinks(actor:string,channel:string,id:string,
  try{
  if(m.author?.id===c.bot_id)await api(`/channels/${channel}/messages/${id}`,'PATCH',change.patch);
  else {const r=await fetch(`${hook!.url}/messages/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(change.patch),redirect:'error',signal:AbortSignal.timeout(12000)});if(!r.ok)throw Error(`Modification du webhook refusée (${r.status}).`);}
- const saved=await api<Message>(`/channels/${channel}/messages/${id}`);
+ let saved=await api<Message>(`/channels/${channel}/messages/${id}`);
+ if(messagePatch(saved)&&m.author?.id===c.bot_id&&JSON.stringify(saved.content||'')===JSON.stringify(change.after.content)){
+  // Reset only the archived embeds, then restore them. Discord occasionally
+  // preserves an old thumbnail on an otherwise successful message edit.
+  await api(`/channels/${channel}/messages/${id}`,'PATCH',{embeds:[],allowed_mentions:{parse:[]}});
+  await api(`/channels/${channel}/messages/${id}`,'PATCH',change.patch);
+  saved=await api<Message>(`/channels/${channel}/messages/${id}`);
+ }
  if(messagePatch(saved))throw Error('La vérification du nouveau lien a échoué.');
  await query("UPDATE discord_link_changes SET state='updated',updated_at=$1 WHERE id=$2",[new Date().toISOString(),key]);return {id,state:'updated'};
  }catch(e){await query("UPDATE discord_link_changes SET state='failed',updated_at=$1 WHERE id=$2",[new Date().toISOString(),key]);throw e;}
