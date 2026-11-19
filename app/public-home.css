@@ -1187,3 +1187,19 @@
     font-size: 68px;
   }
 }
+
+/* Keep the administrator credit balance without widening the mobile header. */
+@media (max-width: 760px) {
+  .public-shell:has(.mentora-landing) .header .brand:has(.owner-plan-badge) {
+    position: relative;
+    padding-bottom: 12px;
+  }
+  .public-shell:has(.mentora-landing) .header .brand > .owner-plan-badge {
+    position: absolute;
+    left: 48px;
+    bottom: -2px;
+    font-size: 8px;
+    line-height: 1.2;
+    padding: 1px 5px;
+  }
+}
