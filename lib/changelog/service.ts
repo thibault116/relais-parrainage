@@ -1,3 +1,4 @@
+import { notificationRoles } from "../discord-community/notifications";
 import { memberRelease } from "../member-release";
 import { query } from "../db";
 import { announcementSchema, applicationUrl, description, discordPayload, shaSchema } from "./shared";
@@ -67,8 +68,9 @@ export async function preview(id: string) {
   const draft = await getDraft(id);
   if (!draft) throw new Error("Brouillon introuvable.");
   announcementSchema.parse(draft);
+  const roles = await notificationRoles();
   return {
-    payload: discordPayload(draft.id, draft.title, draft.sections, draft.created_at),
+    payload: discordPayload(draft.id, draft.title, draft.sections, draft.created_at, roles.updates),
     characters: description(draft.sections).length,
     sent: false,
   };

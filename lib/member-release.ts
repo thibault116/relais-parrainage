@@ -1,12 +1,12 @@
 export const memberRelease = {
-  id: "2026-11-19-fiches-prestations",
+  id: "2026-11-20-objectifs-notifications",
   discordAudience: "public",
-  title: "Tes prestations, plus simplement",
+  title: "Des réglages plus confortables",
   notes: [
-    "Amélioration : ouvre une fiche de prestation plus lisible, retrouve son parrain et garde le prix en crédits et le bouton de demande à portée de main.",
-    "Amélioration : côté parrain, active ou masque une prestation avec un interrupteur et retrouve plus facilement ses actions de gestion.",
+    "Amélioration : le curseur de ton objectif financier est plus grand et plus facile à utiliser, côté débutant comme côté parrain.",
+    "Correction : les mentions Discord des mises à jour respectent désormais ton choix de rôle de notification.",
   ],
-  guideUrl: "/?mobile=marketplace#workspace",
-  guideLabel: "Voir les prestations",
+  guideUrl: "/?mobile=edit&profileTab=edit#profile",
+  guideLabel: "Ouvrir mon profil",
 };
 export const retiredMemberReleaseIds = [] as string[];

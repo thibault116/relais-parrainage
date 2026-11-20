@@ -1,3 +1,8 @@
+import {migrateDiscordTickets} from "../lib/discord-tickets/store";
+import {migrateDiscordCommunity} from "../lib/discord-community/store";
+import {query} from "../lib/db";
+import {notificationRoles} from "../lib/discord-community/notifications";
+import {roleMention} from "../lib/discord-community/notifications-shared";
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -24,6 +29,9 @@ process.env.VERCEL_ENV = "production";
 process.env.VERCEL_GIT_COMMIT_SHA = b;
 process.env.VERCEL_DEPLOYMENT_ID = "dpl_fake_local_test";
 let mode: "members" | "technical" | "beta" = "technical";
+const guild="111111111111111111", updates="777777777777777777", announcements="888888888888888888";
+process.env.DISCORD_TICKET_BOT_TOKEN="local-fake-bot-token";
+let mentionable=false;
 let sent = 0;
 let localMessages: Record<string, any>[] = [];
 const server = createServer(async (request, response) => {
@@ -31,8 +39,8 @@ const server = createServer(async (request, response) => {
   let body = "";
   for await (const part of request) body += part.toString();
   const payload = JSON.parse(body);
-  assert.equal(payload.content, "@everyone");
-  assert.deepEqual(payload.allowed_mentions, { parse: ["everyone"], users: [], roles: [] });
+  assert.equal(payload.content, `<@&${updates}>`);
+  assert.deepEqual(payload.allowed_mentions, { parse: [], users: [], roles: [updates], replied_user:false });
   assert.equal(payload.embeds[0].color, 0x883af5);
   assert(payload.embeds[0].description.length <= 2000);
   assert.match(payload.embeds[0].description, /actualiser Mentora/);
@@ -58,7 +66,11 @@ globalThis.fetch = async (input, options) => {
     commit: process.env.VERCEL_GIT_COMMIT_SHA,
     environment: "production",
   });
-  if (url.hostname === "discord.com") return localDelivery(input, options);
+  if (url.hostname === "discord.com") {
+    if (url.pathname===`/api/v10/guilds/${guild}/roles`) return Response.json([updates,announcements].map(id=>({id,permissions:"0",mentionable,managed:false})));
+    if (url.pathname.startsWith(`/api/v10/guilds/${guild}/roles/`)) { assert.equal(options?.method,"PATCH");assert.deepEqual(JSON.parse(String(options?.body)),{mentionable:true});mentionable=true;return Response.json({mentionable:true}); }
+    return localDelivery(input, options);
+  }
   assert.equal(url.hostname, "api.github.com", "Aucun autre serveur n’est appelé pendant les tests");
   assert(url.pathname.startsWith(`/repos/${repository}/`));
   if (url.pathname.includes("/compare/")) {
@@ -76,7 +88,15 @@ globalThis.fetch = async (input, options) => {
   return new Response(mode === "beta" ? release("beta-release", ["Une nouveauté pour les bêta-testeurs."], "beta") : note);
 };
 try {
-  await migrateChangelog();
+  await migrateChangelog();await migrateDiscordTickets();await migrateDiscordCommunity();
+  await query("INSERT INTO discord_ticket_config(id,guild_id,panel_channel,owner_id,bot_id,updated_at) VALUES('main',$1,'channel','owner','bot','now')",[guild]);
+  await query("INSERT INTO discord_community_panels(kind,channel_id,details) VALUES('roles','channel',$1)",[JSON.stringify({updates,announcements})]);
+  assert.deepEqual(roleMention(announcements).allowed_mentions,{parse:[],users:[],roles:[announcements],replied_user:false});
+  assert.throws(()=>roleMention("@everyone"));
+  assert.deepEqual(await notificationRoles(true),{updates,announcements});assert(mentionable);
+  await query("UPDATE discord_community_panels SET details=$1 WHERE kind='roles'",[JSON.stringify({updates:guild,announcements})]);
+  await assert.rejects(()=>notificationRoles());
+  await query("UPDATE discord_community_panels SET details=$1 WHERE kind='roles'",[JSON.stringify({updates,announcements})]);
   const config = await initialize(a);
   assert.equal(config.auto_enabled, 0);
   assert.equal(parseRelease(release("escaped", ['Une phrase avec "des guillemets".'])).notes[0], 'Une phrase avec "des guillemets".');
@@ -90,6 +110,10 @@ try {
   assert.equal(draft.sections.améliorations.length, 1);
   assert.equal(draft.sections.corrections.length, 1);
   const test = await preview(draft.id);
+  await query("UPDATE discord_community_panels SET details='{}' WHERE kind='roles'");
+  await assert.rejects(()=>deliverDraft(draft.id,draft.revision,false,localDelivery));
+  assert.equal((await getDraft(draft.id))?.status,"draft");
+  await query("UPDATE discord_community_panels SET details=$1 WHERE kind='roles'",[JSON.stringify({updates,announcements})]);
   assert.equal(test.sent, false);
   assert.equal(sent, 0);
   assert.equal(test.characters, description(draft.sections).length);

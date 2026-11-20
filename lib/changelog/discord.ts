@@ -1,3 +1,4 @@
+import { notificationRoles } from "../discord-community/notifications";
 import { z } from "zod";
 import { discordPayload, announcementSchema } from "./shared";
 import { getDraft, settings, type Draft } from "./store";
@@ -60,11 +61,12 @@ export async function markPublished(draft: Draft, messageId: string) {
 export async function deliverDraft(id: string, revision: number, automatic = false, transport: Fetcher = fetch) {
   const url = webhookUrl();
   url.searchParams.set("wait", "true");
+  const roles = await notificationRoles(true);
   const draft = await claimSend(id, revision, automatic);
   try {
     const response = await transport(url, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(discordPayload(draft.id, draft.title, draft.sections, draft.created_at)),
+      body: JSON.stringify(discordPayload(draft.id, draft.title, draft.sections, draft.created_at, roles.updates)),
       signal: AbortSignal.timeout(12000), redirect: "error",
     });
     if (!response.ok) {

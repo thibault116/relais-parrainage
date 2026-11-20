@@ -1,3 +1,4 @@
+import {roleMention} from "../discord-community/notifications-shared";
 import {SITE_ORIGIN} from "../site";
 import { z } from "zod";
 
@@ -34,13 +35,12 @@ export const announcementSchema = z.object({
     ctx.addIssue({ code: "custom", message: "Le texte principal dépasse 2 000 caractères, rappel compris." });
 });
 
-export function discordPayload(id: string, title: string, sections: Sections, date: string) {
+export function discordPayload(id: string, title: string, sections: Sections, date: string, roleId: string) {
   announcementSchema.parse({ title, sections });
   return {
     username: "Mentora",
     avatar_url: `${applicationUrl}/icons/icon-192.png`,
-    content: "@everyone",
-    allowed_mentions: { parse: ["everyone"], users: [], roles: [] },
+    ...roleMention(roleId),
     embeds: [{
       title,
       description: description(sections),

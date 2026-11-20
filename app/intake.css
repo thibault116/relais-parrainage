@@ -572,3 +572,57 @@ html[data-reduce-motion="true"] .intake-choices > button,
 html[data-reduce-motion="true"] .intake-progress [role="progressbar"] > span {
   transition: none;
 }
+/* A generous touch target shared by both financial-goal questionnaires. */
+.intake-shell input[type="range"] {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 56px;
+  min-height: 56px;
+  margin: 0;
+  border: 0;
+  border-radius: 14px;
+}
+.intake-shell input[type="range"]::-webkit-slider-runnable-track {
+  height: 10px;
+  border-radius: 100px;
+  background: color-mix(in srgb, var(--purple) 28%, var(--surface));
+}
+.intake-shell input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  width: 40px;
+  height: 40px;
+  margin-top: -15px;
+  border: 3px solid var(--paper);
+  border-radius: 50%;
+  background: var(--purple-fill, var(--purple));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--purple) 22%, transparent), 0 3px 9px #0003;
+  cursor: grab;
+}
+.intake-shell input[type="range"]::-moz-range-track {
+  height: 10px;
+  border-radius: 100px;
+  background: color-mix(in srgb, var(--purple) 28%, var(--surface));
+}
+.intake-shell input[type="range"]::-moz-range-progress {
+  height: 10px;
+  border-radius: 100px;
+  background: var(--purple-fill, var(--purple));
+}
+.intake-shell input[type="range"]::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--paper);
+  border-radius: 50%;
+  background: var(--purple-fill, var(--purple));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--purple) 22%, transparent), 0 3px 9px #0003;
+  cursor: grab;
+}
+.intake-shell input[type="range"]:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 4px;
+}
+.intake-shell input[type="range"]:active::-webkit-slider-thumb { cursor: grabbing; }
+.intake-shell input[type="range"]:active::-moz-range-thumb { cursor: grabbing; }
