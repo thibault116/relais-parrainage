@@ -1,4 +1,5 @@
 "use client";
+import { ChatTextbox } from "./chat-textbox";
 import {useMessageArrival} from "./motion-system";
 import {
   useCallback,
@@ -72,7 +73,7 @@ export function Community({
   });
   const container = useRef<HTMLElement>(null),
     thread = useRef<HTMLDivElement>(null),
-    input = useRef<HTMLTextAreaElement>(null);
+    input = useRef<HTMLDivElement>(null);
   const scrollPlan = useRef<{
     bottom?: boolean;
     height?: number;
@@ -291,7 +292,6 @@ export function Community({
       if (thread.current)
         thread.current.scrollTop = thread.current.scrollHeight;
       setDraft("");
-      if (input.current) input.current.style.height = "44px";
       setSelected([]);
       setPicker(false);
       setArchived(false);
@@ -631,16 +631,12 @@ export function Community({
               <AtSign size={18} />
             </button>
           <div className="chat-input-pill">
-          <textarea
-            ref={input}
+          <ChatTextbox
+            editorRef={input}
             id="community-draft"
             value={draft}
-            onChange={(e) => {
-              const value = e.target.value;
+            onChange={(value) => {
               setDraft(value);
-              e.target.style.height = "44px";
-              e.target.style.height =
-                Math.min(88, e.target.scrollHeight) + "px";
               if (!editing) {
                 const match = value.match(/(?:^|\s)@([^@\n]{0,40})$/);
                 if (
@@ -657,14 +653,8 @@ export function Community({
                 }
               }
             }}
-            maxLength={3000}
-            rows={1}
-            autoCapitalize="sentences"
-            autoCorrect="on"
-            enterKeyHint="enter"
-            spellCheck
+            label={t("Ton message")}
             placeholder={t("Écrire un message…")}
-            required
           />
 <button
               type="submit"

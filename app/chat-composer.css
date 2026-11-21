@@ -1,4 +1,4 @@
-/* Shared writing surface; native textarea editing and all existing send handlers stay intact. */
+/* Shared writing surface; plain-text editing and all existing send handlers stay intact. */
 .mobile-app :is(.mobile-dm-compose,.community-composer,.service-chat-composer){background:transparent!important;border:0!important;box-shadow:none!important;align-items:end!important;gap:8px!important;padding:6px 0!important;border-radius:0!important}
 .mobile-app .mobile-dm-compose{grid-template-columns:40px minmax(0,1fr)!important}
 .mobile-app .community-composer{display:flex!important;flex-direction:column;align-items:stretch!important}
@@ -22,4 +22,11 @@
  .mobile-app.mobile-conversation-open .mobile-back{display:flex!important;flex-shrink:0;align-items:center;min-height:44px;margin:0;padding:8px 4px}
  .mobile-app.mobile-conversation-open .community-intro{display:flex!important;flex-shrink:0}
  .mobile-app.mobile-conversation-open :is(.mobile-dm-compose,.community-composer,.service-chat-composer){padding-bottom:4px!important}
+}
+
+/* Plain-text editing avoids the form assistant used by iOS textareas. */
+.mobile-app .chat-input-pill .chat-textbox{flex:1;min-width:0;width:100%;min-height:40px;max-height:88px;box-sizing:border-box;padding:9px 10px;margin:0;border:0;outline:0;background:transparent;color:var(--ink);font:inherit;font-size:16px;line-height:22px;white-space:pre-wrap;overflow-wrap:anywhere;overflow-y:auto;-webkit-user-select:text;user-select:text;touch-action:manipulation}
+.chat-textbox:empty::before{content:attr(data-placeholder);color:var(--muted);opacity:.85;pointer-events:none}
+@media(max-width:900px){
+ body.owner-chat-keyboard .mobile-app.mobile-conversation-open :is(.mobile-dm-compose,.community-composer,.service-chat-composer),body.private-keyboard .mobile-app.mobile-conversation-open :is(.mobile-dm-compose,.service-chat-composer),body.community-keyboard .mobile-app.mobile-conversation-open .community-composer{padding-bottom:0!important;margin-bottom:0!important}
 }

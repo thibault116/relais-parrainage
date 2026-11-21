@@ -1,10 +1,10 @@
 export const memberRelease = {
-  id: "2026-11-21-messagerie-mobile",
+  id: "2026-11-21-saisie-conversations",
   discordAudience: "public",
-  title: "Des conversations plus confortables",
+  title: "Plus de place pour vos conversations",
   notes: [
-    "Amélioration : sur téléphone, la bannière Mentora s’efface dans une conversation pour laisser la place à son en-tête et aux messages.",
-    "Correction : le champ de saisie de la communauté est plus compact et mieux aligné pendant l’écriture.",
+    "Amélioration : une zone d’écriture dédiée au chat remplace le champ de formulaire dans la communauté.",
+    "Correction : les espacements sous la saisie sont réduits quand le clavier est ouvert sur téléphone.",
   ],
   guideUrl: "/?mobile=community#community",
   guideLabel: "Ouvrir la communauté",

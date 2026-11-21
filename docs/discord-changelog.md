@@ -24,7 +24,7 @@ L’analyse est limitée à 30 commits par comparaison pour tenir dans le temps 
 ## Sécurité et doublons
 
 - La variable serveur **DISCORD_CHANGELOG_WEBHOOK_URL** contient le webhook sensible. Elle n’est jamais envoyée au navigateur et seul le domaine Discord autorisé peut être utilisé.
-- Chaque annonce contient `@everyone` dans le texte du message. `allowed_mentions` autorise cette mention et interdit les mentions directes d’utilisateurs ou de rôles. L’embed utilise la bannière Mentora et une bordure violette.
+- Chaque mise à jour mentionne uniquement le rôle de notification « Mises à jour » choisi par les membres. Les annonces communautaires mentionnent uniquement le rôle « Annonces ». `allowed_mentions` interdit `@everyone`, `@here` et les mentions directes d’utilisateurs. L’embed utilise la bannière Mentora et une bordure violette.
 - Le commit cible est unique. Un verrou en base protège les publications concurrentes et le suivi ne progresse qu’après confirmation de Discord.
 - En cas de timeout, d’arrêt du serveur ou de réponse ambiguë, l’envoi reste bloqué pour éviter un doublon. Si le message existe dans le salon, son identifiant peut être fourni pour vérifier sa référence et l’ajouter à l’historique sans republier.
 - Si aucun message ne peut être retrouvé après un envoi incertain, l’état doit être examiné avant toute remise en file. Le système ne retente pas aveuglément un envoi ambigu.

@@ -9,7 +9,7 @@ export function useMobileChatViewport(ref:RefObject<HTMLElement|null>,enabled:bo
   const root=document.documentElement;
   const measure=()=>{
    frame=0;const vv=window.visualViewport,height=vv?.height||window.innerHeight;largest=Math.max(largest,height);
-   const focused=app.contains(document.activeElement)&&document.activeElement?.matches("textarea,input:not([type=file])");
+   const focused=app.contains(document.activeElement)&&document.activeElement?.matches("textarea,input:not([type=file]),[contenteditable=true],[contenteditable=plaintext-only]");
    const keyboard=!!focused&&(largest-height>100||window.innerHeight-height>100);
    document.body.classList.toggle("owner-chat-keyboard",keyboard);
    const top=vv?.offsetTop||0;

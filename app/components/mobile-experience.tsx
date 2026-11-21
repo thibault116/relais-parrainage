@@ -1,4 +1,5 @@
 "use client";
+import { ChatTextbox } from "./chat-textbox";
 import {useScreenMotion,useNavigationIndicator,useMessageArrival} from "./motion-system";
 import {
   createContext,
@@ -1243,8 +1244,6 @@ function PrivateMessages({
       } else
         await mobileApi("/api/messages", { action: "send", id: chatId, body });
       setBody("");
-      const field = dmContainer.current?.querySelector("textarea");
-      if (field) field.style.height = "44px";
       setFile(null);
       archived.current = false;
       await refresh();
@@ -1572,22 +1571,11 @@ function PrivateMessages({
                 />
               </label>
               <div className="chat-input-pill">
-              <textarea
-                aria-label="Écrire un message"
+              <ChatTextbox
+                label="Écrire un message"
                 placeholder="Écrire un message…"
-                rows={1}
-                autoCapitalize="sentences"
-                autoCorrect="on"
-                enterKeyHint="enter"
-                spellCheck
-                maxLength={3000}
                 value={body}
-                onChange={(e) => {
-                  setBody(e.target.value);
-                  e.target.style.height = "44px";
-                  e.target.style.height =
-                    Math.min(88, e.target.scrollHeight) + "px";
-                }}
+                onChange={setBody}
               />
               <button
                 className="mobile-send"

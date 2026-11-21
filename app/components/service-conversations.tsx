@@ -1,4 +1,5 @@
 "use client";
+import { ChatTextbox } from "./chat-textbox";
 import {useMessageArrival} from "./motion-system";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {useMobileChatViewport} from "./use-mobile-chat-viewport";
@@ -280,22 +281,15 @@ export function ServiceConversation({
           key.current ||= crypto.randomUUID();
           if (await act({ action: "send", id, role, body, key: key.current })) {
             setBody("");
-            const field=container.current?.querySelector("textarea");if(field)field.style.height="44px";
             key.current = null;
           }
         }}
       >
-        <div className="chat-input-pill"><textarea
-          rows={1}
-          autoCapitalize="sentences"
-          autoCorrect="on"
-          enterKeyHint="enter"
-          spellCheck
-          aria-label="Écrire un message sur la prestation"
+        <div className="chat-input-pill"><ChatTextbox
+          label="Écrire un message sur la prestation"
           placeholder="Écrire un message…"
           value={body}
-          maxLength={3000}
-          onChange={(e) => {setBody(e.target.value);key.current=null;e.target.style.height="44px";e.target.style.height=Math.min(88,e.target.scrollHeight)+"px";}}
+          onChange={(value) => {setBody(value);key.current=null;}}
         />
         <button
           className="commerce-icon"
