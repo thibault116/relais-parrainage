@@ -23,6 +23,7 @@ import "./public-home.css";
 import "./motion.css";
 import "./discovery.css";
 import "./service-detail.css";
+import "./chat-composer.css";
 import { MotionProvider } from "./components/motion-system";
 import { SuggestionWidget } from "./components/suggestions";
 import { ReleaseNotes } from "./components/release-notes";

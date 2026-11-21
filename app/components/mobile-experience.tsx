@@ -29,7 +29,8 @@ import {
   CircleHelp,
   Send,
   MoreHorizontal,
-  ImagePlus,
+  Image,
+  ArrowUp,
   Pin,
   ShieldBan,
   Flag,
@@ -512,6 +513,7 @@ export function MobileExperience({
   );
   const legacyMode = !!routes[screen];
   const Content = desktopScreen || legacyMode ? "div" : "main";
+  const conversationOpen = (screen === "messages" && !!chat) || (screen === "community" && channel !== null);
   const selected = ["home","marketplace","community","messages"].includes(screen) ? screen : "";
   const motionContent=useRef<HTMLDivElement>(null),motionDock=useRef<HTMLElement>(null);
   useScreenMotion(motionContent,`${screen}:${profileTab}:${typeof window!=="undefined"?window.location.search:""}`,screen==="messages"||screen==="community");
@@ -521,7 +523,7 @@ export function MobileExperience({
       value={{ ids: bookmarks.map((p) => p.id), refresh: () => void load() }}
     >
       <div
-        className={`mobile-app owner-mobile-preview mobile-scroll-header ${desktopScreen ? "desktop-experience" : ""} ${screen === "community" && channel !== null ? "mobile-chat-view" : ""}`}
+        className={`mobile-app owner-mobile-preview mobile-scroll-header ${desktopScreen ? "desktop-experience" : ""} ${conversationOpen ? "mobile-conversation-open" : ""} ${screen === "community" && channel !== null ? "mobile-chat-view" : ""}`}
       >
         {toast && (
           <aside className="in-app-message" role="status">
@@ -544,7 +546,7 @@ export function MobileExperience({
             </button>
           </aside>
         )}
-        {!desktopScreen && <header className="mobile-app-header">
+        {!desktopScreen && !conversationOpen && <header className="mobile-app-header">
           <button
             className="mobile-app-brand"
             onClick={() => go("home")}
@@ -1242,7 +1244,7 @@ function PrivateMessages({
         await mobileApi("/api/messages", { action: "send", id: chatId, body });
       setBody("");
       const field = dmContainer.current?.querySelector("textarea");
-      if (field) field.style.height = "40px";
+      if (field) field.style.height = "44px";
       setFile(null);
       archived.current = false;
       await refresh();
@@ -1554,10 +1556,12 @@ function PrivateMessages({
                   {file.name} ×
                 </button>
               )}
-              <label className="mobile-icon" aria-label="Joindre une photo">
-                <ImagePlus />
+              <label className="mobile-icon chat-photo-button" role="button" tabIndex={0} aria-label="Envoyer une photo" title="Envoyer une photo" onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();e.currentTarget.querySelector<HTMLInputElement>("input")?.click();}}}>
+                <Image size={22} />
                 <input
                   type="file"
+                  tabIndex={-1}
+                  aria-hidden="true"
                   accept="image/jpeg,image/png,image/webp,image/gif"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
@@ -1567,15 +1571,20 @@ function PrivateMessages({
                   }}
                 />
               </label>
+              <div className="chat-input-pill">
               <textarea
                 aria-label="Écrire un message"
                 placeholder="Écrire un message…"
                 rows={1}
+                autoCapitalize="sentences"
+                autoCorrect="on"
+                enterKeyHint="enter"
+                spellCheck
                 maxLength={3000}
                 value={body}
                 onChange={(e) => {
                   setBody(e.target.value);
-                  e.target.style.height = "40px";
+                  e.target.style.height = "44px";
                   e.target.style.height =
                     Math.min(88, e.target.scrollHeight) + "px";
                 }}
@@ -1586,8 +1595,9 @@ function PrivateMessages({
                 disabled={busy || (!body.trim() && !file)}
                 aria-label="Envoyer le message"
               >
-                <Send size={19} />
+                <ArrowUp size={20} />
               </button>
+              </div>
             </form>
           ) : (
             <p className="mobile-subtitle">

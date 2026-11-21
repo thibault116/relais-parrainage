@@ -1,12 +1,12 @@
 export const memberRelease = {
-  id: "2026-11-20-objectifs-notifications",
+  id: "2026-11-21-messagerie-mobile",
   discordAudience: "public",
-  title: "Des réglages plus confortables",
+  title: "Des conversations plus confortables",
   notes: [
-    "Amélioration : le curseur de ton objectif financier est plus grand et plus facile à utiliser, côté débutant comme côté parrain.",
-    "Correction : les mentions Discord des mises à jour respectent désormais ton choix de rôle de notification.",
+    "Amélioration : sur téléphone, la bannière Mentora s’efface dans une conversation pour laisser la place à son en-tête et aux messages.",
+    "Correction : le champ de saisie de la communauté est plus compact et mieux aligné pendant l’écriture.",
   ],
-  guideUrl: "/?mobile=edit&profileTab=edit#profile",
-  guideLabel: "Ouvrir mon profil",
+  guideUrl: "/?mobile=community#community",
+  guideLabel: "Ouvrir la communauté",
 };
 export const retiredMemberReleaseIds = [] as string[];

@@ -9,7 +9,7 @@ import {
 } from "react";
 import {
   AtSign,
-  Send,
+  ArrowUp,
   Trash2,
   RefreshCw,
   ShieldCheck,
@@ -291,7 +291,7 @@ export function Community({
       if (thread.current)
         thread.current.scrollTop = thread.current.scrollHeight;
       setDraft("");
-      if (input.current) input.current.style.height = "40px";
+      if (input.current) input.current.style.height = "44px";
       setSelected([]);
       setPicker(false);
       setArchived(false);
@@ -619,6 +619,18 @@ export function Community({
             </div>
           )}
           <label htmlFor="community-draft">{t("Ton message")}</label>
+          <div className="chat-compose-line">
+<button
+              type="button"
+              className="btn secondary chat-mention-button"
+              disabled={!!editing}
+              aria-label={t("Mentionner")}
+              aria-expanded={picker}
+              onClick={() => setPicker(!picker)}
+            >
+              <AtSign size={18} />
+            </button>
+          <div className="chat-input-pill">
           <textarea
             ref={input}
             id="community-draft"
@@ -626,7 +638,7 @@ export function Community({
             onChange={(e) => {
               const value = e.target.value;
               setDraft(value);
-              e.target.style.height = "40px";
+              e.target.style.height = "44px";
               e.target.style.height =
                 Math.min(88, e.target.scrollHeight) + "px";
               if (!editing) {
@@ -647,9 +659,23 @@ export function Community({
             }}
             maxLength={3000}
             rows={1}
+            autoCapitalize="sentences"
+            autoCorrect="on"
+            enterKeyHint="enter"
+            spellCheck
             placeholder={t("Écrire un message…")}
             required
           />
+<button
+              type="submit"
+              onPointerDown={(e) => e.preventDefault()}
+              className="btn chat-send-button"
+              aria-label={t(editing ? "Enregistrer" : "Envoyer")}
+              disabled={busy || !draft.trim()}
+            >
+              <ArrowUp size={20} />
+            </button>
+          </div></div>
           {!!selected.length && (
             <div className="community-mentions">
               {selected.map((member) => (
@@ -707,28 +733,7 @@ export function Community({
               {!members.length && <p>{t("Aucun membre trouvé.")}</p>}
             </div>
           )}
-          <div className="community-compose-actions">
-            <button
-              type="button"
-              className="btn secondary"
-              disabled={!!editing}
-              aria-label={t("Mentionner")}
-              aria-expanded={picker}
-              onClick={() => setPicker(!picker)}
-            >
-              <AtSign size={18} />
-            </button>
 
-            <button
-              type="submit"
-              onPointerDown={(e) => e.preventDefault()}
-              className="btn"
-              aria-label={t(editing ? "Enregistrer" : "Envoyer")}
-              disabled={busy || !draft.trim()}
-            >
-              <Send size={18} />
-            </button>
-          </div>
         </form>
       )}
     </section>
