@@ -1,3 +1,4 @@
+import {withMoneyMode} from "../lib/monetization/mode";
 import {migrateDiscordCommunity} from "../lib/discord-community/store";
 import {migrateDiscordTickets} from "../lib/discord-tickets/store";
 import { migratePayoutTests } from "../lib/monetization/payout-tests";
@@ -43,7 +44,8 @@ await migrateProfileTiming();
 await migratePlatformSettings();
 await migrateCrm();
 await migrateMobileSpace();
-await migrateMonetization();
+await withMoneyMode("test",()=>migrateMonetization());
+await withMoneyMode("live",()=>migrateMonetization());
 await migrateLegal();
 await migrateChangelog();
 await migrateDiscordTickets();
