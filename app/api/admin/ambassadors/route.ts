@@ -38,11 +38,11 @@ export async function POST(r: Request) {
         if(d.acceptedTermsVersion!==salesVersion())throw Error("Accepte les conditions de paiement et de confidentialité.");
         if(!process.env.STRIPE_WEBHOOK_SECRET)throw Error("Le webhook de test doit être configuré avant cet essai.");
         const offer=z.string().parse(d.offer);if(!eligiblePack(offer))throw Error("Pack non éligible.");
-        return json({url:await checkout(u.id,offer,z.string().uuid().parse(d.key),"credits",salesVersion(),stripeTest,d.code?z.string().max(24).parse(d.code):undefined)});
+        return json({url:await checkout(u.id,offer,z.string().uuid().parse(d.key),"ambassador",salesVersion(),stripeTest,d.code?z.string().max(24).parse(d.code):undefined)});
       }
       if(action==="connect"){
         const a=await createConnectAccount(u,z.enum(["FR","BE","DE","ES","IT","NL","LU","PT","IE","AT","FI"]).parse(d.country));
-        const url=appOrigin()+"/?mobile=ambassador#profile";
+        const url=appOrigin()+"/?mobile=ambassador&ambassadorTab=mine#profile";
         const link=await stripeTest().accountLinks.create({account:a.id,type:"account_onboarding",return_url:url,refresh_url:url});
         return json({url:link.url});
       }

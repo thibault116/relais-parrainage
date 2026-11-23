@@ -8,6 +8,8 @@ const cwd=process.cwd(),dir=mkdtempSync(join(tmpdir(),"mentora-ambassadors-"));p
 const {query,database}=await import("../lib/db");
 const money=await import("../lib/monetization/store");
 const moneyDb=await import("../lib/monetization/db");
+const {returnUrl}=await import("../lib/monetization/stripe");
+assert.match(returnUrl("ambassador"),/mobile=ambassador&ambassadorTab=checkout/);
 const {withMoneyMode}=await import("../lib/monetization/mode");
 const {migrateAmbassadors}=await import("../lib/ambassadors/schema");
 const service=await import("../lib/ambassadors/service");

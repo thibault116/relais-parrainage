@@ -27,7 +27,9 @@ export function appOrigin() {
     throw Error("Origine invalide");
   return LEGACY_SITE_ORIGINS.some(origin => origin === url.origin) ? SITE_ORIGIN : url.origin;
 }
-export const returnUrl = (page: "admin" | "billing" | "credits" = "admin") =>
-  page === "admin"
+export const returnUrl = (page: "admin" | "billing" | "credits" | "ambassador" = "admin") =>
+  page === "ambassador"
+    ? `${appOrigin()}/?mobile=ambassador&ambassadorTab=checkout#profile`
+    : page === "admin"
     ? `${appOrigin()}/?mobile=billing#profile`
     : `${appOrigin()}/?mobile=${page}#profile`;

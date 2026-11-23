@@ -35,7 +35,7 @@ export async function checkout(
   owner: string,
   code: string,
   key: string,
-  destination: "admin" | "billing" | "credits" = "admin",
+  destination: "admin" | "billing" | "credits" | "ambassador" = "admin",
   acceptedTermsVersion?: string,
   provider:()=>Stripe=stripeBilling,
   promotionCode?: string,
