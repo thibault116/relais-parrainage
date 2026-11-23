@@ -1,3 +1,4 @@
+import { migrateAmbassadors } from "../ambassadors/schema";
 import { query, inTransaction, database } from "./db";
 import { Pool } from "pg";
 import { z } from "zod";
@@ -34,6 +35,7 @@ export async function migrateMonetization() {
   if(database() instanceof Pool)await query("ALTER TABLE money_bookings ADD COLUMN IF NOT EXISTS test_booking INTEGER NOT NULL DEFAULT 0");
   else if(!(await query("PRAGMA table_info(money_bookings)")).some(c=>c.name==="test_booking"))await query("ALTER TABLE money_bookings ADD COLUMN test_booking INTEGER NOT NULL DEFAULT 0");
   await migrateConnect();
+  await migrateAmbassadors();
 }
 export async function lock(q: typeof query, owner: string) {
   await q(

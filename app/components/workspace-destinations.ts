@@ -32,6 +32,7 @@ export function workspaceGroups(mentor: boolean, moderator: boolean, owner: bool
       items: [
         {label:"Demandes",icon:Inbox,screen:"requests"},
         {label:"Crédits",icon:Layers,screen:"credits"},
+        ...(owner?[{label:"Ambassadeur",icon:TrendingUp,screen:"ambassador",keywords:"code promo commissions privé test"}]:[]),
         {label:"Gérer mon profil",icon:UserRound,screen:"edit"},
         {label:"Guides",icon:BookOpen,screen:"guides",keywords:"ressources gratuites achat revente matériel photos annonces sourcing"},
         ...(mentor?[{label:"Mes prestations",icon:Layers,screen:"services"},{label:"Rémunération",icon:TrendingUp,screen:"payouts"}]:[]),
@@ -63,6 +64,7 @@ export function workspaceGroups(mentor: boolean, moderator: boolean, owner: bool
       ["changelog", "Annonces Discord", MessageCircle],
       ["tickets", "Tickets Discord", Inbox],
       ["withdrawals", "Retraits", TrendingUp],
+      ["ambassadors", "Ambassadeurs", Users],
     );
     groups.push({ title: "Administration", items: tabs.map(([adminTab, label, icon]) => ({ label, icon, screen: "admin", adminTab })) });
   }
@@ -102,7 +104,7 @@ export const workspaceRoutes: Record<string, [string, string?]> = {
 
 export const desktopExperienceScreens = new Set([
   "marketplace", "profile", "saved", "notifications", "notes", "messages",
-  "community", "guides", "legalGuide", "joinOffers", "billing", "credits", "services", "payouts",
+  "ambassador", "community", "guides", "legalGuide", "joinOffers", "billing", "credits", "services", "payouts",
 ]);
 
 // Preserve links shared before the marketplace had its own destination.

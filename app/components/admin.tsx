@@ -1,4 +1,5 @@
 "use client";
+import { Ambassadors } from "./ambassadors";
 import { t as translateUi, locale } from "@/app/components/language";
 import { AdminWithdrawals } from "./admin-withdrawals";
 import {AdminDiscordTickets} from "./admin-discord-tickets";
@@ -73,6 +74,7 @@ export function AdminDashboard({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [page, setPage] = useState(0);
+  const [ambassadorMember,setAmbassadorMember]=useState("");
   const load = useCallback(async () => {
     setError("");
     try {
@@ -121,6 +123,7 @@ export function AdminDashboard({
                   extension: "Extension Vinted",
                   changelog: "Annonces Discord",
                   withdrawals: "Retraits",
+                  ambassadors: "Ambassadeurs",
                 }[tab] || "Administration"
               : "Administration",
           )}
@@ -142,6 +145,7 @@ export function AdminDashboard({
             ...(crmOwner
               ? [
                   ["withdrawals", "Retraits"],
+                  ["ambassadors", "Ambassadeurs"],
                   ["changelog", "Annonces Discord"],
                   ["crm", "Mon CRM Vinted"],
                   ["extension", "Extension Vinted"],
@@ -175,7 +179,7 @@ export function AdminDashboard({
           </p>
         ),
       )}
-      {tab === "tickets" && crmOwner ? (<AdminDiscordTickets />) : tab === "withdrawals" && crmOwner ? (
+      {tab === "ambassadors" && crmOwner ? <Ambassadors initialMember={ambassadorMember}/> : tab === "tickets" && crmOwner ? (<AdminDiscordTickets />) : tab === "withdrawals" && crmOwner ? (
         <AdminWithdrawals />
       ) : tab === "changelog" && crmOwner ? (
         <AdminChangelog />
@@ -299,7 +303,7 @@ export function AdminDashboard({
                   <tbody>
                     {data.accounts.map((a) => (
                       <tr key={a.id}>
-                        <td>{a.name}</td>
+                        <td>{a.name}{crmOwner&&<button onClick={()=>{setAmbassadorMember(a.id);setTab("ambassadors")}}>Activer le statut Ambassadeur</button>}</td>
                         <td>{a.email}</td>
                         <td>{translateUi(date(a.created_at))}</td>
                         <td>

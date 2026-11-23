@@ -330,7 +330,7 @@ export default function App() {
       const section = params.get("settingsSection") || "general";
       setSettingsSection(["general", "security", "notifications", "verification"].includes(section) ? section : "general");
       const admin = params.get("adminTab");
-      if (admin && ["overview", "accounts", "verification", "reports", "ratings", "suggestions", "emails", "settings", "crm", "extension", "changelog", "withdrawals", "tickets"].includes(admin))
+      if (admin && ["overview", "accounts", "verification", "reports", "ratings", "suggestions", "emails", "settings", "crm", "extension", "changelog", "withdrawals", "tickets", "ambassadors"].includes(admin))
         setAdminTab(admin);
       else if (desktop && hash === "moderation") setAdminTab("overview");
     };

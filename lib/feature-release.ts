@@ -1,6 +1,7 @@
 // New features are beta by default. Promote to stable after validation.
 // Existing functionality remains available; never use this to bypass role/admin checks.
 export const featureReleases: Record<string, "beta" | "stable"> = {
+  ambassadors: "beta",
   community: "stable",
   guides: "stable",
   commerce: "stable",

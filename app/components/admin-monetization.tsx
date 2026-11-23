@@ -258,6 +258,7 @@ export function AdminMonetization({
             <strong>{data.balance.toLocaleString("fr-FR")} crédits</strong>
             <span>{data.mode==="live"?"Solde réel":"Solde disponible"}</span>
           </article>
+          {data.owner&&<article className="commerce-card admin-credit-control"><h2>Codes ambassadeurs · essai privé</h2><a className="commerce-row" href="/?mobile=ambassador&ambassadorTab=checkout#profile">Tester un achat avec un code dans Stripe test</a></article>}
           {data.owner&&<article className="commerce-card admin-credit-control"><h2>Crédits pour tes essais privés</h2><p>10 000 crédits · 1,00 € par achat</p><small>Paiement réel, réservé à ton compte administrateur.</small><button className="commerce-primary" onClick={()=>{setPanel(adminCreditOffer.id);setAccepted(false);setError("");dialog.current?.showModal();}}>Acheter 10 000 crédits · 1,00 €</button></article>}
           {data.owner&&<nav className="credit-seasons" aria-label="Grille tarifaire privée">
             {creditSeasons.map((s) => (

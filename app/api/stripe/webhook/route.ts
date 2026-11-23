@@ -1,3 +1,4 @@
+import {ambassadorPayoutEvent} from "@/lib/ambassadors/withdrawals";
 import {stripeBilling} from "@/lib/monetization/stripe";
 import {withMoneyMode,type MoneyMode} from "@/lib/monetization/mode";
 import {handleEvent} from "@/lib/monetization/payments";
@@ -12,7 +13,7 @@ export async function POST(request:Request){
  let event;try{event=withMoneyMode(candidate.mode,()=>stripeBilling().webhooks.constructEvent(raw,request.headers.get("stripe-signature")||"",candidate.secret));}catch{continue;}
  if(!!event.livemode!==(candidate.mode==="live"))return new Response("Mode Stripe invalide",{status:400});
  if(candidate.mode==="live"&&event.account)return new Response("Connect désactivé",{status:400});
- try{await withMoneyMode(candidate.mode,()=>event.account?handleConnectEvent(event):handleEvent(event));return Response.json({received:true});}catch{return new Response("Traitement différé, réessayer",{status:500});}
+ try{await withMoneyMode(candidate.mode,async()=>{if(event.account){await ambassadorPayoutEvent(event);await handleConnectEvent(event);}else await handleEvent(event);});return Response.json({received:true});}catch{return new Response("Traitement différé, réessayer",{status:500});}
  }
  return new Response("Signature invalide",{status:400});
 }

@@ -1,4 +1,5 @@
 "use client";
+import { Ambassadors } from "./ambassadors";
 import { ChatTextbox } from "./chat-textbox";
 import {useScreenMotion,useNavigationIndicator,useMessageArrival} from "./motion-system";
 import {
@@ -609,6 +610,7 @@ export function MobileExperience({
               )}
             </>
           )}
+          {screen === "ambassador" && administrator && <><button className="mobile-back" onClick={back}><ChevronLeft size={18}/>Retour</button><Ambassadors previewOnly/></>}
           {screen === "joinOffers" && (
             <>
               <button className="mobile-back" onClick={back}>

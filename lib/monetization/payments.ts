@@ -1,3 +1,5 @@
+import {ambassadorTransferEvent} from "../ambassadors/withdrawals";
+import {promoQuote,recordAttribution,validatePromoPayment,recordCommission,adjustCommission} from "../ambassadors/service";
 import {hasCurrentTestCredits,repricedPayment} from "./test-wallet";
 import {billingLive,moneyMode} from "./mode";
 import Stripe from "stripe";
@@ -36,6 +38,7 @@ export async function checkout(
   destination: "admin" | "billing" | "credits" = "admin",
   acceptedTermsVersion?: string,
   provider:()=>Stripe=stripeBilling,
+  promotionCode?: string,
 ) {
   const [accountUser]=await query('SELECT id,email FROM "user" WHERE id=$1',[owner]);
   const actor=await commerceActor(accountUser?{id:String(accountUser.id),email:String(accountUser.email)}:null);
@@ -54,6 +57,8 @@ export async function checkout(
     const prior = (await q("SELECT * FROM money_orders WHERE id=$1", [id]))[0];
     if (prior) {
       if (prior.offer !== code) throw Error("Requête déjà utilisée");
+      const [applied] = await q("SELECT code FROM money_ambassador_orders WHERE order_id=$1", [id]);
+      if (String(applied?.code || "") !== (promotionCode?.trim().toUpperCase() || "")) throw Error("Requête déjà utilisée avec un autre code promotionnel.");
       if (acceptedTermsVersion) {
         const [acceptance] = await q("SELECT version FROM legal_checkout_acceptances WHERE order_id=$1", [id]);
         if (acceptance?.version !== acceptedTermsVersion)
@@ -61,11 +66,12 @@ export async function checkout(
       }
       return (await s.checkout.sessions.retrieve(String(prior.session_id))).url;
     }
+    const promotion = promotionCode ? await promoQuote(owner,promotionCode,code,q) : null;
     if (acceptedTermsVersion) {
       await q(
         `INSERT INTO legal_checkout_acceptances(order_id,owner_id,version,offer,amount_cents,credits,period,accepted_at)
          VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
-        [id, owner, acceptedTermsVersion, code, item.cents, item.credits, subscription?.period ?? null, new Date().toISOString()],
+        [id, owner, acceptedTermsVersion, code, promotion?.paidCents ?? item.cents, item.credits, subscription?.period ?? null, new Date().toISOString()],
       );
     }
     if (subscription) {
@@ -108,6 +114,7 @@ export async function checkout(
         branding_settings:{display_name:"Mentora"},
         integration_identifier: "mentora_private_abcdwxyz",
         client_reference_id: id,
+        ...(promotion ? {discounts:[{promotion_code:promotion.promotionId}]} : {}),
         expires_at: Math.floor(Date.now() / 1000) + 1800,
         line_items: [
           {
@@ -135,6 +142,7 @@ export async function checkout(
       "INSERT INTO money_orders(id,owner_id,offer,session_id,created_at) VALUES($1,$2,$3,$4,$5)",
       [id, owner, code, session.id, new Date().toISOString()],
     );
+    if(promotion) await recordAttribution(q,id,owner,promotion);
     return session.url;
   });
 }
@@ -243,7 +251,7 @@ export async function recordRefund(pi: string, amount: number) {
       [refunded, reversed, String(p.id)],
     );
     return true;
-  });
+  }).then(async result=>{if(result)await adjustCommission(pi,amount);return result;});
 }
 export async function reconcileRefund(pi: string,provider:()=>Stripe=stripeBilling) {
   if (!pi) return;
@@ -251,8 +259,19 @@ export async function reconcileRefund(pi: string,provider:()=>Stripe=stripeBilli
     expand: ["latest_charge"],
   });
   const charge = intent.latest_charge;
-  if (charge && typeof charge !== "string" && charge.amount_refunded)
-    await recordRefund(pi, charge.amount_refunded);
+  if (charge && typeof charge !== "string") {
+    if(charge.amount_refunded)await recordRefund(pi, charge.amount_refunded);
+    if(!billingLive()&&(await query("SELECT payment_id FROM money_ambassador_commissions WHERE payment_intent=$1",[pi])).length){
+      let dispute="";
+      if(charge.disputed){
+        const list=await provider().disputes.list({charge:charge.id,limit:100});
+        if(!list.data.length)throw Error("Contestation à rapprocher avant de valider la commission.");
+        dispute=list.data.find(d=>d.status!=="won")?.status||"won";
+      }
+      await adjustCommission(pi,charge.amount_refunded||0,dispute);
+    }
+  }
+
 }
 export async function handleEvent(event: Stripe.Event,provider:()=>Stripe=stripeBilling) {
   if (!!event.livemode!==billingLive()) throw Error("Événement réel refusé");
@@ -261,6 +280,7 @@ export async function handleEvent(event: Stripe.Event,provider:()=>Stripe=stripe
   )
     return;
   const s = provider();
+  if(!billingLive())await ambassadorTransferEvent(event,provider);
   if (
     [
       "checkout.session.completed",
@@ -287,12 +307,13 @@ export async function handleEvent(event: Stripe.Event,provider:()=>Stripe=stripe
           await s.subscriptions.retrieve(objectId(session.subscription)),
         );
       if (session.mode === "payment" && session.payment_status === "paid") {
+        const promotion = await validatePromoPayment(String(order.id),session,provider);
         const item = checkoutOffer(String(order.offer));
         if (
           !item ||
           isSubscriptionOffer(item) ||
           session.currency !== "eur" ||
-          session.amount_total !== item.cents
+          session.amount_total !== (promotion ? Number(promotion.paid_cents) : item.cents)
         )
           throw Error("Montant inattendu");
         const invoice = session.invoice
@@ -302,10 +323,11 @@ export async function handleEvent(event: Stripe.Event,provider:()=>Stripe=stripe
           owner,
           session.id,
           objectId(session.payment_intent),
-          item.cents,
-          item.credits,
+          promotion ? Number(promotion.paid_cents) : item.cents,
+          promotion ? Number(promotion.credits) : item.credits,
           invoice?.hosted_invoice_url ?? null,
         );
+        if(promotion) await recordCommission(String(order.id),session.id,objectId(session.payment_intent),event.created);
         await reconcileRefund(objectId(session.payment_intent),provider);
       }
     }
@@ -369,6 +391,10 @@ export async function handleEvent(event: Stripe.Event,provider:()=>Stripe=stripe
     const sub = await s.subscriptions.retrieve(objectId(event.data.object));
     const owner = await ownerOf(objectId(sub.customer));
     if (owner) await syncSubscription(owner, sub);
+  } else if (event.type.startsWith("charge.dispute.") && !billingLive()) {
+    const dispute = await s.disputes.retrieve(objectId(event.data.object));
+    if(dispute.livemode)throw Error("Contestation réelle refusée");
+    await adjustCommission(objectId(dispute.payment_intent),undefined,dispute.status);
   } else if (event.type === "charge.refunded") {
     const charge = event.data.object as Stripe.Charge;
     const owner = await ownerOf(objectId(charge.customer));
