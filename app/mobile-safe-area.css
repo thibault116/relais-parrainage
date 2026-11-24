@@ -1,19 +1,70 @@
-/* Device-provided insets: no iPhone model detection or fixed status-bar height. */
+/* Normal pages own one shared inset. Fixed surfaces own theirs separately. */
 :root {
   --mentora-safe-top: env(safe-area-inset-top, 0px);
+  --mentora-safe-bottom: env(safe-area-inset-bottom, 0px);
   --mentora-safe-left: env(safe-area-inset-left, 0px);
   --mentora-safe-right: env(safe-area-inset-right, 0px);
+  --mentora-flow-top: var(--mentora-safe-top);
+}
+/* The update banner's measured spacer already includes its top inset. */
+:root:has(.update-banner) { --mentora-flow-top: 0px; }
+body {
+  padding-top: var(--mentora-flow-top);
+  padding-left: var(--mentora-safe-left);
+  padding-right: var(--mentora-safe-right);
+}
+/* Scrolled content must not show through behind the system clock. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: var(--mentora-safe-top);
+  background: var(--paper);
+  pointer-events: none;
+  z-index: 2000;
+}
+.header, .workspace-sidebar {
+  top: calc(var(--update-banner-height, 0px) + var(--announcement-height, 0px) + var(--mentora-flow-top));
+}
+.workspace-sidebar { left: var(--mentora-safe-left); }
+.platform-announcement {
+  top: calc(var(--update-banner-height, 0px) + var(--mentora-flow-top));
+}
+/* This route is in normal flow, so the body already reserves the status bar. */
+body .password-recovery { padding-top: 28px; }
+/* Centered dialogs must fit entirely between the unsafe viewport edges. */
+dialog:not(.service-page-dialog) {
+  max-height: calc(100dvh - 2 * max(16px, var(--mentora-safe-top), var(--mentora-safe-bottom)));
+  max-width: calc(100vw - 2 * max(16px, var(--mentora-safe-left), var(--mentora-safe-right)));
+  overflow-y: auto;
+}
+.service-page-dialog.service-detail-dialog {
+  box-sizing: border-box;
+  padding-top: var(--mentora-safe-top);
+  padding-left: var(--mentora-safe-left);
+  padding-right: var(--mentora-safe-right);
+}
+.service-page-dialog .service-page-navigation { padding-top: 10px; }
+.member-guides.guide-fullscreen {
+  padding-top: calc(12px + var(--mentora-safe-top));
+  padding-left: calc(12px + var(--mentora-safe-left));
+  padding-right: calc(12px + var(--mentora-safe-right));
+}
+.cookie-banner {
+  inset-inline-end: calc(16px + var(--mentora-safe-right));
+  width: min(500px, calc(100% - 32px - var(--mentora-safe-left) - var(--mentora-safe-right)));
+  max-height: calc(100dvh - 32px - var(--mentora-safe-top) - var(--mentora-safe-bottom));
+}
+.in-app-message {
+  left: calc(10px + var(--mentora-safe-left));
+  right: calc(10px + var(--mentora-safe-right));
 }
 @media (max-width: 900px) {
   .mobile-app > .mobile-app-header {
-    --header-gutter: 20px;
-    box-sizing: border-box;
-    padding-top: calc(16px + var(--mentora-safe-top));
-    padding-left: calc(var(--header-gutter) + var(--mentora-safe-left));
-    padding-right: calc(var(--header-gutter) + var(--mentora-safe-right));
+    /* The shared body inset replaces the previous header-only inset. */
+    padding-top: 16px;
+    top: calc(var(--update-banner-height, 0px) + var(--mentora-flow-top));
   }
-  /* Conversations intentionally hide the main header, so their fixed shell
-     owns the inset instead. Keep it inside the visual viewport height. */
   .mobile-app.mobile-conversation-open {
     box-sizing: border-box;
     padding-top: var(--mentora-safe-top) !important;
@@ -23,7 +74,21 @@
   .mobile-app.mobile-conversation-open :is(.mobile-dm-heading, .service-chat > header) {
     padding-top: 6px !important;
   }
+  .modal-backdrop {
+    padding-left: calc(12px + var(--mentora-safe-left));
+    padding-right: calc(12px + var(--mentora-safe-right));
+  }
+  .mobile-app-dock, .workspace-bottom-nav {
+    padding-left: calc(5px + var(--mentora-safe-left));
+    padding-right: calc(5px + var(--mentora-safe-right));
+  }
 }
-@media (max-width: 370px) {
-  .mobile-app > .mobile-app-header { --header-gutter: 12px; }
+.update-banner {
+  padding-top: calc(10px + var(--mentora-safe-top));
+  padding-left: calc(12px + var(--mentora-safe-left));
+  padding-right: calc(12px + var(--mentora-safe-right));
+}
+/* Keep landing-page anchor targets below the sticky navigation and status bar. */
+.mentora-landing section[id], .landing-section, .help-chapters article {
+  scroll-margin-top: calc(100px + var(--mentora-safe-top));
 }

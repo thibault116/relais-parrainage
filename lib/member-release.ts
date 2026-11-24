@@ -1,10 +1,10 @@
 export const memberRelease = {
-  id: "2026-11-24-webapp-zone-systeme",
+  id: "2026-11-24-zones-systeme-toutes-pages",
   discordAudience: "public",
-  title: "Un affichage mieux adapté à ton téléphone",
+  title: "Un affichage protégé sur toutes les pages",
   notes: [
-    "Correction : l’en-tête de la web app respecte l’espace de l’encoche et de la barre d’état sur mobile.",
-    "Amélioration : les marges s’adaptent aussi à l’orientation du téléphone, y compris dans les conversations.",
+    "Correction : l’accueil public et les pages de Mentora réservent l’espace de l’encoche et de la barre d’état.",
+    "Amélioration : les conversations, guides plein écran et fenêtres respectent aussi les marges du téléphone.",
   ],
   guideUrl: "/?mobile=home#workspace",
   guideLabel: "Ouvrir Mentora",
