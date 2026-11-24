@@ -6,23 +6,24 @@ type Item={id:string;name:string;owner_id:string;amount_cents:number;state:strin
 type Data={items:Item[];total:number;policy:{liveEnabled:boolean};page:number};
 type Detail={bank:{holder:string;iban:string;country:string};audit:{id:string;action:string;from_state:string;to_state:string;actor_name:string;created_at:string;reference:string;reason:string}[]};
 const euro=(v:number)=>(v/100).toLocaleString("fr-FR",{style:"currency",currency:"EUR"});
-async function call(body?:unknown,page=0,state=""){const r=await fetch(`/api/admin/withdrawals?page=${page}&state=${state}`,{cache:"no-store",...(body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{})});const d=await r.json();if(!r.ok)throw Error(d.error||"Demandes indisponibles.");return d;}
+async function call(body?:unknown,page=0,state="",mode="live"){const r=await fetch(`/api/admin/withdrawals?page=${page}&state=${state}&mode=${mode}`,{cache:"no-store",...(body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{})});const d=await r.json();if(!r.ok)throw Error(d.error||"Demandes indisponibles.");return d;}
 export function AdminWithdrawals(){
+  const [mode,setMode]=useState("live");
   const [data,setData]=useState<Data|null>(null),[page,setPage]=useState(0),[error,setError]=useState(""),[busy,setBusy]=useState(false);
   const [selected,setSelected]=useState<Item|null>(null),[detail,setDetail]=useState<Detail|null>(null),[action,setAction]=useState<"processing"|"paid"|"refused"|null>(null),[reference,setReference]=useState(""),[reason,setReason]=useState(""),[confirmed,setConfirmed]=useState(false);
   const [filter,setFilter]=useState(""),[banks,setBanks]=useState<Record<string,Detail>>({}),[copied,setCopied]=useState("");
   const dialog=useRef<HTMLDialogElement>(null),key=useRef<string|null>(null);
-  const load=useCallback(async()=>{setData(await call(undefined,page,filter));setBanks({});},[page,filter]);
+  const load=useCallback(async()=>{setData(await call(undefined,page,filter,mode));setBanks({});},[page,filter,mode]);
   useEffect(()=>{void load().catch(e=>setError(e.message));},[load]);
   useEffect(()=>{if(selected&&!dialog.current?.open)dialog.current?.showModal();},[selected]);
   function close(){dialog.current?.close();setSelected(null);setDetail(null);setAction(null);setReference("");setReason("");setConfirmed(false);key.current=null;}
   function open(item:Item,decision:typeof action){setDetail(null);setAction(decision);setSelected(item);setReference(item.reference||"");setReason("");setConfirmed(false);key.current=crypto.randomUUID();setError("");}
-  async function showBank(id:string){setBusy(true);setError("");try{const d=await call({action:"reveal",id});setBanks(v=>({...v,[id]:d}));}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
+  async function showBank(id:string){setBusy(true);setError("");try{const d=await call({action:"reveal",id},0,"",mode);setBanks(v=>({...v,[id]:d}));}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
   async function copy(id:string){try{await navigator.clipboard.writeText(banks[id].bank.iban);setCopied(id);}catch{setError("Copie manuellement l’IBAN affiché.");}}
-  async function reveal(){if(!selected)return;setBusy(true);setError("");try{setDetail(await call({action:"reveal",id:selected.id}));}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
-  async function decide(){if(!selected||!action)return;setBusy(true);setError("");key.current ||= crypto.randomUUID();try{await call({id:selected.id,action,revision:Number(selected.revision),key:key.current,reference,reason,confirmed});close();await load();}catch(e){setError((e as Error).message);await load().catch(()=>{});}finally{setBusy(false);}}
+  async function reveal(){if(!selected)return;setBusy(true);setError("");try{setDetail(await call({action:"reveal",id:selected.id},0,"",mode));}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
+  async function decide(){if(!selected||!action)return;setBusy(true);setError("");key.current ||= crypto.randomUUID();try{await call({id:selected.id,action,revision:Number(selected.revision),key:key.current,reference,reason,confirmed},0,"",mode);close();await load();}catch(e){setError((e as Error).message);await load().catch(()=>{});}finally{setBusy(false);}}
   return <section className="admin-withdrawals" aria-label="Gestion des retraits manuels">
-    <header className="withdrawal-page-heading"><span className="eyebrow">Administration</span><h2>Retraits</h2><p>Gère les demandes de retrait des parrains.</p><button className="commerce-icon" aria-label="Actualiser les retraits" disabled={busy} onClick={()=>void load().catch(e=>setError(e.message))}><RefreshCw size={19}/></button></header>
+    <header className="withdrawal-page-heading"><span className="eyebrow">Administration</span><h2>Retraits</h2><select aria-label="Mode des retraits" disabled={busy||!!selected} value={mode} onChange={e=>{setMode(e.target.value);setBanks({});setData(null);setPage(0)}}><option value="live">Réel</option><option value="test">Simulation</option></select><p>Gère les demandes de retrait des parrains.</p><button className="commerce-icon" aria-label="Actualiser les retraits" disabled={busy} onClick={()=>void load().catch(e=>setError(e.message))}><RefreshCw size={19}/></button></header>
     <aside className="withdrawal-info"><Info/><div><strong>Virement bancaire manuel</strong><p>Effectue le virement depuis ta banque, puis confirme son paiement ici. Aucun virement automatique.</p><small>{data?.policy.liveEnabled?"Mode réel":"Mode test · versements réels désactivés"}</small></div></aside>
     <nav className="withdrawal-filters" aria-label="Statut des retraits">{[["","Toutes"],["pending","En attente"],["processing","En traitement"],["paid","Payés"],["refused","Refusés"]].map(([id,label])=><button key={id} className={filter===id?"selected":""} onClick={()=>{setFilter(id);setPage(0);}}>{label}</button>)}</nav>
     {error&&!selected&&<p role="alert">{error}</p>}{!data&&!error&&<p role="status">Chargement…</p>}

@@ -25,6 +25,7 @@ import "./discovery.css";
 import "./service-detail.css";
 import "./chat-composer.css";
 import "./ambassadors.css";
+import "./wallet.css";
 import { MotionProvider } from "./components/motion-system";
 import { SuggestionWidget } from "./components/suggestions";
 import { ReleaseNotes } from "./components/release-notes";

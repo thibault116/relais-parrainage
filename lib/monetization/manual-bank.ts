@@ -1,3 +1,6 @@
+import {principalAccount} from "./access";
+import {totals as ambassadorTotals} from "../ambassadors/service";
+import {allocateManualCommissions} from "../ambassadors/manual-wallet";
 import {billingLive} from "./mode";
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { isValidIBAN } from "ibantools";
@@ -49,22 +52,27 @@ export async function saveBankDetails(owner:string,input:unknown) {
   });
   return summary(bank);
 }
-export async function manualBankOverview(owner:string) {
+export async function manualBankOverview(owner:string,includeAmbassadors=false) {
   const [saved,earnings,requests,connect,pending]=await Promise.all([
     query<SavedBank>("SELECT * FROM money_bank_details WHERE owner_id=$1",[owner]),query(eligibleSql,[owner]),
     query<RequestRow>("SELECT r.id,r.amount_cents,COALESCE(w.state,r.status) AS status,r.created_at,COALESCE(w.mode,'test') AS mode,w.reason,w.reference FROM money_bank_requests r LEFT JOIN money_bank_workflow w ON w.request_id=r.id WHERE r.owner_id=$1 ORDER BY r.created_at DESC",[owner]),
     query<RequestRow>("SELECT id,amount_cents,status,created_at FROM money_connect_withdrawals WHERE owner_id=$1 ORDER BY created_at DESC",[owner]),
     query("SELECT COALESCE(SUM(b.payout_cents),0) AS amount FROM money_bookings b JOIN money_services s ON s.id=b.service_id WHERE s.owner_id=$1 AND b.owner_id<>s.owner_id AND b.test_booking=0 AND b.status IN ('accepted','completion_pending')",[owner]),
   ]);
+  if(includeAmbassadors&&!await principalAccount(owner))throw Error("Accès refusé.");
+  const commissions=includeAmbassadors?await ambassadorTotals(owner):null;
+  const serviceAvailable=earnings.reduce((n,e)=>n+Number(e.payout_cents),0);
   // Return a masked bank only, never the IBAN or encrypted snapshots.
   return {testMode:!billingLive(),withdrawalsEnabled:!billingLive()||manualPayoutPolicy().liveEnabled,configured:bankStorageConfigured(),bank:saved[0]?summary(decryptBankSnapshot(owner,"saved",saved[0].payload)):null,
-    pendingCents:Number(pending[0]?.amount||0),
-    availableCents:earnings.reduce((n,e)=>n+Number(e.payout_cents),0),
+    pendingCents:Number(pending[0]?.amount||0)+(commissions?.pending||0),
+    servicesCents:serviceAvailable,commissionsCents:commissions?.available||0,
+    availableCents:Math.max(0,serviceAvailable+(commissions?.available||0)),
     history:[...requests.map(r=>({...r,kind:"manual"})),...connect.map(r=>({...r,kind:"stripe"}))].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))),
   };
 }
-export async function requestBankTransfer(owner:string,requestKey:unknown) {
+export async function requestBankTransfer(owner:string,requestKey:unknown,includeAmbassadors=false) {
   if(billingLive()&&!manualPayoutPolicy().liveEnabled)throw Error("Les versements réels sont désactivés.");
+  if(includeAmbassadors&&!await principalAccount(owner))throw Error("Accès refusé.");
   const reference=`${owner}:${uuid.parse(requestKey)}`;
   return moneyTransaction(async q=>{
     await lock(q,owner);
@@ -74,7 +82,9 @@ export async function requestBankTransfer(owner:string,requestKey:unknown) {
     if(!saved)throw Error("Enregistre ton IBAN avant la demande.");
     const bank=decryptBankSnapshot(owner,"saved",saved.payload);
     if(await balance(q,owner)<0)throw Error("Solde de crédits à régulariser.");
-    const earnings=await q(eligibleSql,[owner]),amount=earnings.reduce((n,e)=>n+Number(e.payout_cents),0);
+    const earnings=await q(eligibleSql,[owner]),commission=includeAmbassadors?(await ambassadorTotals(owner,q)).available:0;
+    if(commission<0)throw Error("Solde de commissions à régulariser.");
+    const amount=earnings.reduce((n,e)=>n+Number(e.payout_cents),0)+commission;
     // No platform threshold; a positive amount of one cent is accepted.
     if(!Number.isSafeInteger(amount)||amount<=0)throw Error("Aucun gain disponible.");
     const id=crypto.randomUUID(),now=new Date().toISOString();
@@ -83,6 +93,7 @@ export async function requestBankTransfer(owner:string,requestKey:unknown) {
     await auditBank(q,{requestId:id,owner,actor:owner,action:"created",from:"",to:"pending",revision:0});
     // Shared allocation lock prevents a second manual OR Stripe payout.
     for(const e of earnings)await q("INSERT INTO money_connect_allocations(booking_id,owner_id,withdrawal_id,amount_cents) VALUES($1,$2,$3,$4)",[String(e.id),owner,id,Number(e.payout_cents)]);
+    if(commission>0)await allocateManualCommissions(q,owner,id,commission,now);
     return {id,amount_cents:amount,status:"pending"};
   });
 }

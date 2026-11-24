@@ -1,3 +1,4 @@
+import {totals as ambassadorTotals} from "../ambassadors/service";
 import {createHash} from "node:crypto";
 import {z} from "zod";
 import {query} from "./db";
@@ -47,6 +48,8 @@ export async function decideBankTransfer(actor:Actor,input:unknown) {
     const allowed=d.action==="processing"?row.state==="pending":d.action==="paid"?row.state==="processing":["pending","processing"].includes(row.state);
     if(!allowed)throw Error("Changement de statut impossible.");
     if(row.mode==="live"&&!manualPayoutPolicy().liveEnabled&&d.action!=="refused")throw Error("Les versements réels sont désactivés.");
+    if(d.action==="paid"&&(await q("SELECT request_id FROM money_wallet_commissions WHERE request_id=$1",[d.id])).length&&(await ambassadorTotals(row.owner_id,q)).available<0)throw Error("Solde de commissions à régulariser.");
+    if(d.action==="paid"&&(await q(`SELECT a.payment_id FROM money_wallet_commissions a JOIN money_ambassador_commissions c ON c.payment_id=a.payment_id WHERE a.request_id=$1 AND (c.fraud_hold<>0 OR c.dispute NOT IN ('','won') OR c.available_at>$2 OR c.net_cents<(SELECT COALESCE(SUM(x.amount_cents),0) FROM money_wallet_commissions x JOIN money_bank_workflow w ON w.request_id=x.request_id WHERE x.payment_id=c.payment_id AND w.state NOT IN ('refused','canceled')))`,[d.id,new Date().toISOString()])).length)throw Error("Solde de commissions à régulariser.");
     const revision=Number(row.revision)+1,now=new Date().toISOString();
     const changed=await q("UPDATE money_bank_workflow SET state=$1,revision=$2,reference=$3,reason=$4,updated_at=$5 WHERE request_id=$6 AND revision=$7 RETURNING request_id",[d.action,revision,d.reference,d.reason,now,d.id,d.revision]);
     if(!changed.length)throw Error("La demande a changé. Actualise la liste.");

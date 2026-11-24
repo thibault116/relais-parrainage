@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus, FileText, ArrowLeft, Check, MessageCircle, Pencil, Trash2 } from "lucide-react";
+import { Wallet } from "./wallet";
 import { ManualBankForm, ManualBankHistory } from "./manual-bank";
 import { TestSalesAcceptance } from "./test-sales-acceptance";
 import {CreditPromotion} from "./credit-promotion";
@@ -198,6 +199,7 @@ export function AdminMonetization({
     );
   const purchaseOffers=data.owner?[...rechargeOffers,adminCreditOffer]:rechargeOffers.filter(p=>p.season==="launch");
   const offers = rechargeOffers.filter((p) => p.season === (data.owner?season:"launch"));
+  if(view==="payouts"&&data.owner)return <Wallet/>;
   return (
     <section className="commerce-screen private-credit-system">
       {!dedicated && (
@@ -205,7 +207,7 @@ export function AdminMonetization({
           {[
             ["wallet", "Crédits"],
             ["services", "Prestations"],
-            ["payouts", "Rémunération"],
+            ["payouts", data.owner?"Wallet":"Rémunération"],
           ].map(([id, label]) => (
             <button
               key={id}
@@ -258,7 +260,7 @@ export function AdminMonetization({
             <strong>{data.balance.toLocaleString("fr-FR")} crédits</strong>
             <span>{data.mode==="live"?"Solde réel":"Solde disponible"}</span>
           </article>
-          {data.owner&&<article className="commerce-card admin-credit-control"><h2>Codes ambassadeurs · essai privé</h2><a className="commerce-row" href="/?mobile=ambassador&ambassadorTab=checkout#profile">Tester un achat avec un code dans Stripe test</a></article>}
+
           {data.owner&&<article className="commerce-card admin-credit-control"><h2>Crédits pour tes essais privés</h2><p>10 000 crédits · 1,00 € par achat</p><small>Paiement réel, réservé à ton compte administrateur.</small><button className="commerce-primary" onClick={()=>{setPanel(adminCreditOffer.id);setAccepted(false);setError("");dialog.current?.showModal();}}>Acheter 10 000 crédits · 1,00 €</button></article>}
           {data.owner&&<nav className="credit-seasons" aria-label="Grille tarifaire privée">
             {creditSeasons.map((s) => (

@@ -37,7 +37,7 @@ export async function saveConfig(actor: string, raw: unknown) {
     await audit(q, actor, "main", "configuration", d);
   });
 }
-export async function saveAmbassador(actor: string, raw: unknown) {
+export async function saveAmbassador(actor: string, raw: unknown, allowCodeChange=false) {
   sandboxOnly();
   const d = z.object({ ownerId: z.string().min(1).max(200), code: codeSchema.optional(), commissionBps: bps.nullable().default(null), status: z.enum(["active", "suspended", "removed"]), eligibilityReviewed: z.boolean().default(false) }).parse(raw);
   const code = d.code || `MENTORA${crypto.randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase()}`;
@@ -46,12 +46,16 @@ export async function saveAmbassador(actor: string, raw: unknown) {
     if (!(await q('SELECT id FROM "user" WHERE id=$1', [d.ownerId])).length) throw Error("Membre introuvable.");
     const [old] = await q("SELECT * FROM money_ambassadors WHERE owner_id=$1", [d.ownerId]);
     if (old?.status === "removed") throw Error("Ce statut a été retiré définitivement. Son historique est conservé.");
-    if (old && d.code && old.code !== code) throw Error("Le code personnel est immuable ; suspends-le pour le désactiver.");
+    if (!allowCodeChange && old && d.code && old.code !== code) throw Error("Le code personnel est immuable ; suspends-le pour le désactiver.");
     if ((await q("SELECT owner_id FROM money_ambassadors WHERE code=$1 AND owner_id<>$2", [code, d.ownerId])).length) throw Error("Ce code est déjà attribué.");
+    const chosen=old&&!d.code?String(old.code):code;
+    const [reserved]=await q("SELECT owner_id FROM money_ambassador_codes WHERE code=$1",[chosen]);
+    if(reserved&&reserved.owner_id!==d.ownerId)throw Error("Ce code est déjà attribué.");
+    await q("INSERT INTO money_ambassador_codes(code,owner_id) VALUES($1,$2) ON CONFLICT(code) DO NOTHING",[chosen,d.ownerId]);
     const c = await config(q), now = new Date().toISOString();
     if (!old) await q("INSERT INTO money_ambassadors(owner_id,code,status,commission_bps,discount_bps,eligibility_reviewed,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$7)", [d.ownerId, code, d.status, d.commissionBps, Number(c.discount_bps), d.eligibilityReviewed ? 1 : 0, now]);
-    else await q("UPDATE money_ambassadors SET status=$1,commission_bps=$2,eligibility_reviewed=$3,revision=revision+1,sync_error='Synchronisation requise',updated_at=$4 WHERE owner_id=$5", [d.status, d.commissionBps, d.eligibilityReviewed ? 1 : 0, now, d.ownerId]);
-    await audit(q, actor, d.ownerId, old ? "statut-ou-taux" : "activation", { before: old ? { status: old.status, commissionBps: old.commission_bps } : null, ...d, code: old?.code || code });
+    else await q("UPDATE money_ambassadors SET status=$1,commission_bps=$2,eligibility_reviewed=$3,revision=revision+1,sync_error='Synchronisation requise',updated_at=$4,code=$6 WHERE owner_id=$5", [d.status, d.commissionBps, d.eligibilityReviewed ? 1 : 0, now, d.ownerId,chosen]);
+    await audit(q, actor, d.ownerId, old ? "statut-ou-taux" : "activation", { before: old ? { status: old.status, commissionBps: old.commission_bps } : null, ...d, code: chosen });
   });
 }
 export async function syncCode(actor: string, owner: string, provider = stripeTest) {
@@ -139,6 +143,8 @@ export async function adjustCommission(intent: string, refund?: number, dispute?
 export async function totals(owner: string, q = query, now = new Date().toISOString()) {
   const [c] = await q("SELECT COALESCE(SUM(net_cents),0) AS total,COALESCE(SUM(CASE WHEN available_at<=$2 AND fraud_hold=0 AND dispute IN ('','won') THEN net_cents ELSE 0 END),0) AS matured,COUNT(*) AS purchases,COALESCE(SUM(gross_cents),0) AS revenue,COALESCE(SUM(paid_cents),0) AS paid_revenue FROM money_ambassador_commissions WHERE owner_id=$1", [owner, now]);
   const [w] = await q("SELECT COALESCE(SUM(CASE WHEN status NOT IN ('refused','canceled') THEN amount_cents ELSE 0 END),0) AS committed,COALESCE(SUM(CASE WHEN status='paid' THEN amount_cents ELSE 0 END),0) AS paid FROM money_ambassador_withdrawals WHERE owner_id=$1", [owner]);
+  const [manual]=await q("SELECT COALESCE(SUM(CASE WHEN w.state NOT IN ('refused','canceled') THEN a.amount_cents ELSE 0 END),0) AS committed,COALESCE(SUM(CASE WHEN w.state='paid' THEN a.amount_cents ELSE 0 END),0) AS paid FROM money_wallet_commissions a JOIN money_bank_workflow w ON w.request_id=a.request_id WHERE a.owner_id=$1",[owner]);
+  w.committed=Number(w.committed)+Number(manual.committed);w.paid=Number(w.paid)+Number(manual.paid);
   return { purchases: Number(c.purchases), revenue: Number(c.revenue), discounts: Number(c.revenue) - Number(c.paid_revenue), total: Number(c.total), pending: Number(c.total) - Number(c.matured), available: Number(c.matured) - Number(w.committed), withdrawn: Number(w.paid), reserved: Number(w.committed) - Number(w.paid) };
 }
 export async function profitability() {
@@ -153,7 +159,7 @@ export async function dashboard(search = "") {
   const list = await query(`SELECT a.*,COALESCE(p.name,'Membre') AS name FROM money_ambassadors a LEFT JOIN profiles p ON p.user_id=a.owner_id ORDER BY a.created_at DESC`);
   const members = search.trim() ? await query(`SELECT u.id,COALESCE(p.name,'Membre') AS name,p.role FROM "user" u LEFT JOIN profiles p ON p.user_id=u.id WHERE lower(COALESCE(p.name,'')) LIKE $1 ORDER BY p.name LIMIT 25`, [`%${search.toLowerCase().slice(0,80)}%`]) : [];
   const ambassadors = await Promise.all(list.map(async a => ({ ...a, totals: await totals(String(a.owner_id)) })));
-  const commissions = await query(`SELECT c.payment_id,c.owner_id,c.gross_cents,c.paid_cents,c.original_cents,c.net_cents,c.refund_cents,c.dispute,c.fraud_hold,c.available_at,c.created_at,COALESCE((SELECT SUM(a.amount_cents) FROM money_ambassador_allocations a JOIN money_ambassador_withdrawals w ON w.id=a.withdrawal_id WHERE a.payment_id=c.payment_id AND w.status='paid'),0) AS withdrawn_cents FROM money_ambassador_commissions c ORDER BY c.created_at DESC LIMIT 200`);
+  const commissions = await query(`SELECT c.payment_id,c.owner_id,c.gross_cents,c.paid_cents,c.original_cents,c.net_cents,c.refund_cents,c.dispute,c.fraud_hold,c.available_at,c.created_at,COALESCE((SELECT SUM(a.amount_cents) FROM money_ambassador_allocations a JOIN money_ambassador_withdrawals w ON w.id=a.withdrawal_id WHERE a.payment_id=c.payment_id AND w.status='paid'),0)+COALESCE((SELECT SUM(a.amount_cents) FROM money_wallet_commissions a JOIN money_bank_workflow w ON w.request_id=a.request_id WHERE a.payment_id=c.payment_id AND w.state='paid'),0) AS withdrawn_cents FROM money_ambassador_commissions c ORDER BY c.created_at DESC LIMIT 200`);
   const withdrawals = await query("SELECT * FROM money_ambassador_withdrawals ORDER BY created_at DESC LIMIT 200");
   return { mode: "test", private: true, liveEnabled: false, config: await config(), ambassadors, members, commissions, withdrawals, profitability: await profitability(), audit: await query("SELECT * FROM money_ambassador_audit ORDER BY created_at DESC LIMIT 100"), testStripeConfigured: /^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY || ""), offers: rechargeOffers.filter(p=>p.season==="launch") };
 }

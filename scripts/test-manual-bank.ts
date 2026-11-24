@@ -21,7 +21,8 @@ const policyKeys=["MENTORA_MANUAL_PAYOUTS_LIVE_ENABLED","MENTORA_MANUAL_PAYOUTS_
 const previousPolicy=policyKeys.map(k=>process.env[k]);for(const k of policyKeys)delete process.env[k];
 process.chdir(dir);process.env.BANK_DETAILS_ENCRYPTION_KEY=randomBytes(32).toString("hex");
 try {
-  await migrateMonetization();await migratePush();await query("CREATE TABLE IF NOT EXISTS profiles(user_id TEXT PRIMARY KEY,name TEXT,role TEXT)");const auth=getAuth();await(await getMigrations(auth.options)).runMigrations();
+  await migrateMonetization();await migratePush();await query("CREATE TABLE IF NOT EXISTS profiles(id TEXT,user_id TEXT PRIMARY KEY,name TEXT,role TEXT)");const auth=getAuth();await(await getMigrations(auth.options)).runMigrations();
+  await query("CREATE TABLE IF NOT EXISTS profile_blocks(user_id TEXT PRIMARY KEY)");
   await query("CREATE TABLE IF NOT EXISTS moderators(user_id TEXT PRIMARY KEY,email TEXT)");
   await query("CREATE TABLE IF NOT EXISTS member_activity(user_id TEXT PRIMARY KEY,last_active_at TEXT NOT NULL)");
   const path="http://localhost:3000/api/admin/monetization/bank";
@@ -29,6 +30,7 @@ try {
   const account=await auth.api.signUpEmail({body:{name:"Owner",email:"thibault.cordiez@hotmail.com",password:"fixture-password-123456"},asResponse:true});
   const cookie=account.headers.getSetCookie().map(x=>x.split(";")[0]).join("; "),owner=String((await account.json()).user.id);
   await query("INSERT INTO moderators(user_id,email) VALUES($1,$2)",[owner,"thibault.cordiez@hotmail.com"]);
+  await query("INSERT INTO profiles(id,user_id,name,role) VALUES($1,$1,'Owner','mentor')",[owner]);
   const member=await auth.api.signUpEmail({body:{name:"Member",email:"bank-member@example.test",password:"fixture-password-123456"},asResponse:true});
   const memberCookie=member.headers.getSetCookie().map(x=>x.split(";")[0]).join("; "),other=String((await member.json()).user.id);
   await query("INSERT INTO moderators(user_id,email) VALUES($1,$2)",[other,"bank-member@example.test"]);
@@ -55,8 +57,8 @@ try {
   await query("DELETE FROM money_bank_details WHERE owner_id=$1",[other]);
   await saveBankDetails(other,{holder:"Belgian test",country:"BE",iban:"BE68539007547034"});
   const service=await saveService(owner,{title:"Test virement",description:"Une prestation pour vérifier les demandes de versement.",category:"Conseil",duration:0,calls:0,followup:"",availability:"Messages",credits:1,capacity:10,published:true});
-  await moneyTransaction(async q=>{await entry(q,owner,10,"fixture","manual-bank-fixture");});
-  const booking=String(await book(owner,service,crypto.randomUUID(),"Test","Flexible"));await bookingAction(owner,booking,"accept");await bookingAction(owner,booking,"complete");await confirmService(owner,booking,1,true);
+  await moneyTransaction(async q=>{await entry(q,other,10,"fixture","manual-bank-fixture");});
+  const booking=String(await book(other,service,crypto.randomUUID(),"Test","Flexible"));await bookingAction(owner,booking,"accept");await bookingAction(owner,booking,"complete");await confirmService(other,booking,1,true);
   await query("UPDATE money_bookings SET payout_cents=1 WHERE id=$1",[booking]);
   const credits=await balance(query,owner),key=crypto.randomUUID();
   const [one,two]=await Promise.all([requestBankTransfer(owner,key),requestBankTransfer(owner,key)]);
@@ -110,7 +112,7 @@ try {
   const payJob=(await query("SELECT * FROM push_outbox WHERE kind='bank_withdrawal' AND event_id<>$1",[String(processJob.event_id)]))[0];
   assert(await stillRelevant(payJob));assert((await pushContent(payJob)).title.includes("test"));
   await assert.rejects(()=>decideBankTransfer(actor,{id:next.id,action:"refused",revision:2,key:crypto.randomUUID(),reason:"Test"}),/impossible/);
-  const b2=String(await book(owner,service,crypto.randomUUID(),"Test refus","Flexible"));await bookingAction(owner,b2,"accept");await bookingAction(owner,b2,"complete");await confirmService(owner,b2,1,true);await query("UPDATE money_bookings SET payout_cents=7 WHERE id=$1",[b2]);
+  const b2=String(await book(other,service,crypto.randomUUID(),"Test refus","Flexible"));await bookingAction(owner,b2,"accept");await bookingAction(owner,b2,"complete");await confirmService(other,b2,1,true);await query("UPDATE money_bookings SET payout_cents=7 WHERE id=$1",[b2]);
   const req2=await requestBankTransfer(owner,crypto.randomUUID());
   const race=await Promise.allSettled([
     decideBankTransfer(actor,{id:req2.id,action:"processing",revision:0,key:crypto.randomUUID()}),
@@ -135,9 +137,11 @@ try {
   process.env.MENTORA_MANUAL_PAYOUTS_LEGAL_VALIDATION_REFERENCE="fixture-legal-only";assert.equal(manualPayoutPolicy().liveEnabled,false); // test earnings never become real
   assert.equal((await manualBankOverview(owner)).history.find(r=>r.id===next.id)?.mode,"test");
   for(const k of policyKeys)delete process.env[k];
+  await query("INSERT INTO profiles(id,user_id,name,role) VALUES($1,$1,'Member','mentor')",[other]);
   const otherService=await saveService(other,{title:"Test autre parrain",description:"Prestation du deuxième parrain pour tester l’isolation.",category:"Conseil",duration:0,calls:0,followup:"",availability:"Messages",credits:1,capacity:10,published:true});
-  await moneyTransaction(async q=>{await entry(q,other,10,"fixture","other-bank-fixture");});
-  const otherBooking=String(await book(other,otherService,crypto.randomUUID(),"Isolation","Flexible"));await bookingAction(other,otherBooking,"accept");await bookingAction(other,otherBooking,"complete");await confirmService(other,otherBooking,1,true);
+  await moneyTransaction(async q=>{await entry(q,owner,10,"fixture","other-bank-fixture");});
+  const otherBooking=String(await book(owner,otherService,crypto.randomUUID(),"Isolation","Flexible"));await bookingAction(other,otherBooking,"accept");await bookingAction(other,otherBooking,"complete");await confirmService(owner,otherBooking,1,true);
+  await query("UPDATE money_bookings SET test_booking=0,payout_cents=2 WHERE id=$1",[otherBooking]); // eligible non-self gain fixture, independent of the owner simulation flag
   const otherRequest=await requestBankTransfer(other,crypto.randomUUID());
   assert((await adminBankList(actor)).items.some(r=>r.owner_id===other));
   assert.equal((await adminBankDetails(actor,otherRequest.id)).bank.iban,"BE68539007547034");

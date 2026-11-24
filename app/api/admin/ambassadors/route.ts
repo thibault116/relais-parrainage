@@ -6,10 +6,10 @@ import { withMoneyMode, salesVersion } from "@/lib/monetization/mode";
 import { query } from "@/lib/monetization/db";
 import { balance, lock, moneyTransaction } from "@/lib/monetization/store";
 import { checkout } from "@/lib/monetization/payments";
-import { stripeTest, appOrigin } from "@/lib/monetization/stripe";
-import { createConnectAccount } from "@/lib/monetization/connect";
+import { stripeTest } from "@/lib/monetization/stripe";
+
 import { dashboard, saveAmbassador, saveConfig, syncCode, promoQuote, audit, eligiblePack } from "@/lib/ambassadors/service";
-import { verificationStatus, requestWithdrawal, refuseWithdrawal, approveWithdrawal, refreshWithdrawal } from "@/lib/ambassadors/withdrawals";
+
 export const runtime = "nodejs";
 export const maxDuration = 60;
 async function actor(r: Request) {
@@ -19,7 +19,7 @@ async function actor(r: Request) {
 export async function GET(r: Request) {
   const u = await actor(r);
   if (!u) return json({error:"Accès privé réservé au compte administrateur principal en bêta."},403);
-  try { return await withMoneyMode("test",async()=>json({...await dashboard(new URL(r.url).searchParams.get("search") || ""),ownerId:u.id,paymentAccount:await verificationStatus(u.id),testBalance:await balance(query,u.id),termsVersion:salesVersion()})); }
+  try { return await withMoneyMode("test",async()=>json({...await dashboard(new URL(r.url).searchParams.get("search") || ""),ownerId:u.id,testBalance:await balance(query,u.id),termsVersion:salesVersion()})); }
   catch { return json({error:"Programme privé indisponible. Vérifie les migrations."},503); }
 }
 export async function POST(r: Request) {
@@ -40,19 +40,7 @@ export async function POST(r: Request) {
         const offer=z.string().parse(d.offer);if(!eligiblePack(offer))throw Error("Pack non éligible.");
         return json({url:await checkout(u.id,offer,z.string().uuid().parse(d.key),"ambassador",salesVersion(),stripeTest,d.code?z.string().max(24).parse(d.code):undefined)});
       }
-      if(action==="connect"){
-        const a=await createConnectAccount(u,z.enum(["FR","BE","DE","ES","IT","NL","LU","PT","IE","AT","FI"]).parse(d.country));
-        const url=appOrigin()+"/?mobile=ambassador&ambassadorTab=mine#profile";
-        const link=await stripeTest().accountLinks.create({account:a.id,type:"account_onboarding",return_url:url,refresh_url:url});
-        return json({url:link.url});
-      }
-      if(action==="withdraw")return json({id:await requestWithdrawal(u.id,z.string().min(1).max(200).parse(d.ownerId),z.string().uuid().parse(d.key))});
-      if(action==="refuse")await refuseWithdrawal(u.id,z.string().uuid().parse(d.id),z.string().trim().min(5).max(500).parse(d.reason));
-      if(action==="approve"){
-        if(d.confirm!==true)throw Error("Confirme le transfert fictif Stripe.");
-        await approveWithdrawal(u.id,z.string().uuid().parse(d.id));
-      }
-      if(action==="refresh")await refreshWithdrawal(z.string().uuid().parse(d.id));
+      if(["connect","withdraw","refuse","approve","refresh"].includes(action))return json({error:"Utilise le Wallet et les retraits bancaires manuels."},410);
       if(action==="hold")await moneyTransaction(async q=>{
         const id=z.string().max(200).parse(d.id),held=z.boolean().parse(d.held),reason=z.string().trim().min(5).max(500).parse(d.reason);
         const [c]=await q("SELECT owner_id FROM money_ambassador_commissions WHERE payment_id=$1",[id]);if(!c)throw Error("Commission introuvable.");

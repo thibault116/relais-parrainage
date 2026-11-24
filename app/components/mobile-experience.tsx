@@ -1,5 +1,5 @@
 "use client";
-import { Ambassadors } from "./ambassadors";
+import { Wallet,AmbassadorProfileCode } from "./wallet";
 import { ChatTextbox } from "./chat-textbox";
 import {useScreenMotion,useNavigationIndicator,useMessageArrival} from "./motion-system";
 import {
@@ -610,7 +610,7 @@ export function MobileExperience({
               )}
             </>
           )}
-          {screen === "ambassador" && administrator && <><button className="mobile-back" onClick={back}><ChevronLeft size={18}/>Retour</button><Ambassadors previewOnly/></>}
+          {screen === "ambassador" && administrator && <><button className="mobile-back" onClick={back}><ChevronLeft size={18}/>Retour</button><Wallet/></>}
           {screen === "joinOffers" && (
             <>
               <button className="mobile-back" onClick={back}>
@@ -630,7 +630,7 @@ export function MobileExperience({
                 <ChevronLeft size={18} />
                 Retour
               </button>
-              {(!["services", "payouts"].includes(screen) ||
+              {screen==="payouts"&&administrator?<Wallet/>:(!["services", "payouts"].includes(screen) ||
                 profile?.role === "mentor") ? (
                 <AdminMonetization
                   key={screen}
@@ -681,6 +681,7 @@ export function MobileExperience({
                     : "Profil masqué"}
                 </p>
               </div>
+              {administrator&&<AmbassadorProfileCode/>}
               <div className="profile-social-counts">
                 <button onClick={() => openNetwork("followers")}>
                   <strong>{profile?.followerCount ?? 0}</strong>
