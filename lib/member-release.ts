@@ -1,12 +1,11 @@
 export const memberRelease = {
-  id: "2026-11-21-saisie-conversations",
+  id: "2026-11-24-invitation-discord-permanente",
   discordAudience: "public",
-  title: "Plus de place pour vos conversations",
+  title: "Le lien Discord devient permanent",
   notes: [
-    "Amélioration : une zone d’écriture dédiée au chat remplace le champ de formulaire dans la communauté.",
-    "Correction : les espacements sous la saisie sont réduits quand le clavier est ouvert sur téléphone.",
+    "Correction : le nouveau lien permanent du serveur Discord est disponible partout dans Mentora.",
   ],
-  guideUrl: "/?mobile=community#community",
-  guideLabel: "Ouvrir la communauté",
+  guideUrl: "https://discord.gg/BgAewxc2ZQ",
+  guideLabel: "Rejoindre le Discord",
 };
 export const retiredMemberReleaseIds = [] as string[];

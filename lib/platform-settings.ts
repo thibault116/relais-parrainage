@@ -1,3 +1,4 @@
+import { discordInviteUrl } from "./discord-invite";
 import { query } from "./db";
 import { defaultSettings, settingsSchema } from "./platform-config";
 export async function migratePlatformSettings() {
@@ -13,7 +14,15 @@ export async function migratePlatformSettings() {
     ],
   );
 }
+export async function replaceRetiredDiscordInvite() {
+  const [row] = await query("SELECT data,revision FROM platform_settings WHERE id='main'");
+  if (!row) return;
+  const data = JSON.parse(String(row.data));
+  if (data.discordUrl !== "https://discord.gg/SRVs9Y5ze") return;
+  await query("UPDATE platform_settings SET data=$1,revision=$2,updated_at=$3 WHERE id='main' AND revision=$4", [JSON.stringify({...data,discordUrl:discordInviteUrl}),crypto.randomUUID(),new Date().toISOString(),String(row.revision)]);
+}
 export async function readPlatformSettings() {
+  await replaceRetiredDiscordInvite();
   const row = (
     await query("SELECT * FROM platform_settings WHERE id='main'")
   )[0];

@@ -58,7 +58,7 @@ Les tests créent puis suppriment des comptes temporaires. Ils vérifient l’in
 
 Le débutant demande un accompagnement depuis la fiche d’un parrain visible. Le parrain accepte ou refuse dans Mon profil. Seuls les deux participants peuvent terminer un accompagnement accepté. Seul le débutant de ce binôme terminé peut donner une note. L’écriture conditionnelle en base empêche les doublons, y compris simultanés. Un binôme ne peut être créé qu’une fois pour les mêmes comptes. Les notes sont conservées lors du masquage d’un profil, mais retirées lors de la suppression du compte concerné. Aucune note ne donne accès au contact d’un profil masqué.
 
-Le groupe Discord est accessible depuis l’en-tête et le bloc communautaire : https://discord.gg/SRVs9Y5ze.
+Le groupe Discord est accessible depuis l’en-tête et le bloc communautaire : https://discord.gg/BgAewxc2ZQ.
 
 
 ## Vérification des parrains

@@ -1,3 +1,4 @@
+import { discordInviteUrl } from "./discord-invite";
 import { z } from "zod";
 export const settingsSchema = z
   .object({
@@ -29,7 +30,7 @@ export const settingsSchema = z
   });
 export type PlatformSettings = z.infer<typeof settingsSchema>;
 export const defaultSettings: PlatformSettings = {
-  discordUrl: "https://discord.gg/SRVs9Y5ze",
+  discordUrl: discordInviteUrl,
   announcementEnabled: false,
   announcement: "",
   requestsEnabled: true,

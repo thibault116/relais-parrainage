@@ -1,3 +1,4 @@
+import {discordInviteCode,discordInviteUrl} from "../discord-invite";
 import {notificationRoles} from "./notifications";
 import {SITE_ORIGIN,updateSiteLinks} from "../site";
 import {createHash} from 'node:crypto';
@@ -48,8 +49,8 @@ export async function createInfoChannel(kind:'invite'|'roles',api:DiscordApi=dis
 export async function publishInfo(kind:'invite'|'roles',api:DiscordApi=discordApi){
  const {c,roles}=await communityInventory(api);const ch=await createInfoChannel(kind,api);let details:any={},description='';let components:any[]=[];
  if(kind==='invite'){
-  const invite=await api('/invites/SRVs9Y5ze');if((invite.guild as any)?.id!==c.guild_id)throw Error('Le lien d’invitation ne correspond pas au serveur Mentora.');
-  description='## 🔗 Invite un reseller sur Mentora\n\nTu connais quelqu’un qui fait de l’achat-revente ou qui souhaite se lancer ? Partage-lui le lien du serveur pour rejoindre la communauté.\n\n```\nhttps://discord.gg/SRVs9Y5ze\n```\n\n### 💡 Où le partager ?\nAvec tes amis, tes contacts resellers ou dans ta bio. Privilégie les personnes intéressées et respecte les règles des autres communautés : pas de spam.\n\nMerci de faire grandir Mentora 💜';components=[{type:1,components:[{type:2,style:5,label:'Inviter un reseller',url:'https://discord.gg/SRVs9Y5ze'}]}];
+  const invite=await api(`/invites/${discordInviteCode}`);if((invite.guild as any)?.id!==c.guild_id)throw Error('Le lien d’invitation ne correspond pas au serveur Mentora.');
+  description='## 🔗 Invite un reseller sur Mentora\n\nTu connais quelqu’un qui fait de l’achat-revente ou qui souhaite se lancer ? Partage-lui le lien du serveur pour rejoindre la communauté.\n\n**Le lien est désormais permanent : tu peux le conserver et le partager.**\n\n```\n'+discordInviteUrl+'\n```\n\n### 💡 Où le partager ?\nAvec tes amis, tes contacts resellers ou dans ta bio. Privilégie les personnes intéressées et respecte les règles des autres communautés : pas de spam.\n\nMerci de faire grandir Mentora 💜';components=[{type:1,components:[{type:2,style:5,label:'Inviter un reseller',url:discordInviteUrl}]}];
  }else{
   const saved=(await query('SELECT details FROM discord_community_panels WHERE kind=$1',[kind]))[0];details=JSON.parse(String(saved?.details||'{}'));
   for(const [key,label] of [['updates','Mises à jour Mentora'],['announcements','Annonces Mentora']]){if(!details[key]){const matches=roles.filter(r=>r.name===label&&!r.managed&&r.permissions==='0');if(matches.length>1)throw Error('Rôles ambigus.');const role=matches[0]||await api(`/guilds/${c.guild_id}/roles`,'POST',{name:label,permissions:'0',color:0x883af5,mentionable:true});details[key]=role.id;await query('UPDATE discord_community_panels SET details=$1 WHERE kind=$2',[JSON.stringify(details),kind]);}}

@@ -1,4 +1,5 @@
 "use client";
+import { discordInviteUrl } from "@/lib/discord-invite";
 import { useEffect } from "react";
 import { t as translateUi } from "@/app/components/language";
 import {
@@ -240,7 +241,7 @@ export function Help({privatePayouts=false}:{privatePayouts?:boolean}) {
       </div>
       <a
         className="btn"
-        href="https://discord.gg/SRVs9Y5ze"
+        href={discordInviteUrl}
         target="_blank"
         rel="noopener noreferrer"
       >
