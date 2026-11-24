@@ -45,9 +45,11 @@ export function useMentorCompletion(enabled: boolean) {
 }
 export function MentorPortfolio({
   editing = false,
+  imagesOnly = false,
   profileId,
 }: {
   editing?: boolean;
+  imagesOnly?: boolean;
   profileId?: string;
 }) {
   const [data, setData] = useState<Data | null>(null),
@@ -72,10 +74,10 @@ export function MentorPortfolio({
     await load(false);
     window.dispatchEvent(new Event("mentor-portfolio-updated"));
   };
-  if (!editing && (!data || (!data.bio && !data.images.length))) return null;
+  if (!editing && (!data || ((imagesOnly||!data.bio) && !data.images.length))) return null;
   return (
     <section className="mentor-portfolio">
-      <h2>{editing ? "Finaliser mon profil" : "Son parcours en images"}</h2>
+      <h2>{editing ? "Mon parcours en images" : "Son parcours en images"}</h2>
       {error && <p role="alert">{error}</p>}
       {editing ? (
         <>
@@ -164,7 +166,7 @@ export function MentorPortfolio({
           </p>
         </>
       ) : (
-        <p className="portfolio-bio">{data?.bio}</p>
+        !imagesOnly&&<p className="portfolio-bio">{data?.bio}</p>
       )}
       <div className="portfolio-grid">
         {data?.images.map((image, i) => (

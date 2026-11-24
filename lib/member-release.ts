@@ -1,12 +1,13 @@
 export const memberRelease = {
-  id: "2026-11-24-zones-systeme-toutes-pages",
+  id: "2026-11-24-profils-parrains-complement",
   discordAudience: "public",
-  title: "Un affichage protégé sur toutes les pages",
+  title: "Les profils Parrains font peau neuve",
   notes: [
-    "Correction : l’accueil public et les pages de Mentora réservent l’espace de l’encoche et de la barre d’état.",
-    "Amélioration : les conversations, guides plein écran et fenêtres respectent aussi les marges du téléphone.",
+    "Nouveauté : un profil Parrain plus clair avec présentation, compétences et prestations en crédits.",
+    "Nouveauté : un questionnaire facultatif dans Modifier mon profil pour préciser ton activité de revente.",
+    "Amélioration : les méthodes d’achat sont repliées sur les profils et ne sont plus demandées à l’inscription Parrain.",
   ],
-  guideUrl: "/?mobile=home#workspace",
-  guideLabel: "Ouvrir Mentora",
+  guideUrl: "/?mobile=edit#profile",
+  guideLabel: "Modifier mon profil",
 };
 export const retiredMemberReleaseIds = [] as string[];

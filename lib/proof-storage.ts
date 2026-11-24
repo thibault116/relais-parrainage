@@ -44,6 +44,7 @@ export async function deleteUserProofs(userId: string) {
       String(f.id),
     ]);
   }
+  await query("DELETE FROM mentor_activities WHERE user_id=$1",[userId]);
   await query("DELETE FROM mentor_portfolios WHERE user_id=$1", [userId]);
   const files = await query(
     "SELECT id,stored_path FROM verification_files WHERE user_id=$1",

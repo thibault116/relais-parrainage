@@ -26,6 +26,7 @@ import "./service-detail.css";
 import "./chat-composer.css";
 import "./ambassadors.css";
 import "./wallet.css";
+import "./mentor-profile.css";
 import "./mobile-safe-area.css";
 import { MotionProvider } from "./components/motion-system";
 import { SuggestionWidget } from "./components/suggestions";

@@ -19,6 +19,7 @@ export async function needsOnboarding(userId: string) {
   return rows.length === 0;
 }
 export async function migrateOnboarding() {
+  await query("CREATE TABLE IF NOT EXISTS mentor_activities(user_id TEXT PRIMARY KEY,answers TEXT NOT NULL,updated_at TEXT NOT NULL)");
   await query("CREATE TABLE IF NOT EXISTS profile_terms_acceptances(user_id TEXT PRIMARY KEY,version TEXT NOT NULL,accepted_at TEXT NOT NULL)");
   await query(
     "CREATE TABLE IF NOT EXISTS mentor_portfolios(user_id TEXT PRIMARY KEY,bio TEXT NOT NULL DEFAULT '')",

@@ -120,7 +120,7 @@ async function account(i: number) {
 try {
   assert.equal(intakeQuestions(a).length, 10);
   assert.equal(intakeQuestions(b).length, 9);
-  assert.equal(intakeQuestions(m).length, 8);
+  assert.equal(intakeQuestions(m).length, 7);
   assert(!intakeQuestions(b).some((q) => q.id === "deadline"));
   assert(
     !intakeQuestions(b)
@@ -475,6 +475,43 @@ try {
       intakeQuestions(m)[0],
     ).includes("six mois"),
   );
+  const historicalAccount=await account(5),oldMentorId=crypto.randomUUID();
+  await query("INSERT INTO profiles(id,user_id,discord,role,name,details,visible,updated_at) VALUES($1,$2,'legacy_mentor_5','mentor','Parrain historique',$3,1,$4)",[oldMentorId,historicalAccount.id,JSON.stringify({...initialProfile,role:'mentor',name:'Parrain historique',specialty:['Brocante'],experience:36,bio:'Ma présentation historique de parrain.',capacity:2}),new Date().toISOString()]);
+  const oldMentorRead=await(await me(req('/api/me',undefined,historicalAccount.cookie))).json();assert.equal(oldMentorRead.requiresQuestionnaire,false);assert.equal(oldMentorRead.profile.bio,'Ma présentation historique de parrain.');assert(!oldMentorRead.profile.mentorActivity);
+  assert.equal((await directory(req('/api/profiles?profile='+oldMentorId))).status,200);
+  const activityApi=await import("../app/api/mentor-activity/route");
+  const activityModel=await import("../lib/mentor-activity");
+  const activityStore=await import("../lib/mentor-activity-store");
+  assert(!intakeQuestions(m).some(q=>q.id==="methods"));
+  const historicalMethods={...m,selections:{...m.selections,methods:["bot","mainstream"]}};
+  assert.deepEqual(intakeSchema.parse(historicalMethods).selections.methods,["bot","mainstream"]);
+  const extra={...activityModel.emptyMentorActivity(),categories:["secondhand","other"],categoryOther:"Accessoires",specializations:["niche","other"],specializationOther:"Une spécialisation personnelle",methods:["manual","wholesale","other"],methodOther:"Méthode personnelle"};
+  assert(activityModel.mentorActivitySchema.safeParse(extra).success);
+  assert(!activityModel.mentorActivitySchema.safeParse({...extra,methodOther:""}).success);
+  assert(!activityModel.mentorActivitySchema.safeParse({...extra,methods:["lots"]}).success);
+  const normalized=activityModel.mentorActivitySchema.parse({...extra,categories:["books"]});assert.deepEqual(normalized.specializations,[]);assert.equal(normalized.specializationOther,"");
+  assert.equal((await activityApi.GET(req("/api/mentor-activity"))).status,403);
+  assert.equal((await activityApi.GET(req("/api/mentor-activity",undefined,novice.cookie))).status,403);
+  const extraRequest=(body:unknown,cookie=mentor.cookie,origin=base)=>new Request(base+"/api/mentor-activity",{method:"PUT",headers:{cookie,origin,"Content-Type":"application/json"},body:JSON.stringify(body)});
+  assert.equal((await activityApi.PUT(extraRequest({activity:extra,bio:"Description facultative"},novice.cookie))).status,403);
+  assert.equal((await activityApi.PUT(extraRequest({activity:extra,bio:"Description"},mentor.cookie,"https://foreign.invalid"))).status,403);
+  assert.equal((await activityApi.PUT(extraRequest({activity:extra,bio:"Description",ownerId:novice.id}))).status,400);
+  const oldAnswers=await query("SELECT answers FROM onboarding_answers WHERE user_id=$1",[mentor.id]);
+  const result=await activityApi.PUT(extraRequest({activity:extra,bio:"Ma présentation personnalisée."}));assert.equal(result.status,200,JSON.stringify(await result.clone().json()));
+  const savedExtra=await(await activityApi.GET(req("/api/mentor-activity",undefined,mentor.cookie))).json();assert.equal(savedExtra.bio,"Ma présentation personnalisée.");assert.deepEqual(savedExtra.activity.methods,extra.methods);assert.equal(savedExtra.completed,true);
+  assert.deepEqual(await query("SELECT answers FROM onboarding_answers WHERE user_id=$1",[mentor.id]),oldAnswers);
+  const ownExtra=await(await me(req("/api/me",undefined,mentor.cookie))).json();assert.equal(ownExtra.profile.bio,"Ma présentation personnalisée.");assert.deepEqual(ownExtra.profile.mentorActivity.categories,extra.categories);
+  const publicExtra=await(await directory(req("/api/profiles?role=mentor&profile="+ownExtra.profile.id))).json();assert.equal(publicExtra.profile.bio,"Ma présentation personnalisée.");assert.deepEqual(publicExtra.profile.mentorActivity.methods,extra.methods);assert(!JSON.stringify(publicExtra).includes("9374.5"));assert(!publicExtra.profile.questionnaire);
+  await activityStore.saveMentorActivity(mentor.id,{activity:{...extra,categories:["books"]},bio:""});const clearedSpecial=await activityStore.readMentorActivity(mentor.id);assert.deepEqual(clearedSpecial.activity.specializations,[]);assert.equal(clearedSpecial.bio,"");
+  await activityStore.saveMentorActivity(mentor.id,{activity:activityModel.emptyMentorActivity(),bio:""});assert.deepEqual((await activityStore.readMentorActivity(mentor.id)).activity,activityModel.emptyMentorActivity());
+  await query("INSERT INTO profile_blocks(user_id,reason,created_at,moderator_id) VALUES($1,'Test',$2,$1)",[mentor.id,new Date().toISOString()]);
+  await assert.rejects(()=>activityStore.saveMentorActivity(mentor.id,{activity:extra,bio:"Interdit"}));
+  await query("DELETE FROM profile_blocks WHERE user_id=$1",[mentor.id]);
+  console.log("PASS: optional mentor activity, exact choices, conditional cleanup, other answers, owner/role/CSRF/block guards, durable storage and public rendering, empty biography, historical methods and unchanged initial skills.");
+  if(process.env.MENTORA_KEEP_UI_FIXTURE){
+    await activityStore.saveMentorActivity(mentor.id,{activity:extra,bio:"Je partage mes conseils en sourcing de vêtements de seconde main et en création d’annonces. ".repeat(6)});
+    console.log("UI_FIXTURE="+dir);
+  }
   console.log(
     "PASS: both beginner branches, mentor eligibility, conditional reconciliation, precise capacity, multiple/other answers, numeric goals, final profile creation, durable save/read/edit, private money in directory/detail/follows/search, old account/data/proof compatibility, legal version, authorization and no automatic verification. No remote data or e-mails used.",
   );
@@ -482,5 +519,5 @@ try {
   const db = database();
   if (db instanceof DatabaseSync) db.close();
   process.chdir(repo);
-  await rm(dir, { recursive: true, force: true });
+  if(!process.env.MENTORA_KEEP_UI_FIXTURE)await rm(dir, { recursive: true, force: true });
 }

@@ -1,3 +1,4 @@
+import {mentorActivitySchema,type MentorActivity} from "./mentor-activity";
 import { publicAnswers, type ProfileQuestionnaire, type PublicOnboarding } from "./onboarding-schema";
 import { normalizeDate } from "./profile-dates";
 import { levels, mentorExperience } from "./intake";
@@ -61,8 +62,7 @@ export const profileSchema = z
     bio: z
       .string()
       .trim()
-      .min(20, "Présente-toi en au moins 20 caractères.")
-      .max(800),
+      .max(1000),
     goals: z
       .string()
       .trim()
@@ -105,6 +105,7 @@ export const profileSchema = z
     consent: z.literal(true),
   })
   .superRefine((data, ctx) => {
+    if(data.role==="beginner"&&(data.bio.length<20||data.bio.length>800))ctx.addIssue({code:"custom",path:["bio"],message:"Présente-toi en 20 à 800 caractères."});
     if (data.role === "mentor" && data.experience < 6)
       ctx.addIssue({
         code: "custom",
@@ -114,6 +115,8 @@ export const profileSchema = z
   });
 export type ProfileInput = z.infer<typeof profileSchema>;
 export type Profile = Omit<ProfileInput, "consent"> & {
+  mentorActivity?: MentorActivity;
+  portfolioImageCount?:number;
   resell?: PublicOnboarding;
   questionnaire?: ProfileQuestionnaire | null;
   id: string;
@@ -158,6 +161,9 @@ export const initialProfile: ProfileInput = {
 export function decode(row: Record<string, unknown>): Profile {
   const details = JSON.parse(String(row.details));
   delete details.joined;
+  if(row.role==="mentor"&&row.portfolio_bio!==undefined&&row.portfolio_bio!==null)details.bio=String(row.portfolio_bio);
+  const activity=row.mentor_activity?mentorActivitySchema.safeParse(JSON.parse(String(row.mentor_activity))):null;
+  details.mentorActivity=row.role==="mentor"&&activity?.success?activity.data:undefined;
   details.specialty = (
     Array.isArray(details.specialty) ? details.specialty : [details.specialty]
   ).filter((s: string) => (specialties as readonly string[]).includes(s));
@@ -166,6 +172,7 @@ export function decode(row: Record<string, unknown>): Profile {
     details.revenue = "Je préfère ne pas préciser";
   return {
     ...details,
+    portfolioImageCount:Number(row.portfolio_image_count)||0,
     memberSince: normalizeDate(row.member_since),
     lastActiveAt: normalizeDate(row.last_active_at),
     availableSince: normalizeDate(row.available_since),

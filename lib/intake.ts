@@ -143,12 +143,6 @@ export function intakeQuestions(d: IntakeAnswers): IntakeQuestion[] {
         ]).concat(other),
       },
       {
-        id: "methods",
-        kind: "multiple",
-        title: "Quelles méthodes d’achat maîtrises-tu le mieux ?",
-        options: methods,
-      },
-      {
         id: "capacity",
         kind: "single",
         title: "Combien de débutants souhaites-tu accompagner ?",
@@ -327,6 +321,11 @@ export function reconcileIntake(
     if (values.length) selections[q.id] = [...new Set(values)];
     if (values.includes("other") && d.other[q.id]) custom[q.id] = d.other[q.id];
   }
+  // Retain valid historical mentor answers without asking this question at signup.
+  if(d.role==="mentor"&&d.selections.methods?.length){
+    selections.methods=[...new Set(d.selections.methods.filter(id=>methods.some(o=>o.id===id)))];
+    if(selections.methods.includes("other")&&d.other.methods)custom.methods=d.other.methods;
+  }
   if (
     previous?.role === "beginner" &&
     d.role === "beginner" &&
@@ -352,6 +351,7 @@ export const intakeSchema = intakeDraftSchema
       const message = questionError(d, q);
       if (message) ctx.addIssue({ code: "custom", path: [q.id], message });
     }
+    if(d.role==="mentor"&&d.selections.methods?.length){const message=questionError(d,{id:"methods",kind:"multiple",title:"Méthodes",options:methods});if(message)ctx.addIssue({code:"custom",path:["methods"],message});}
     const clean = reconcileIntake(d);
     if (
       Object.keys(d.selections).some(
@@ -400,7 +400,7 @@ export function publicIntake(d: IntakeAnswers) {
 }
 export type PublicIntake = ReturnType<typeof publicIntake>;
 export function publicIntakeText(d: PublicIntake) {
-  return intakeQuestions(d as IntakeAnswers)
+  return [...intakeQuestions(d as IntakeAnswers),...(d.role==="mentor"?[{id:"methods",kind:"multiple" as const,title:"Méthodes",options:methods}]:[])]
     .filter((q) => q.id !== "budget" && q.kind !== "money")
     .flatMap((q) => answerLabels(d, q))
     .join(" ");

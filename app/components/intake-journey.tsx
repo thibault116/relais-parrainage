@@ -31,6 +31,7 @@ import {
 } from "@/lib/onboarding-schema";
 import { BrandLogo } from "./brand-logo";
 import "../intake.css";
+import {MentorComplement} from "./mentor-complement";
 
 type Existing = Partial<ProfileInput> & {
   id?: string;
@@ -230,6 +231,7 @@ export function IntakeJourney({
     discord: initial.discord || "",
     bio: initial.bio || "",
   });
+  useEffect(()=>{setIdentity(v=>({...v,bio:initial.bio||""}))},[initial.bio]);
   const heading = useRef<HTMLHeadingElement>(null),
     pending = useRef<ReturnType<typeof setTimeout> | null>(null),
     roleChanged = useRef(false);
@@ -446,7 +448,7 @@ export function IntakeJourney({
           String(form?.get("name") || signed.data.user.name),
       );
       const edits = !registration
-        ? { ...identity, bio: identity.bio.trim() || p.bio }
+        ? { ...identity, bio: answers.role==="mentor"?identity.bio.trim():identity.bio.trim() || p.bio }
         : {};
       const r = await fetch("/api/me", {
         method: "PUT",
@@ -627,7 +629,7 @@ export function IntakeJourney({
               <label>
                 Courte biographie (facultatif)
                 <textarea
-                  maxLength={800}
+                  maxLength={answers.role==="mentor"?1000:800}
                   value={identity.bio}
                   onChange={(e) =>
                     setIdentity({ ...identity, bio: e.target.value })
@@ -948,18 +950,22 @@ export function ProfileForm({
   onSave,
   onCancel,
 }: {
-  initial: ProfileInput & { questionnaire?: ProfileQuestionnaire | null };
+  initial: ProfileInput & { id?:string; questionnaire?: ProfileQuestionnaire | null };
   onSave: (p: Profile) => void;
   onCancel?: () => void;
   onLogin: () => void;
   requiredRefresh?: boolean;
 }) {
+  const [complementOpen,setComplementOpen]=useState(false);
   return (
-    <IntakeJourney
+    <>
+    {initial.id&&initial.role==="mentor"&&<MentorComplement bioVersion={initial.bio} onOpenChange={setComplementOpen} onChanged={async()=>{const r=await fetch("/api/me",{cache:"no-store"});const d=await r.json();if(!r.ok)throw Error(d.error);onSave(d.profile)}}/>}
+    <div hidden={complementOpen}><IntakeJourney
       initial={initial}
       role={initial.role}
       onSave={onSave}
       onCancel={onCancel}
-    />
+    /></div>
+    </>
   );
 }

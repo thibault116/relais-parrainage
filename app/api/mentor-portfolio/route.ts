@@ -127,10 +127,12 @@ export async function PUT(r: Request) {
     const data = await r.json();
     if (typeof data.bio !== "string" || data.bio.trim().length > 1000)
       return json({ error: "Biographie : 1 000 caractères maximum." }, 400);
-    await query(
-      "INSERT INTO mentor_portfolios(user_id,bio) VALUES($1,$2) ON CONFLICT(user_id) DO UPDATE SET bio=excluded.bio",
-      [u.id, data.bio.trim()],
-    );
+    await inTransaction(async q=>{
+      const [p]=await q("UPDATE profiles SET updated_at=updated_at WHERE user_id=$1 AND role='mentor' RETURNING details",[u.id]);if(!p)throw Error('Compte parrain requis.');
+      const details=JSON.parse(String(p.details));details.bio=data.bio.trim();
+      await q("UPDATE profiles SET details=$1 WHERE user_id=$2",[JSON.stringify(details),u.id]);
+      await q("INSERT INTO mentor_portfolios(user_id,bio) VALUES($1,$2) ON CONFLICT(user_id) DO UPDATE SET bio=excluded.bio",[u.id,data.bio.trim()]);
+    });
     return json({ ok: true });
   } catch {
     return json({ error: "Enregistrement impossible." }, 503);

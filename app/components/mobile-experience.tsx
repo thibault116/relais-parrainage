@@ -1,4 +1,5 @@
 "use client";
+import {MentorProfileCard} from "./mentor-profile";
 import { Wallet,AmbassadorProfileCode } from "./wallet";
 import { ChatTextbox } from "./chat-textbox";
 import {useScreenMotion,useNavigationIndicator,useMessageArrival} from "./motion-system";
@@ -655,6 +656,7 @@ export function MobileExperience({
                 <ChevronLeft size={18} />
                 Retour
               </button>
+              {profile?.role==="mentor"?<MentorProfileCard profile={profile} own onEdit={()=>go("edit")}/>:<>
               <div className="mobile-profile-hero">
                 <div className="mobile-avatar">
                   {profile?.photo ? (
@@ -672,7 +674,7 @@ export function MobileExperience({
                 <h1>{name}</h1>
                 <OwnerPlanBadge enabled={true} />
                 <span className="mobile-role">
-                  {profile?.role === "mentor" ? "Parrain" : "Débutant"}
+                  Débutant
                 </span>
                 <p>
                   <i className={profile?.visible ? "available-dot" : ""} />
@@ -681,6 +683,7 @@ export function MobileExperience({
                     : "Profil masqué"}
                 </p>
               </div>
+              </>}
               {administrator&&<AmbassadorProfileCode/>}
               <div className="profile-social-counts">
                 <button onClick={() => openNetwork("followers")}>
@@ -719,7 +722,7 @@ export function MobileExperience({
                 MessageCircle,
                 "messages",
               )}
-              {profile?.role==="mentor"&&<PrivateServiceCatalog profileId={profile.id}/>}
+
               {tile(
                 "Modifier mon profil",
                 "Photo, présentation et spécialités",

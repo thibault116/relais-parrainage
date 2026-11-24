@@ -1,4 +1,5 @@
 "use client";
+import {MentorProfileCard} from "./components/mentor-profile";
 import {useScreenMotion} from "./components/motion-system";
 import { PrivateServiceCatalog, PrivateServiceRequests } from "./components/private-services";
 import { useOwnerPreview } from "./components/owner-preview";
@@ -2221,7 +2222,7 @@ function Directory({
             role="dialog"
             aria-modal="true"
             aria-labelledby="member-title"
-            className={`modal member-modal ${privateServices&&selected.role==="mentor"?"private-mentor-profile":""}`}
+            className={`modal member-modal ${selected.role==="mentor"?"redesigned-mentor-modal":""}`}
             key={selected.id}
             onKeyDown={(e) => {
               if (e.key === "Tab") {
@@ -2284,9 +2285,10 @@ function Directory({
                 →
               </button>
             </div>
+            {selected.role==="mentor"?<MentorProfileCard key={selected.id} profile={selected} own={selected.id===own?.id} onEdit={selected.id===own?.id?()=>{setSelected(null);window.location.assign("/?mobile=edit#profile");}:undefined} headerActions={<><FollowCounts profile={selected}/>{session&&selected.id!==own?.id&&<fieldset className="preview-controls" disabled={preview} inert={preview}><FollowButton key={selected.id} profile={selected} onChange={(count)=>{void onFollowChange();setSelected(p=>p?{...p,followerCount:count}:p);setProfiles(list=>list.map(p=>p.id===selected.id?{...p,followerCount:count}:p));}}/></fieldset>}<RatingSummary average={selected.ratingAverage} count={selected.ratingCount}/></>} actions={<><MobileProfileActions profileId={selected.id}/>{session&&selected.id!==own?.id&&<fieldset className="preview-controls" disabled={preview} inert={preview}><ReportProfile key={selected.id} profileId={selected.id}/></fieldset>}</>}/>:<>
             <Avatar profile={selected} />
             <span className="eyebrow">
-              {translateUi(selected.role === "mentor" ? "PARRAIN" : "DÉBUTANT")}{" "}
+              {translateUi(isMentorProfile(selected) ? "PARRAIN" : "DÉBUTANT")}{" "}
               ·{" "}
               {translateUi(
                 selected.specialty.join(" · ") || "Spécialités à préciser",
@@ -2321,13 +2323,13 @@ function Directory({
                 />
               </fieldset>
             )}
-            {selected.role === "mentor" && (!privateServices || selected.id!==own?.id) && (
+            {isMentorProfile(selected) && (!privateServices || selected.id!==own?.id) && (
               <RatingSummary
                 average={selected.ratingAverage}
                 count={selected.ratingCount}
               />
             )}
-            {selected.role === "mentor" && (
+            {isMentorProfile(selected) && (
               <MentorAvailability profile={selected} />
             )}
             <p>{selected.bio}</p>
@@ -2366,7 +2368,7 @@ function Directory({
                   <strong>{translateUi(selected.age)}</strong>
                 </div>
               )}
-              {selected.role === "mentor" &&
+              {isMentorProfile(selected) &&
                 selected.revenue !== "Je préfère ne pas préciser" && (
                   <div>
                     <small>{translateUi("CA mensuel d\u00E9clar\u00E9")}</small>
@@ -2407,7 +2409,7 @@ function Directory({
                   <strong>{translateUi(selected.age)}</strong>
                 </div>
               )}
-              {selected.role === "mentor" &&
+              {isMentorProfile(selected) &&
                 selected.revenue !== "Je préfère ne pas préciser" && (
                   <div>
                     <small>{translateUi("CA mensuel d\u00E9clar\u00E9")}</small>
@@ -2425,13 +2427,13 @@ function Directory({
  </>)}
             <h3>
               {translateUi(
-                selected.role === "mentor"
+                isMentorProfile(selected)
                   ? "Ce que je peux t’apporter"
                   : "Mes objectifs",
               )}
             </h3>
             <p>
-              {selected.role === "mentor"
+              {isMentorProfile(selected)
                 ? selected.teaching || selected.goals
                 : selected.goals}
             </p>
@@ -2447,8 +2449,9 @@ function Directory({
               )}
             </p>}
             <MobileProfileActions profileId={selected.id} />
-            {privateServices&&selected.role==="mentor"&&<PrivateServiceCatalog profileId={selected.id}/>}
-            {privateServices?<details className="profile-extra-details"><summary>Parcours et références</summary>{selected.role==="mentor"&&<MentorPortfolio profileId={selected.id}/>}<OnboardingSummary data={selected.resell} profileId={selected.id}/></details>:<>{selected.role==="mentor"&&<MentorPortfolio profileId={selected.id}/>}<OnboardingSummary data={selected.resell} profileId={selected.id}/></>}
+            {privateServices&&isMentorProfile(selected)&&<PrivateServiceCatalog profileId={selected.id}/>}
+            {privateServices?<details className="profile-extra-details"><summary>Parcours et références</summary>{isMentorProfile(selected)&&<MentorPortfolio profileId={selected.id}/>}<OnboardingSummary data={selected.resell} profileId={selected.id}/></details>:<>{isMentorProfile(selected)&&<MentorPortfolio profileId={selected.id}/>}<OnboardingSummary data={selected.resell} profileId={selected.id}/></>}
+            </>}
             {contact ? (
               <div className="contact-panel">
                 <strong>@{contact.discord}</strong>
@@ -2577,6 +2580,7 @@ function DeleteProfile({ onDeleted }: { onDeleted: () => void }) {
   );
 }
 function Guide({onJoin}:{onJoin:()=>void}) { return <HowMentoraWorks onJoin={onJoin}/>; }
+function isMentorProfile(profile: PublicProfile){return profile.role==="mentor";}
 function MentorAvailability({ profile }: { profile: PublicProfile }) {
   const active = profile.activeCount ?? 0;
   const remaining = Math.max(0, profile.capacity - active);

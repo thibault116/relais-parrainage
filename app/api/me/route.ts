@@ -1,3 +1,4 @@
+import {mentorProfileSQL} from "@/lib/mentor-activity";
 import { canUseFeature } from "@/lib/beta";
 import type { ProfileQuestionnaire } from "@/lib/onboarding-schema";
 import { publicAnswers, experienceMonths } from "@/lib/onboarding-schema";
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
     if (!u)
       return json({ error: "Connecte-toi pour accéder à ton profil." }, 401);
     const rows = await query(
-      `SELECT p.*, ${profileTimingSQL}, ${followCountsSQL}, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='active') AS active_count, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed') AS completed_count, (SELECT COUNT(a.rating) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed' AND NOT EXISTS (SELECT 1 FROM hidden_ratings h WHERE h.accompaniment_id=a.id)) AS rating_count, (SELECT AVG(a.rating*1.0) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed' AND NOT EXISTS (SELECT 1 FROM hidden_ratings h WHERE h.accompaniment_id=a.id)) AS rating_average FROM profiles p WHERE user_id=$1`,
+      `SELECT p.*, ${mentorProfileSQL}, ${profileTimingSQL}, ${followCountsSQL}, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='active') AS active_count, (SELECT COUNT(*) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed') AS completed_count, (SELECT COUNT(a.rating) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed' AND NOT EXISTS (SELECT 1 FROM hidden_ratings h WHERE h.accompaniment_id=a.id)) AS rating_count, (SELECT AVG(a.rating*1.0) FROM accompaniments a WHERE a.mentor_id=p.user_id AND a.status='completed' AND NOT EXISTS (SELECT 1 FROM hidden_ratings h WHERE h.accompaniment_id=a.id)) AS rating_average FROM profiles p WHERE user_id=$1`,
       [u.id],
     );
     const verifications = await getPublicVerifications([u.id]);
@@ -142,11 +143,13 @@ export async function PUT(request: Request) {
           new Date().toISOString(),
         ],
       );
+      if(details.role==="mentor")await q("INSERT INTO mentor_portfolios(user_id,bio) VALUES($1,$2) ON CONFLICT(user_id) DO UPDATE SET bio=excluded.bio",[u.id,details.bio]);
       if (questionnaire) await saveOnboarding(u.id, questionnaire, q);
       if(questionnaire?.version===2&&!existing)await q("INSERT INTO profile_terms_acceptances(user_id,version,accepted_at) VALUES($1,$2,$3) ON CONFLICT(user_id) DO NOTHING",[u.id,termsVersion,new Date().toISOString()]);
       else if (existing && existing.role !== details.role)
         await q("DELETE FROM onboarding_answers WHERE user_id=$1", [u.id]);
     });
+    const [activityRow]=await query("SELECT answers FROM mentor_activities WHERE user_id=$1",[u.id]);
     sendEmailsAfterResponse();
     return json({
       profile: {
@@ -158,6 +161,7 @@ export async function PUT(request: Request) {
           role: details.role,
           visible: details.visible ? 1 : 0,
           details: JSON.stringify(savedDetails),
+          mentor_activity:activityRow?.answers,
         }),
       },
     });
