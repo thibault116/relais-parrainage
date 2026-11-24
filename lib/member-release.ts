@@ -1,11 +1,12 @@
 export const memberRelease = {
-  id: "2026-11-24-invitation-discord-permanente",
+  id: "2026-11-24-webapp-zone-systeme",
   discordAudience: "public",
-  title: "Le lien Discord devient permanent",
+  title: "Un affichage mieux adapté à ton téléphone",
   notes: [
-    "Correction : le nouveau lien permanent du serveur Discord est disponible partout dans Mentora.",
+    "Correction : l’en-tête de la web app respecte l’espace de l’encoche et de la barre d’état sur mobile.",
+    "Amélioration : les marges s’adaptent aussi à l’orientation du téléphone, y compris dans les conversations.",
   ],
-  guideUrl: "https://discord.gg/BgAewxc2ZQ",
-  guideLabel: "Rejoindre le Discord",
+  guideUrl: "/?mobile=home#workspace",
+  guideLabel: "Ouvrir Mentora",
 };
 export const retiredMemberReleaseIds = [] as string[];

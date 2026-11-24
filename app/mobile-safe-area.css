@@ -1,0 +1,29 @@
+/* Device-provided insets: no iPhone model detection or fixed status-bar height. */
+:root {
+  --mentora-safe-top: env(safe-area-inset-top, 0px);
+  --mentora-safe-left: env(safe-area-inset-left, 0px);
+  --mentora-safe-right: env(safe-area-inset-right, 0px);
+}
+@media (max-width: 900px) {
+  .mobile-app > .mobile-app-header {
+    --header-gutter: 20px;
+    box-sizing: border-box;
+    padding-top: calc(16px + var(--mentora-safe-top));
+    padding-left: calc(var(--header-gutter) + var(--mentora-safe-left));
+    padding-right: calc(var(--header-gutter) + var(--mentora-safe-right));
+  }
+  /* Conversations intentionally hide the main header, so their fixed shell
+     owns the inset instead. Keep it inside the visual viewport height. */
+  .mobile-app.mobile-conversation-open {
+    box-sizing: border-box;
+    padding-top: var(--mentora-safe-top) !important;
+    padding-left: var(--mentora-safe-left);
+    padding-right: var(--mentora-safe-right);
+  }
+  .mobile-app.mobile-conversation-open :is(.mobile-dm-heading, .service-chat > header) {
+    padding-top: 6px !important;
+  }
+}
+@media (max-width: 370px) {
+  .mobile-app > .mobile-app-header { --header-gutter: 12px; }
+}
