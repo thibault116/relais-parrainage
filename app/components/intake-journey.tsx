@@ -960,7 +960,7 @@ export function ProfileForm({
   return (
     <>
     {initial.id&&initial.role==="mentor"&&<MentorComplement bioVersion={initial.bio} onOpenChange={setComplementOpen} onChanged={async()=>{const r=await fetch("/api/me",{cache:"no-store"});const d=await r.json();if(!r.ok)throw Error(d.error);onSave(d.profile)}}/>}
-    <div hidden={complementOpen}><IntakeJourney
+    <div hidden={complementOpen} style={complementOpen?{display:"none"}:undefined}><IntakeJourney
       initial={initial}
       role={initial.role}
       onSave={onSave}
