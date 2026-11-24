@@ -117,6 +117,7 @@ export function intakeQuestions(d: IntakeAnswers): IntakeQuestion[] {
   };
   if (!beginner)
     return [
+      financial,
       {
         id: "experience",
         kind: "single",
@@ -167,9 +168,9 @@ export function intakeQuestions(d: IntakeAnswers): IntakeQuestion[] {
           ["regular", "Accompagnement régulier"],
         ]).concat(other),
       },
-      financial,
     ];
   return [
+    financial,
     {
       id: "level",
       kind: "single",
@@ -246,7 +247,6 @@ export function intakeQuestions(d: IntakeAnswers): IntakeQuestion[] {
           },
         ]
       : []),
-    financial,
     when,
     {
       id: "support",

@@ -121,6 +121,7 @@ try {
   assert.equal(intakeQuestions(a).length, 10);
   assert.equal(intakeQuestions(b).length, 9);
   assert.equal(intakeQuestions(m).length, 7);
+  for (const answers of [a,b,m]) assert.equal(intakeQuestions(answers)[0].id,"financialGoal");
   assert(!intakeQuestions(b).some((q) => q.id === "deadline"));
   assert(
     !intakeQuestions(b)
@@ -472,7 +473,7 @@ try {
   assert(
     questionError(
       { ...m, selections: { ...m.selections, experience: ["under6"] } },
-      intakeQuestions(m)[0],
+      intakeQuestions(m).find(q=>q.id==="experience")!,
     ).includes("six mois"),
   );
   const historicalAccount=await account(5),oldMentorId=crypto.randomUUID();
