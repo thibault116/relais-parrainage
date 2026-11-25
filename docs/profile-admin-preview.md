@@ -1,0 +1,11 @@
+# Prévisualisation des profils — compte administrateur principal
+
+La présentation simplifiée est réservée au compte principal via OwnerPreviewProvider, validé côté serveur par isCrmOwner. Les membres, bêta-testeurs et autres modérateurs gardent leur affichage actuel. Aucun identifiant d'annonce membre n'est modifié et aucune annonce Discord n'est envoyée.
+
+Les fiches personnelles et les fiches de l'annuaire utilisent le même composant : bannière, avatar, rôle, dates réelles, expérience, biographie, réponses utiles du questionnaire, activité et prestations en crédits pour les Parrains. La prévisualisation masque les places, les modalités historiques, les étiquettes anciennes et les demandes d'accompagnement. Les valeurs historiques compatibles sont projetées vers les libellés actuels ; aucun attribut manquant ni aucune réponse financière ne sont inventés ou exposés.
+
+La biographie s'ajoute, se modifie ou se vide directement sur sa fiche. Le PUT /api/admin/profile-biography vérifie session, compte principal, origine, blocage et schéma strict. Il écrit uniquement le profil du demandeur et synchronise la biographie du portfolio existant. Aucun identifiant de propriétaire envoyé par le client n'est accepté.
+
+La migration crée legacy_retirements puis annule uniquement les accompagnements pending/active impliquant le compte principal reconnu par e-mail ET par son rôle de modérateur. Chaque ligne est archivée avant annulation, dans une transaction idempotente. Les relations entre autres membres, les anciens avis, les messages, les profils et les réservations de prestations restent inchangés. Les anciennes informations sont retirées de l'affichage de prévisualisation, pas effacées globalement de la base tant que cette refonte n'est pas validée pour tous. Les créations/modifications d'accompagnements par le compte principal sont désactivées côté serveur ; son ancien historique est masqué.
+
+Tests isolés dans scripts/test-intake.ts : restriction compte principal (y compris e-mail sans rôle), suppression conditionnelle, archives, idempotence, autres binômes inchangés, biographie sauvegardée/vidée, autorisations, origine, limites, injection d'identifiant refusée, projection compatible sans anciens libellés ni données financières. TypeScript, build et contrôle navigateur mobile/ordinateur complètent la vérification.

@@ -91,7 +91,7 @@ async function save(
   );
   return { status: r.status, data: await r.json() };
 }
-async function account(i: number) {
+async function account(i: number, email=`intake${i}@example.invalid`) {
   const r = await getAuth().handler(
     new Request(base + "/api/auth/sign-up/email", {
       method: "POST",
@@ -102,7 +102,7 @@ async function account(i: number) {
       },
       body: JSON.stringify({
         name: "Membre de test",
-        email: `intake${i}@example.invalid`,
+        email,
         password: "Local-intake-password-2026!",
       }),
     }),
@@ -509,6 +509,33 @@ try {
   await assert.rejects(()=>activityStore.saveMentorActivity(mentor.id,{activity:extra,bio:"Interdit"}));
   await query("DELETE FROM profile_blocks WHERE user_id=$1",[mentor.id]);
   console.log("PASS: optional mentor activity, exact choices, conditional cleanup, other answers, owner/role/CSRF/block guards, durable storage and public rendering, empty biography, historical methods and unchanged initial skills.");
+  const {CRM_OWNER_EMAIL}=await import('../lib/crm');
+  const {retireOwnerLegacyAccompaniments}=await import('../lib/legacy-retirement');
+  const {currentProfileSections}=await import('../lib/profile-modern');
+  const biography=await import('../app/api/admin/profile-biography/route');
+  const legacyApi=await import('../app/api/accompaniments/route');
+  const owner=await account(6,CRM_OWNER_EMAIL);await save(m,owner.cookie);
+  assert.equal((await biography.PUT(req('/api/admin/profile-biography',{bio:'Interdit'},owner.cookie))).status,403);
+  await query('INSERT INTO moderators(user_id,email) VALUES($1,$2)',[owner.id,CRM_OWNER_EMAIL]);
+  const at=new Date().toISOString(),activeId=crypto.randomUUID(),pendingId=crypto.randomUUID(),otherId=crypto.randomUUID();
+  for(const [id,beginnerId,mentorId,status] of [[activeId,novice.id,owner.id,'active'],[pendingId,experienced.id,owner.id,'pending'],[otherId,historicalAccount.id,mentor.id,'active']])await query('INSERT INTO accompaniments(id,beginner_id,mentor_id,status,created_at) VALUES($1,$2,$3,$4,$5)',[id,beginnerId,mentorId,status,at]);
+  const expected=await query("SELECT id FROM accompaniments WHERE (mentor_id=$1 OR beginner_id=$1) AND status IN ('pending','active')",[owner.id]);
+  assert.equal(await retireOwnerLegacyAccompaniments(),expected.length);assert.equal(await retireOwnerLegacyAccompaniments(),0);
+  assert.equal((await query('SELECT status FROM accompaniments WHERE id=$1',[activeId]))[0].status,'cancelled');
+  assert.equal((await query('SELECT status FROM accompaniments WHERE id=$1',[pendingId]))[0].status,'cancelled');
+  assert.equal((await query('SELECT status FROM accompaniments WHERE id=$1',[otherId]))[0].status,'active');
+  assert.equal(JSON.parse(String((await query('SELECT snapshot FROM legacy_retirements WHERE accompaniment_id=$1',[activeId]))[0].snapshot)).status,'active');
+  assert.deepEqual((await(await legacyApi.GET(req('/api/accompaniments',undefined,owner.cookie))).json()).accompaniments,[]);
+  assert.equal((await legacyApi.POST(new Request(base+'/api/accompaniments',{method:'POST',headers:{cookie:owner.cookie,Origin:base,'Content-Type':'application/json'},body:JSON.stringify({targetProfileId:savedA.data.profile.id})}))).status,410);
+  assert.equal((await biography.PUT(req('/api/admin/profile-biography',{bio:'Non autorisé'},mentor.cookie))).status,403);
+  assert.equal((await biography.PUT(req('/api/admin/profile-biography',{bio:'Ma bio',userId:mentor.id},owner.cookie))).status,400);
+  assert.equal((await biography.PUT(req('/api/admin/profile-biography',{bio:'x'.repeat(1001)},owner.cookie))).status,400);
+  assert.equal((await biography.PUT(new Request(base+'/api/admin/profile-biography',{method:'PUT',headers:{cookie:owner.cookie,Origin:'https://foreign.invalid','Content-Type':'application/json'},body:JSON.stringify({bio:'CSRF'})}))).status,403);
+  for(const bio of ['Ma nouvelle biographie.', '']){assert.equal((await biography.PUT(req('/api/admin/profile-biography',{bio},owner.cookie))).status,200);assert.equal((await(await me(req('/api/me',undefined,owner.cookie))).json()).profile.bio,bio);}
+  assert.equal((await query('SELECT bio FROM mentor_portfolios WHERE user_id=$1',[owner.id]))[0].bio,'');
+  const clean=currentProfileSections({...initialProfile,id:'test',specialty:['Expert en photo','Vintage'],bio:'Ma bio',role:'mentor'});assert.deepEqual(clean.skills,['Photos et annonces']);assert(!JSON.stringify(clean).includes('Vintage'));assert(!JSON.stringify(clean).includes('Expert en photo'));
+  const current=currentProfileSections(publicExtra.profile);assert(current.skills.length>0);assert(!JSON.stringify(current).includes('9374.5'));
+  console.log('PASS: owner-only legacy retirement, archived snapshots, idempotence, untouched other pairs, biography authorization/CSRF/validation/save/clear, current profile projection without obsolete labels or finances.');
   if(process.env.MENTORA_KEEP_UI_FIXTURE){
     await activityStore.saveMentorActivity(mentor.id,{activity:extra,bio:"Je partage mes conseils en sourcing de vêtements de seconde main et en création d’annonces. ".repeat(6)});
     console.log("UI_FIXTURE="+dir);

@@ -656,7 +656,7 @@ export function MobileExperience({
                 <ChevronLeft size={18} />
                 Retour
               </button>
-              {profile?.role==="mentor"?<MentorProfileCard profile={profile} own onEdit={()=>go("edit")}/>:<>
+              {profile&&(profile.role==="mentor"||administrator)?<MentorProfileCard profile={profile} own onEdit={()=>go("edit")}/>:<>
               <div className="mobile-profile-hero">
                 <div className="mobile-avatar">
                   {profile?.photo ? (

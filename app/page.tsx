@@ -1,4 +1,5 @@
 "use client";
+import {currentProfileSections} from "@/lib/profile-modern";
 import {MentorProfileCard} from "./components/mentor-profile";
 import {useScreenMotion} from "./components/motion-system";
 import { PrivateServiceCatalog, PrivateServiceRequests } from "./components/private-services";
@@ -1927,13 +1928,14 @@ function LegacyProfileForm({
   );
 }
 function DiscoveryCard({p,onOpen,canSave}:{p:PublicProfile;onOpen:()=>void;canSave:boolean}) {
+  const modern=useOwnerPreview();
   const available = p.role === "mentor" && p.capacity > (p.activeCount || 0);
   return <article className="discovery-card">
     {canSave && <MobileProfileActions profileId={p.id} compact/>}
     <div className="discovery-card-head"><Avatar profile={p}/><div><h2>{p.name}<span className="discovery-role">{p.role === "mentor" ? "Parrain" : "Débutant"}</span></h2><p>{profileExperienceLabel(p)}</p></div></div>
     {p.bio && <p className="discovery-bio">{p.bio}</p>}
-    <div className="discovery-tags">{discoveryTags(p).map(tag=><span key={tag}>{tag}</span>)}</div>
-    <footer><span className={available ? "discovery-available" : "discovery-status"}>{p.role === "mentor" ? available ? "✓ Disponible pour aider" : "Aucune place disponible" : "Membre de la communauté"}</span><button className="btn secondary" onClick={onOpen}>Voir le profil <ArrowRight size={17}/></button></footer>
+    <div className="discovery-tags">{(modern?[...currentProfileSections(p).platforms,...currentProfileSections(p).methods].slice(0,3):discoveryTags(p)).map(tag=><span key={tag}>{tag}</span>)}</div>
+    <footer><span className={available ? "discovery-available" : "discovery-status"}>{p.role === "mentor" ? modern ? "Parrain" : available ? "✓ Disponible pour aider" : "Aucune place disponible" : "Membre de la communauté"}</span><button className="btn secondary" onClick={onOpen}>Voir le profil <ArrowRight size={17}/></button></footer>
   </article>;
 }
 function Directory({
@@ -1957,6 +1959,7 @@ function Directory({
   onProfile: () => void;
   notify: (s: string) => void;
 }) {
+  const modern=useOwnerPreview();
   const [role, setRole] = useState<"all"|"mentor"|"beginner">("all");
   const [advanced, setAdvanced] = useState<Record<string,string>>({});
   const [search, setSearch] = useState("");
@@ -2222,7 +2225,7 @@ function Directory({
             role="dialog"
             aria-modal="true"
             aria-labelledby="member-title"
-            className={`modal member-modal ${selected.role==="mentor"?"redesigned-mentor-modal":""}`}
+            className={`modal member-modal ${selected.role==="mentor"||modern?"redesigned-mentor-modal":""}`}
             key={selected.id}
             onKeyDown={(e) => {
               if (e.key === "Tab") {
@@ -2285,7 +2288,7 @@ function Directory({
                 →
               </button>
             </div>
-            {selected.role==="mentor"?<MentorProfileCard key={selected.id} profile={selected} own={selected.id===own?.id} onEdit={selected.id===own?.id?()=>{setSelected(null);window.location.assign("/?mobile=edit#profile");}:undefined} headerActions={<><FollowCounts profile={selected}/>{session&&selected.id!==own?.id&&<fieldset className="preview-controls" disabled={preview} inert={preview}><FollowButton key={selected.id} profile={selected} onChange={(count)=>{void onFollowChange();setSelected(p=>p?{...p,followerCount:count}:p);setProfiles(list=>list.map(p=>p.id===selected.id?{...p,followerCount:count}:p));}}/></fieldset>}<RatingSummary average={selected.ratingAverage} count={selected.ratingCount}/></>} actions={<><MobileProfileActions profileId={selected.id}/>{session&&selected.id!==own?.id&&<fieldset className="preview-controls" disabled={preview} inert={preview}><ReportProfile key={selected.id} profileId={selected.id}/></fieldset>}</>}/>:<>
+            {selected.role==="mentor"||modern?<MentorProfileCard key={selected.id} profile={selected} own={selected.id===own?.id} onEdit={selected.id===own?.id?()=>{setSelected(null);window.location.assign("/?mobile=edit#profile");}:undefined} headerActions={<><FollowCounts profile={selected}/>{session&&selected.id!==own?.id&&<fieldset className="preview-controls" disabled={preview} inert={preview}><FollowButton key={selected.id} profile={selected} onChange={(count)=>{void onFollowChange();setSelected(p=>p?{...p,followerCount:count}:p);setProfiles(list=>list.map(p=>p.id===selected.id?{...p,followerCount:count}:p));}}/></fieldset>}{selected.role==="mentor"&&<RatingSummary average={selected.ratingAverage} count={selected.ratingCount}/>}</>} actions={<><MobileProfileActions profileId={selected.id}/>{session&&selected.id!==own?.id&&<fieldset className="preview-controls" disabled={preview} inert={preview}><ReportProfile key={selected.id} profileId={selected.id}/></fieldset>}</>}/>:<>
             <Avatar profile={selected} />
             <span className="eyebrow">
               {translateUi(isMentorProfile(selected) ? "PARRAIN" : "DÉBUTANT")}{" "}
@@ -2452,7 +2455,7 @@ function Directory({
             {privateServices&&isMentorProfile(selected)&&<PrivateServiceCatalog profileId={selected.id}/>}
             {privateServices?<details className="profile-extra-details"><summary>Parcours et références</summary>{isMentorProfile(selected)&&<MentorPortfolio profileId={selected.id}/>}<OnboardingSummary data={selected.resell} profileId={selected.id}/></details>:<>{isMentorProfile(selected)&&<MentorPortfolio profileId={selected.id}/>}<OnboardingSummary data={selected.resell} profileId={selected.id}/></>}
             </>}
-            {contact ? (
+            {!modern&&(contact ? (
               <div className="contact-panel">
                 <strong>@{contact.discord}</strong>
                 <button
@@ -2522,9 +2525,9 @@ function Directory({
                   }
                 />
               </fieldset>
-            ) : null}
+            ) : null)}
             {translateUi(
-              contactError && (
+              !modern&&contactError && (
                 <p role="alert" className="error">
                   {translateUi(contactError)}
                 </p>

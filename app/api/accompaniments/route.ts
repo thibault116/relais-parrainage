@@ -9,6 +9,7 @@ export async function GET(request: Request) {
   try {
     const u = await user(request);
     if (!u) return json({ error: "Connexion requise." }, 401);
+    if(await isCrmOwner(u))return json({accompaniments:[]});
     const rows = await query(
       `SELECT a.id,a.objective,a.decline_reason,CASE WHEN COALESCE(a.initiator_id,a.beginner_id)=$1 THEN 'sent' ELSE 'received' END AS direction, CASE WHEN a.status IN ('active','completed') AND NOT EXISTS(SELECT 1 FROM profile_blocks pb WHERE pb.user_id IN (a.mentor_id,a.beginner_id)) THEN CASE WHEN a.beginner_id=$1 THEN m.discord ELSE b.discord END ELSE NULL END AS partner_discord, CASE WHEN a.beginner_id=$1 THEN m.id ELSE b.id END AS partner_profile_id,a.status,a.created_at,a.completed_at,a.rating, CASE WHEN a.beginner_id=$1 THEN 'beginner' ELSE 'mentor' END AS side, CASE WHEN a.beginner_id=$1 THEN COALESCE(m.name,'Ancien membre') ELSE COALESCE(b.name,'Ancien membre') END AS partner_name FROM accompaniments a LEFT JOIN profiles m ON m.user_id=a.mentor_id LEFT JOIN profiles b ON b.user_id=a.beginner_id WHERE a.beginner_id=$1 OR a.mentor_id=$1 ORDER BY CASE WHEN a.status='pending' THEN 0 ELSE 1 END, a.created_at DESC`,
       [u.id],
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
     if (blocked) return blocked;
     const u = await user(request);
     if (!u) return json({ error: "Connexion requise." }, 401);
+    if(await isCrmOwner(u))return json({error:"Utilise les prestations pour envoyer une demande."},410);
     const input = z
       .object({
         targetProfileId: z.string().uuid().optional(),
@@ -119,6 +121,7 @@ export async function PATCH(request: Request) {
     if (blocked) return blocked;
     const u = await user(request);
     if (!u) return json({ error: "Connexion requise." }, 401);
+    if(await isCrmOwner(u))return json({error:"Utilise les prestations pour envoyer une demande."},410);
     const input = z
       .object({
         id: z.string().uuid(),

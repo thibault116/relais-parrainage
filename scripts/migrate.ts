@@ -1,3 +1,4 @@
+import {retireOwnerLegacyAccompaniments} from "../lib/legacy-retirement";
 import {withMoneyMode} from "../lib/monetization/mode";
 import {migrateDiscordCommunity} from "../lib/discord-community/store";
 import {migrateDiscordTickets} from "../lib/discord-tickets/store";
@@ -33,6 +34,7 @@ await migrateSuggestions();
 await migrateAccompaniments();
 await migrateTasks();
 await migrateVerifications();
+await retireOwnerLegacyAccompaniments();
 await migrateAdministration();
 await migrateVerificationFiles();
 await migrateEmail();
