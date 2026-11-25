@@ -124,6 +124,7 @@ export type Profile = Omit<ProfileInput, "consent"> & {
   lastActiveAt?: string | null;
   availableSince?: string | null;
   photo?: string;
+  banner?:string;
   followerCount?: number;
   followingCount?: number;
   verification?: {
@@ -178,6 +179,7 @@ export function decode(row: Record<string, unknown>): Profile {
     availableSince: normalizeDate(row.available_since),
     followerCount: Number(row.follower_count) || 0,
     followingCount: Number(row.following_count) || 0,
+    banner:details.banner?.path?`/api/profile-banner?id=${row.id}&v=${details.banner.version}`:undefined,
     photo: details.photo?.path
       ? `/api/profile-photo?id=${row.id}&v=${details.photo.version}`
       : undefined,

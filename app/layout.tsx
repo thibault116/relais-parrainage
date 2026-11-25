@@ -63,9 +63,9 @@ export const viewport: Viewport = {
 export const maxDuration = 60;
 
 export default async function Layout({
-  children,
+  children,member,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode;member:React.ReactNode;
 }) {
   const initialUserId = await ownerPreviewUserId();
   if (process.env.VERCEL_ENV === "production") after(automaticProductionCheck);
@@ -90,7 +90,8 @@ export default async function Layout({
                 <ReleaseNotes />
                 <PlatformProvider>
                   <BetaProvider>
-                    {children}
+                    <div id="workspace-route">{children}</div>
+                    {member}
                     <SuggestionWidget />
                   </BetaProvider>
                 </PlatformProvider>

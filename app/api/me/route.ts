@@ -123,6 +123,7 @@ export async function PUT(request: Request) {
         : rows[0] && rows[0].role === details.role
           ? JSON.parse(String(rows[0].details)).resell
           : undefined,
+      banner:rows[0]?JSON.parse(String(rows[0].details)).banner:undefined,
       photo: rows[0] ? JSON.parse(String(rows[0].details)).photo : undefined,
       discordPending: !suppliedDiscord,
     };

@@ -535,6 +535,22 @@ try {
   assert.equal((await query('SELECT bio FROM mentor_portfolios WHERE user_id=$1',[owner.id]))[0].bio,'');
   const clean=currentProfileSections({...initialProfile,id:'test',specialty:['Expert en photo','Vintage'],bio:'Ma bio',role:'mentor'});assert.deepEqual(clean.skills,['Photos et annonces']);assert(!JSON.stringify(clean).includes('Vintage'));assert(!JSON.stringify(clean).includes('Expert en photo'));
   const current=currentProfileSections(publicExtra.profile);assert(current.skills.length>0);assert(!JSON.stringify(current).includes('9374.5'));
+  const banner=await import('../app/api/profile-banner/route');
+  const ownerProfile=(await(await me(req('/api/me',undefined,owner.cookie))).json()).profile;
+  const gif=Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7','base64');
+  const upload=(cookie=owner.cookie,bytes=gif,origin=base)=>{const form=new FormData();form.append('file',new File([bytes],'banner.gif',{type:'image/gif'}));return new Request(base+'/api/profile-banner',{method:'POST',headers:{cookie,Origin:origin},body:form})};
+  assert.equal((await banner.POST(upload(mentor.cookie))).status,403);
+  assert.equal((await banner.POST(upload(owner.cookie,gif,'https://foreign.invalid'))).status,403);
+  assert.equal((await banner.POST(upload(owner.cookie,Buffer.from('<svg/>')))).status,400);
+  const added=await banner.POST(upload());assert.equal(added.status,200);const addedData=await added.json();
+  assert.equal((await banner.GET(req(addedData.banner))).status,404);
+  assert.equal((await banner.GET(req(addedData.banner,undefined,mentor.cookie))).status,404);
+  const readBanner=await banner.GET(req(addedData.banner,undefined,owner.cookie));assert.equal(readBanner.headers.get('content-type'),'image/gif');assert.deepEqual(Buffer.from(await readBanner.arrayBuffer()),gif);
+  await save(m,owner.cookie);const savedBanner=(await(await me(req('/api/me',undefined,owner.cookie))).json()).profile.banner;assert.equal(savedBanner,addedData.banner);
+  assert(!JSON.stringify((await(await directory(req('/api/profiles?profile='+ownerProfile.id))).json())).includes('local:'));
+  assert.equal((await banner.DELETE(new Request(base+'/api/profile-banner',{method:'DELETE',headers:{cookie:owner.cookie,Origin:base}}))).status,200);
+  assert.equal((await banner.GET(req(addedData.banner,undefined,owner.cookie))).status,404);
+  console.log('PASS: owner-only banner upload/read/remove, GIF bytes preserved, invalid SVG rejected, origin checks, profile-edit preservation and no storage path disclosure.');
   console.log('PASS: owner-only legacy retirement, archived snapshots, idempotence, untouched other pairs, biography authorization/CSRF/validation/save/clear, current profile projection without obsolete labels or finances.');
   if(process.env.MENTORA_KEEP_UI_FIXTURE){
     await activityStore.saveMentorActivity(mentor.id,{activity:extra,bio:"Je partage mes conseils en sourcing de vêtements de seconde main et en création d’annonces. ".repeat(6)});
