@@ -448,7 +448,7 @@ export function IntakeJourney({
           String(form?.get("name") || signed.data.user.name),
       );
       const edits = !registration
-        ? { ...identity, bio: answers.role==="mentor"?identity.bio.trim():identity.bio.trim() || p.bio }
+        ? { ...identity, bio: answers.role==="mentor"||initial.id?identity.bio.trim():identity.bio.trim() || p.bio }
         : {};
       const r = await fetch("/api/me", {
         method: "PUT",
@@ -629,7 +629,7 @@ export function IntakeJourney({
               <label>
                 Courte biographie (facultatif)
                 <textarea
-                  maxLength={answers.role==="mentor"?1000:800}
+                  maxLength={1000}
                   value={identity.bio}
                   onChange={(e) =>
                     setIdentity({ ...identity, bio: e.target.value })

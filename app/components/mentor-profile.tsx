@@ -7,14 +7,14 @@ import {activityLabels,resaleCategories,resaleSpecializations,purchaseMethods} f
 import {frenchDate,elapsedLabel} from '@/lib/profile-dates';
 import {PrivateServiceCatalog} from './private-services';
 import {MentorPortfolio} from './mentor-portfolio';
-import {useOwnerPreview} from "./owner-preview";
+import {useMemberProfiles} from "./member-profiles-release";
 import {ProfileBanner} from "./profile-banner";
 import {ProfileBiography} from "./profile-biography";
 import {currentProfileSections} from "@/lib/profile-modern";
 import {useFeature} from './beta';
 function Tags({items}:{items:string[]}){return <div className="mentor-tags">{items.map((v,i)=><span key={`${i}:${v}`}>{v}</span>)}</div>}
 export function MentorProfileCard({profile:p,own=false,pageHeading=false,onEdit,headerActions,actions}:{profile:PublicProfile;own?:boolean;pageHeading?:boolean;onEdit?:()=>void;headerActions?:ReactNode;actions?:ReactNode}){
- const modern=useOwnerPreview(),current=currentProfileSections(p);
+ const modern=useMemberProfiles(),current=currentProfileSections(p);
  const [bio,setBio]=useState(p.bio);
  useEffect(()=>{setBio(p.bio)},[p.id,p.bio]);
  const featureEnabled=useFeature('mentorActivity'),enabled=modern||featureEnabled,[expanded,setExpanded]=useState(false),[message,setMessage]=useState(''),[canExpand,setCanExpand]=useState(false),[now,setNow]=useState(()=>Date.now());

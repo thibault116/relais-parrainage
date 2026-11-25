@@ -1,4 +1,4 @@
-import {isCrmOwner} from "@/lib/crm";
+import {canUseFeature} from "@/lib/beta";
 import { query } from "@/lib/db";
 import { json, user, sameOrigin } from "@/lib/http";
 import {
@@ -10,7 +10,6 @@ import {
 export const runtime = "nodejs";
 export async function GET(request: Request) {
   try {
-    const viewer=await user(request);if(!viewer||!await isCrmOwner(viewer))return json({error:"Bannière indisponible."},404);
     const id = new URL(request.url).searchParams.get("id");
     const row = (
       await query(
@@ -45,7 +44,7 @@ async function change(request: Request, remove = false) {
   try {
     if (!sameOrigin(request)) return json({ error: "Origine refusée." }, 403);
     const u = await user(request);
-    if (!u || !await isCrmOwner(u)) return json({error:"Accès réservé au compte administrateur principal."},403);
+    if (!u || !await canUseFeature(u.id,"memberProfiles")) return json({error:"Connecte-toi pour modifier ta bannière."},403);
     const row = (
       await query("SELECT id,details FROM profiles WHERE user_id=$1 AND NOT EXISTS(SELECT 1 FROM profile_blocks WHERE user_id=$1)", [u.id])
     )[0];

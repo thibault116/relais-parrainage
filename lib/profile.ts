@@ -105,7 +105,6 @@ export const profileSchema = z
     consent: z.literal(true),
   })
   .superRefine((data, ctx) => {
-    if(data.role==="beginner"&&(data.bio.length<20||data.bio.length>800))ctx.addIssue({code:"custom",path:["bio"],message:"Présente-toi en 20 à 800 caractères."});
     if (data.role === "mentor" && data.experience < 6)
       ctx.addIssue({
         code: "custom",

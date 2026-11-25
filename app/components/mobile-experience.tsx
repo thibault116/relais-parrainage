@@ -1,4 +1,5 @@
 "use client";
+import {useMemberProfiles} from "./member-profiles-release";
 import {MentorProfileCard} from "./mentor-profile";
 import { Wallet,AmbassadorProfileCode } from "./wallet";
 import { ChatTextbox } from "./chat-textbox";
@@ -206,6 +207,7 @@ export function MobileExperience({
   onNavigate?: (view: string, tab?: string, section?: string) => void;
   onOpenProfile: (id: string, role: string) => void;
 }) {
+  const memberProfiles=useMemberProfiles();
   const completionNeeded = useMentorCompletion(false) && false;
   const extras = useFeature("mobileExtras"),
     dm = useFeature("privateMessaging"),
@@ -656,7 +658,7 @@ export function MobileExperience({
                 <ChevronLeft size={18} />
                 Retour
               </button>
-              {profile&&(profile.role==="mentor"||administrator)?<MentorProfileCard profile={profile} own onEdit={()=>go("edit")}/>:<>
+              {profile&&(profile.role==="mentor"||memberProfiles)?<MentorProfileCard profile={profile} own onEdit={()=>go("edit")}/>:<>
               <div className="mobile-profile-hero">
                 <div className="mobile-avatar">
                   {profile?.photo ? (

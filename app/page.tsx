@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import {useMemberProfiles} from "./components/member-profiles-release";
 import {currentProfileSections} from "@/lib/profile-modern";
 import {MentorProfileCard} from "./components/mentor-profile";
 import {useScreenMotion} from "./components/motion-system";
@@ -1929,7 +1930,7 @@ function LegacyProfileForm({
   );
 }
 function DiscoveryCard({p,onOpen,canSave}:{p:PublicProfile;onOpen:()=>void;canSave:boolean}) {
-  const modern=useOwnerPreview();
+  const modern=useMemberProfiles();
   const available = p.role === "mentor" && p.capacity > (p.activeCount || 0);
   return <article className={`discovery-card ${modern?"discovery-card-link":""}`}>
     {canSave && <MobileProfileActions profileId={p.id} compact/>}
@@ -1960,7 +1961,7 @@ function Directory({
   onProfile: () => void;
   notify: (s: string) => void;
 }) {
-  const modern=useOwnerPreview();
+  const modern=useMemberProfiles();
   const [role, setRole] = useState<"all"|"mentor"|"beginner">("all");
   const [advanced, setAdvanced] = useState<Record<string,string>>({});
   const [search, setSearch] = useState("");
