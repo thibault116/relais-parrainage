@@ -1930,12 +1930,12 @@ function LegacyProfileForm({
 function DiscoveryCard({p,onOpen,canSave}:{p:PublicProfile;onOpen:()=>void;canSave:boolean}) {
   const modern=useOwnerPreview();
   const available = p.role === "mentor" && p.capacity > (p.activeCount || 0);
-  return <article className="discovery-card">
+  return <article className={`discovery-card ${modern?"discovery-card-link":""}`}>
     {canSave && <MobileProfileActions profileId={p.id} compact/>}
-    <div className="discovery-card-head"><Avatar profile={p}/><div><h2>{p.name}<span className="discovery-role">{p.role === "mentor" ? "Parrain" : "Débutant"}</span></h2><p>{profileExperienceLabel(p)}</p></div></div>
+    <div className="discovery-card-head"><Avatar profile={p}/><div><h2>{modern?<a className="discovery-profile-link" href={`/membres/${encodeURIComponent(p.id)}`} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir le profil de ${p.name} dans un nouvel onglet`}>{p.name}</a>:p.name}<span className="discovery-role">{p.role === "mentor" ? "Parrain" : "Débutant"}</span></h2><p>{profileExperienceLabel(p)}</p></div></div>
     {p.bio && <p className="discovery-bio">{p.bio}</p>}
     <div className="discovery-tags">{(modern?[...currentProfileSections(p).platforms,...currentProfileSections(p).methods].slice(0,3):discoveryTags(p)).map(tag=><span key={tag}>{tag}</span>)}</div>
-    <footer><span className={available ? "discovery-available" : "discovery-status"}>{p.role === "mentor" ? modern ? "Parrain" : available ? "✓ Disponible pour aider" : "Aucune place disponible" : "Membre de la communauté"}</span><button className="btn secondary" onClick={onOpen}>Voir le profil <ArrowRight size={17}/></button></footer>
+    {!modern&&<footer><span className={available ? "discovery-available" : "discovery-status"}>{p.role === "mentor" ? modern ? "Parrain" : available ? "✓ Disponible pour aider" : "Aucune place disponible" : "Membre de la communauté"}</span><button className="btn secondary" onClick={onOpen}>Voir le profil <ArrowRight size={17}/></button></footer>}
   </article>;
 }
 function Directory({
@@ -1981,6 +1981,7 @@ function Directory({
   const [reload, setReload] = useState(0);
   useEffect(() => {
     if (!initialTarget) return;
+    if(modern){window.location.assign("/membres/"+encodeURIComponent(initialTarget.id));return;}
     let live = true;
     api(
       "/api/profiles?role=" +
@@ -2001,7 +2002,7 @@ function Directory({
     return () => {
       live = false;
     };
-  }, [initialTarget]);
+  }, [initialTarget,modern]);
   useEffect(() => {
     let live = true;
     setBusy(true);
