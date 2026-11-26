@@ -7,8 +7,8 @@ import {geographicRoles,rolePanelPayload,type RoleReply} from './role-options';
 import type {Interaction} from '../discord-tickets/service';
 type Role={id:string;name:string;permissions:string;managed?:boolean;position:number};
 type Details={version:2;updates:string;announcements:string;regions:Record<string,string>;status:{beginner:string;mentor:string}};
-const clean=(s:string)=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[’']/g,'').replace(/^[^a-z0-9]+/,'').trim();
-const basic=(1n<<6n)|(1n<<9n)|(1n<<10n)|(1n<<11n)|(1n<<14n)|(1n<<15n)|(1n<<16n)|(1n<<18n)|(1n<<20n)|(1n<<21n)|(1n<<25n)|(1n<<26n)|(1n<<31n)|(1n<<32n)|(1n<<35n)|(1n<<36n)|(1n<<37n)|(1n<<38n)|(1n<<39n)|(1n<<46n);
+const clean=(s:string)=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[’']/g,'').replace(/^[^a-z0-9]+|[^a-z0-9]+$/g,'').trim();
+const basic=(1n<<0n)|(1n<<8n)|(1n<<12n)|(1n<<49n)|(1n<<6n)|(1n<<9n)|(1n<<10n)|(1n<<11n)|(1n<<14n)|(1n<<15n)|(1n<<16n)|(1n<<18n)|(1n<<20n)|(1n<<21n)|(1n<<25n)|(1n<<26n)|(1n<<31n)|(1n<<32n)|(1n<<35n)|(1n<<36n)|(1n<<37n)|(1n<<38n)|(1n<<39n)|(1n<<46n);
 export async function roleInventory(api:DiscordApi=discordApi){
  const c=await config();if(!c)throw Error('Bot Mentora non configuré.');
  const [roles,channels,guild,bot]=await Promise.all([api<Role[]>(`/guilds/${c.guild_id}/roles`),api<any[]>(`/guilds/${c.guild_id}/channels`),api(`/guilds/${c.guild_id}`),api<{roles:string[]}>(`/guilds/${c.guild_id}/members/${c.bot_id}`)]);
@@ -43,6 +43,8 @@ export async function upgradeRolePanel(api:DiscordApi=discordApi){
   await query("INSERT INTO discord_community_panels(kind,channel_id) VALUES('roles',$1) ON CONFLICT DO NOTHING",[String(ch.id)]);
   const save=()=>query("UPDATE discord_community_panels SET details=$1 WHERE kind='roles'",[JSON.stringify(d)]);
   async function ensure(existing:string|undefined,label:string,zero:boolean,aliases:string[]=[]){let role:Role|undefined;if(existing)role=roles.find(r=>r.id===existing);else{const matches=roles.filter(r=>[clean(label),...aliases].includes(clean(r.name)));if(matches.length>1)throw Error(`Plusieurs rôles correspondent à ${label}.`);role=matches[0];if(!role){role=await api<Role>(`/guilds/${c.guild_id}/roles`,'POST',{name:label,permissions:'0',color:0x883af5,mentionable:false,hoist:false});roles.push(role);}}return manageable(role,top,zero).id;}
+  // Preflight existing status roles before creating anything: never duplicate decorated role names.
+  for(const [key,label,alias] of [['beginner','Débutant','debutants'],['mentor','Parrain','parrains']]){const matches=d.status[key]?roles.filter(r=>r.id===d.status[key]):roles.filter(r=>[clean(label),alias].includes(clean(r.name)));if(matches.length>1)throw Error(`Plusieurs rôles correspondent à ${label}.`);if(matches.length)manageable(matches[0],top);}
   for(const [key,label] of [['updates','Mises à jour Mentora'],['announcements','Annonces Mentora']]){d[key]=await ensure(d[key],label,true);await save();}
   for(const [key,label] of geographicRoles){d.regions[key]=await ensure(d.regions[key],label,true);await save();}
   d.status.beginner=await ensure(d.status.beginner,'Débutant',false,['debutants']);await save();d.status.mentor=await ensure(d.status.mentor,'Parrain',false,['parrains']);d.version=2;await save();assertDetails(d,roles,top);
