@@ -332,7 +332,7 @@ export default function App() {
         setProfileTab(tab);
       else if (desktop && hash === "profile" && !auxiliary) setProfileTab("accompaniments");
       const section = params.get("settingsSection") || "general";
-      setSettingsSection(["general", "security", "notifications", "verification"].includes(section) ? section : "general");
+      setSettingsSection(["general", "security", "notifications", "verification", "discord"].includes(section) ? section : "general");
       const admin = params.get("adminTab");
       if (admin && ["overview", "accounts", "verification", "reports", "ratings", "suggestions", "emails", "settings", "crm", "extension", "changelog", "withdrawals", "tickets", "ambassadors"].includes(admin))
         setAdminTab(admin);

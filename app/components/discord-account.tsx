@@ -35,7 +35,7 @@ const callbackMessages: Record<string, string> = {
   invalid: "La connexion Discord n’a pas pu être vérifiée.",
   login: "Connecte-toi à Mentora sur ce domaine, puis reconnecte Discord.",
 };
-export function DiscordAccountSettings() {
+export function DiscordAccountSettings({showTitle=true}:{showTitle?:boolean}) {
   const owner = useOwnerPreview(),
     feature = useFeature("discordAccount");
   const [data, setData] = useState<Data | null>(null),
@@ -111,7 +111,7 @@ export function DiscordAccountSettings() {
     s = a?.snapshot;
   return (
     <section className="verification-panel discord-account-panel">
-      <h2>Compte Discord</h2>
+      {showTitle&&<h2>Compte Discord</h2>}
       {error && (
         <p className="form-error" role="alert">
           {error}

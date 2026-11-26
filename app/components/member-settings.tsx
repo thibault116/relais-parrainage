@@ -157,7 +157,7 @@ export function MemberSettings({
           </section>}
         </>
       )}
-      {!normalized && section === "discord" && <DiscordAccountSettings />}
+      {!normalized && section === "discord" && <DiscordAccountSettings showTitle={false}/>}
       {!normalized && section === "security" && <PasswordSettings />}
       {!normalized && section === "notifications" && (
         <>

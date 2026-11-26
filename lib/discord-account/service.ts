@@ -11,7 +11,7 @@ import { geographicRoles } from "../discord-community/role-options";
 import { discordAccountAllowed } from "./access";
 import { hash, seal, unseal } from "./crypto";
 export const callbackUrl = `${SITE_ORIGIN}/api/discord-account/callback`;
-export const returnPath = "/?mobile=settings&settingsSection=discord#profile";
+export const returnPath = "/?mobile=settings&profileTab=appearance&settingsSection=discord#profile";
 export type Actor = { id: string; sessionId: string };
 type Tokens = {
   access_token: string;
