@@ -10,8 +10,8 @@ export const discordApi:DiscordApi=async<T>(path:string,method="GET",body?:unkno
  }
  throw new DiscordFailure(429);
 };
-export async function finishInteraction(application:string,token:string,content:string){
+export async function finishInteraction(application:string,token:string,content:string|{content:string;components?:unknown[]}){
  if(!/^\d{15,22}$/.test(application)||!/^[\w.-]{10,300}$/.test(token))return;
- const r=await fetch(`https://discord.com/api/v10/webhooks/${application}/${token}/messages/@original`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({content,allowed_mentions:{parse:[]}}),redirect:"error",signal:AbortSignal.timeout(10000)});
+ const r=await fetch(`https://discord.com/api/v10/webhooks/${application}/${token}/messages/@original`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({...(typeof content==="string"?{content,components:[]}:content),allowed_mentions:{parse:[]}}),redirect:"error",signal:AbortSignal.timeout(10000)});
  if(!r.ok)throw Error("Réponse Discord indisponible.");
 }

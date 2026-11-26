@@ -13,7 +13,7 @@ export async function POST(r:Request){
  if(i.application_id!==process.env.DISCORD_TICKET_APPLICATION_ID)return new Response('Invalid application',{status:403});
  try{
   const result=await interpret(i);
-  if(result.work)after(async()=>{let text;try{text=await result.work!();}catch{text='Le ticket n’a pas pu être confirmé. Contacte Thibault.';}try{await finishInteraction(i.application_id,i.token,text);}catch{console.error('DISCORD_TICKET_RESPONSE_PENDING');}});
+  if(result.work)after(async()=>{let text;try{text=await result.work!();}catch{text='L’action n’a pas pu être confirmée. Réessaie ou contacte l’équipe Mentora.';}try{await finishInteraction(i.application_id,i.token,text);}catch{console.error('DISCORD_TICKET_RESPONSE_PENDING');}});
   return Response.json(result.response,{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({type:4,data:{content:'Le support est momentanément indisponible. Réessaie plus tard.',flags:64}});}
 }

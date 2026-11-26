@@ -1,12 +1,12 @@
 import {discordInviteCode,discordInviteUrl} from "../discord-invite";
-import {notificationRoles} from "./notifications";
+import {upgradeRolePanel} from "./member-roles";
 import {SITE_ORIGIN,updateSiteLinks} from "../site";
 import {createHash} from 'node:crypto';
 import {query} from '../db';
 import {config} from '../discord-tickets/store';
 import {discordApi,DiscordFailure,type DiscordApi} from '../discord-tickets/client';
 const root=SITE_ORIGIN;
-const names:Record<string,string[]>={rules:['regles'],roles:['roles'],mobile:['mentora-mobile'],guide:['comment-ca-marche'],link:['lien-mentora'],invite:['inviter-un-reseller'],welcome:['bienvenue','nouveaux']};
+const names:Record<string,string[]>={rules:['regles'],roles:['roles','notifications','choisir-mes-roles'],mobile:['mentora-mobile'],guide:['comment-ca-marche'],link:['lien-mentora'],invite:['inviter-un-reseller'],welcome:['bienvenue','nouveaux']};
 export function normalized(s:string){return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/^[^a-z0-9]+/,'');}
 export function channelKind(name:string){return Object.entries(names).find(([,v])=>v.includes(normalized(name)))?.[0];}
 export const hash=(s:unknown)=>createHash('sha256').update(JSON.stringify(s)).digest('hex');
@@ -47,15 +47,11 @@ export async function createInfoChannel(kind:'invite'|'roles',api:DiscordApi=dis
  try{const ch=await api(`/guilds/${c.guild_id}/channels`,'POST',{name:kind==='invite'?'🔗┃inviter-un-reseller':'⚙️┃rôles',type:0,...(parent?{parent_id:parent}:{}),topic:`mentora-community:${kind}`,permission_overwrites:[{id:c.guild_id,type:0,allow:'1024',deny:'2048'},{id:c.owner_id,type:1,allow:'117760',deny:'0'},{id:c.bot_id,type:1,allow:'117760',deny:'0'}]});await query("UPDATE discord_community_panels SET channel_id=$1,state='draft' WHERE kind=$2",[String(ch.id),kind]);return ch;}catch(e){await query("UPDATE discord_community_panels SET state='uncertain' WHERE kind=$1",[kind]);throw e;}
 }
 export async function publishInfo(kind:'invite'|'roles',api:DiscordApi=discordApi){
- const {c,roles}=await communityInventory(api);const ch=await createInfoChannel(kind,api);let details:any={},description='';let components:any[]=[];
+ if(kind==='roles')return upgradeRolePanel(api);
+ const {c}=await communityInventory(api);const ch=await createInfoChannel(kind,api);let description='';let components:any[]=[];
  if(kind==='invite'){
   const invite=await api(`/invites/${discordInviteCode}`);if((invite.guild as any)?.id!==c.guild_id)throw Error('Le lien d’invitation ne correspond pas au serveur Mentora.');
   description='## 🔗 Invite un reseller sur Mentora\n\nTu connais quelqu’un qui fait de l’achat-revente ou qui souhaite se lancer ? Partage-lui le lien du serveur pour rejoindre la communauté.\n\n**Le lien est désormais permanent : tu peux le conserver et le partager.**\n\n```\n'+discordInviteUrl+'\n```\n\n### 💡 Où le partager ?\nAvec tes amis, tes contacts resellers ou dans ta bio. Privilégie les personnes intéressées et respecte les règles des autres communautés : pas de spam.\n\nMerci de faire grandir Mentora 💜';components=[{type:1,components:[{type:2,style:5,label:'Inviter un reseller',url:discordInviteUrl}]}];
- }else{
-  const saved=(await query('SELECT details FROM discord_community_panels WHERE kind=$1',[kind]))[0];details=JSON.parse(String(saved?.details||'{}'));
-  for(const [key,label] of [['updates','Mises à jour Mentora'],['announcements','Annonces Mentora']]){if(!details[key]){const matches=roles.filter(r=>r.name===label&&!r.managed&&r.permissions==='0');if(matches.length>1)throw Error('Rôles ambigus.');const role=matches[0]||await api(`/guilds/${c.guild_id}/roles`,'POST',{name:label,permissions:'0',color:0x883af5,mentionable:true});details[key]=role.id;await query('UPDATE discord_community_panels SET details=$1 WHERE kind=$2',[JSON.stringify(details),kind]);}}
-  await notificationRoles(true,api);
-  description='## 🔔 Rôles et notifications\n\nChoisis les notifications qui t’intéressent. Clique sur un bouton pour ajouter ou retirer le rôle correspondant.\n\n**🔔 Mises à jour**\nLes nouveautés, améliorations et corrections de Mentora.\n\n**📣 Annonces**\nLes informations et rendez-vous de la communauté.';components=[{type:1,components:[{type:2,style:2,label:'🔔 Mises à jour',custom_id:'mentora:role:updates'},{type:2,style:2,label:'📣 Annonces',custom_id:'mentora:role:announcements'}]}];
  }
  const marker=`mentora-community:${kind}`,payload={allowed_mentions:{parse:[]},embeds:[{color:0x883af5,image:{url:`${root}/discord/${kind}.png`}},{color:0x883af5,description,footer:{text:'Mentora · La communauté des resellers',icon_url:`${root}/icons/icon-192.png?panel=${kind}`} }],components,nonce:`mentora-${kind}`,enforce_nonce:true};
  await query("INSERT INTO discord_community_panels(kind,channel_id) VALUES($1,$2) ON CONFLICT DO NOTHING",[kind,String(ch.id)]);
