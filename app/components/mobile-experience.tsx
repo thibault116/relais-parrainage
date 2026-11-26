@@ -209,6 +209,7 @@ export function MobileExperience({
 }) {
   const memberProfiles=useMemberProfiles();
   const completionNeeded = useMentorCompletion(false) && false;
+  const discordAccount=useFeature("discordAccount");
   const extras = useFeature("mobileExtras"),
     dm = useFeature("privateMessaging"),
     channels = useFeature("communityChannels"),
@@ -491,7 +492,7 @@ export function MobileExperience({
       new CustomEvent("mentora-network-section", { detail: type }),
     );
   }
-  const menuGroups = workspaceGroups(profile?.role === "mentor", moderator, administrator, extras);
+  const menuGroups = workspaceGroups(profile?.role === "mentor", moderator, administrator, extras, discordAccount);
   function openMenuItem(item: WorkspaceItem) {
     if (item.external === "discord") {
       window.open(discordUrl, "_blank", "noopener,noreferrer");

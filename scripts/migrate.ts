@@ -1,3 +1,4 @@
+import {migrateDiscordAccounts} from '../lib/discord-account/store';
 import {retireOwnerLegacyAccompaniments} from "../lib/legacy-retirement";
 import {withMoneyMode} from "../lib/monetization/mode";
 import {migrateDiscordCommunity} from "../lib/discord-community/store";
@@ -52,6 +53,7 @@ await migrateLegal();
 await migrateChangelog();
 await migrateDiscordTickets();
   await migrateDiscordCommunity();
+  await migrateDiscordAccounts();
   await migratePayoutTests();
 console.log("Base Relais initialisée.");
 process.exit(0);

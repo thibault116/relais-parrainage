@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect, type ReactNode, type FormEvent } from "react";
+import { DiscordAccountSettings } from "./discord-account";
+import { useFeature } from "./beta";
 import { useOwnerPreview } from "./owner-preview";
 import { LegalLinks } from "./legal-links";
 import { BetaSettings } from "./beta";
@@ -26,6 +28,7 @@ export function MemberSettings({
   onVerificationChange: () => Promise<void>;
 }) {
   const ownerPreview = useOwnerPreview();
+  const discordFeature=useFeature("discordAccount");
   const { language, changeLanguage } = useLanguage();
   const [search, setSearch] = useState("");
   const normalized = search
@@ -47,6 +50,7 @@ export function MemberSettings({
           dedicated
             ? {
                 general: "Général",
+                discord: "Compte Discord",
                 security: "Sécurité",
                 notifications: "Notifications",
                 verification: ownerPreview?"Paramètres":"Finaliser mon profil",
@@ -73,6 +77,7 @@ export function MemberSettings({
           {[
             ["general", "Général"],
             ["security", "Sécurité"],
+            ...(ownerPreview&&discordFeature?[["discord","Compte Discord"]]:[]),
             ["notifications", "Notifications"],
             ["menus", "Menus et aide"],
             ...(administration ? [["administration", "Administration"]] : []),
@@ -143,6 +148,7 @@ export function MemberSettings({
             </p>
           </section>
           <BetaSettings />
+          <DiscordAccountSettings />
           <AppearanceSettings />
           <InstallMentora />
           {<section className="verification-panel">
@@ -151,6 +157,7 @@ export function MemberSettings({
           </section>}
         </>
       )}
+      {!normalized && section === "discord" && <DiscordAccountSettings />}
       {!normalized && section === "security" && <PasswordSettings />}
       {!normalized && section === "notifications" && (
         <>

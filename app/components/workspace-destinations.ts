@@ -25,7 +25,7 @@ export const workspaceMain: WorkspaceItem[] = [
   { label: "Messages", icon: MessageCircle, screen: "messages" },
 ];
 
-export function workspaceGroups(mentor: boolean, moderator: boolean, owner: boolean, extras: boolean) {
+export function workspaceGroups(mentor: boolean, moderator: boolean, owner: boolean, extras: boolean, discordAccount=false) {
   const groups: { title: string; items: WorkspaceItem[] }[] = [
     {
       title: "Général",
@@ -43,6 +43,7 @@ export function workspaceGroups(mentor: boolean, moderator: boolean, owner: bool
       title: "Paramètres",
       items: [
         { label: "Général", icon: Settings, screen: "settings", settingsSection: "general", keywords: "langue thème apparence bêta installer" },
+        ...(owner&&discordAccount?[{label:"Compte Discord",icon:Globe,screen:"settings",settingsSection:"discord",keywords:"connexion rôles région discord"}]:[]),
         { label: "Sécurité", icon: Shield, screen: "settings", settingsSection: "security", keywords: "mot de passe password" },
         { label: "Notifications", icon: Bell, screen: "settings", settingsSection: "notifications", keywords: "push email" },
       ],

@@ -4,6 +4,7 @@ export const featureReleases: Record<string, "beta" | "stable"> = {
   memberProfiles: "stable", // Explicit public release requested by the owner.
   mentorActivity: "stable", // Explicit public release requested by the owner.
   ambassadors: "beta",
+  discordAccount: "beta",
   community: "stable",
   guides: "stable",
   commerce: "stable",

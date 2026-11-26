@@ -56,10 +56,11 @@ export function WorkspaceNav({
     `${screen}:${settingsSection}:${adminTab}:${query}`,
   );
   const extras = useFeature("mobileExtras");
+  const discordAccount = useFeature("discordAccount");
   const groups = [
     { title: "Navigation", items: workspaceMain },
     { title: "Mon compte", items: [{label:"Menu",icon:Menu,screen:"menu"}, ...workspaceProfile] },
-    ...workspaceGroups(mentor, moderator, owner, extras),
+    ...workspaceGroups(mentor, moderator, owner, extras, discordAccount),
   ];
   return (
     <aside

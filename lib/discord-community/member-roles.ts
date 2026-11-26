@@ -109,7 +109,7 @@ export async function memberRoleInteraction(i:Interaction,api:DiscordApi=discord
  },confirm||cancel);}catch(e){return {content:(e as Error).message||'Action indisponible. Réessaie.',components:[]};}
 }
 
-export async function auditRoleConfiguration(api:DiscordApi=discordApi){const {c,roles,top}=await roleInventory(api);const [panel]=await query("SELECT channel_id,message_id,details FROM discord_community_panels WHERE kind='roles'");return {channelId:panel?.channel_id,messageId:panel?.message_id,botHighestPosition:top,roles:roles.filter(r=>r.id!==c.guild_id).map(r=>({id:r.id,name:r.name,permissions:r.permissions,managed:!!r.managed,position:r.position})),linkedMentoraAccounts:false};}
+export async function auditRoleConfiguration(api:DiscordApi=discordApi){const {c,roles,top}=await roleInventory(api);const [panel]=await query("SELECT channel_id,message_id,details FROM discord_community_panels WHERE kind='roles'");return {channelId:panel?.channel_id,messageId:panel?.message_id,botHighestPosition:top,roles:roles.filter(r=>r.id!==c.guild_id).map(r=>({id:r.id,name:r.name,permissions:r.permissions,managed:!!r.managed,position:r.position})),profilePermissionsSynced:false};}
 
 // Real integration check on the bot itself only; never promote a human member for a test.
 export async function testGeographyOnBot(api:DiscordApi=discordApi){

@@ -42,6 +42,8 @@ function createAuth() {
         enabled: true,
         beforeDelete: async (user) => {
           await deleteMobileMember(user.id);
+          await query("DELETE FROM discord_account_flows WHERE user_id=$1",[user.id]);
+          await query("DELETE FROM discord_account_links WHERE user_id=$1",[user.id]);
           await query("DELETE FROM beta_preferences WHERE user_id=$1", [
             user.id,
           ]);

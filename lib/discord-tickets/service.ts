@@ -35,7 +35,7 @@ export async function interpret(i:Interaction){
  const c=await config(),uid=i.member?.user?.id;
  if(!c||!uid||i.guild_id!==c.guild_id||i.application_id!==process.env.DISCORD_TICKET_APPLICATION_ID)return {response:message("Cette demande n’est pas disponible ici.")};
  const custom=i.data?.custom_id||"";
- if(i.type===3&&(custom.startsWith("mentora:role:")||custom.startsWith("mentora:member:")))return {response:{type:5,data:{flags:64}},work:()=>memberRoleInteraction(i)};
+ if(i.type===3&&(custom.startsWith("mentora:role:")||custom.startsWith("mentora:member:")))return {response:{type:5,data:{flags:64}},work:async()=>{const reply=await memberRoleInteraction(i);try{await (await import('../discord-account/service')).syncLinkedMember(i.member?.user?.id||'');}catch{}return reply;}};
  if(i.type===3&&custom==="mentora:ticket:category:v1"){
   if(i.channel_id!==c.panel_channel||i.message?.id!==c.panel_message)return {response:message("Utilise le panneau d’aide Mentora actuel.")};
   const category=i.data?.values?.[0];if(!ticketCategories.some(k=>k.id===category))return {response:message("Choisis une catégorie valide.")};
