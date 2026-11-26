@@ -1,4 +1,5 @@
 "use client";
+import {serviceCreditLabel} from "@/lib/monetization/catalog";
 import { useEffect, useState, type ReactNode } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, Clock, MessageCircle } from "lucide-react";
 import { profileExperienceLabel, type PublicProfile } from "@/lib/profile";
@@ -62,16 +63,16 @@ export function ServiceDetailPage({service,stage,busy,onBack,onRequest,children}
             <h2>Comment se passe la réservation ?</h2>
             <ol>
               <li><span>1</span><p>Envoie ta demande. Tu peux préciser ton besoin si tu le souhaites.</p></li>
-              <li><span>2</span><p>Les crédits sont réservés en attendant la réponse du parrain.</p></li>
+              <li><span>2</span><p>{offer.credits===0?"Cette prestation est gratuite : aucun crédit n’est débité.":"Les crédits sont réservés en attendant la réponse du parrain."}</p></li>
               <li><span>3</span><p>Après acceptation, échangez en message privé pour organiser la prestation.</p></li>
             </ol>
           </section>
-        </> : <div className="service-page-request"><span className="service-price">{offer.credits.toLocaleString("fr-FR")} crédits</span>{children}</div>}
+        </> : <div className="service-page-request"><span className="service-price">{serviceCreditLabel(offer.credits)}</span>{children}</div>}
       </div>
     </div>
     {stage === "detail" && <footer className="service-page-booking">
-      <div><span>Prix de la prestation</span><strong>{offer.credits.toLocaleString("fr-FR")} <small>crédits</small></strong></div>
-      <div className="service-page-payment"><span>{offer.duration ? <><Clock size={16}/>{offer.duration} minutes</> : <><MessageCircle size={16}/>À organiser ensemble</>}</span><small>Paiement en crédits</small></div>
+      <div><span>Prix de la prestation</span><strong>{serviceCreditLabel(offer.credits)}</strong></div>
+      <div className="service-page-payment"><span>{offer.duration ? <><Clock size={16}/>{offer.duration} minutes</> : <><MessageCircle size={16}/>À organiser ensemble</>}</span><small>{offer.credits===0?"Aucun crédit nécessaire":"Paiement en crédits"}</small></div>
       <button className="commerce-primary" type="button" disabled={busy} onClick={onRequest}>Demander cette prestation <ArrowRight size={20}/></button>
     </footer>}
   </div>;

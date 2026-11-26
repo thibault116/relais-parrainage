@@ -90,7 +90,7 @@ export const serviceSchema = z.object({
   calls: z.number().int().min(0).max(50),
   followup: z.string().trim().max(2000),
   availability: z.string().trim().min(3).max(2000),
-  credits: z.number().int().min(1).max(50000),
+  credits: z.number().int().min(0).max(50000),
   capacity: z.number().int().min(1).max(100),
   published: z.boolean(),
   image: z.union([z.string().uuid(), z.literal("")]).optional(),
@@ -159,7 +159,7 @@ export async function book(
       )[0].n,
     );
     if (active >= d.capacity) throw Error("Plus de disponibilité");
-    if ((await balance(q, owner)) < d.credits)
+    if (d.credits > 0 && (await balance(q, owner)) < d.credits)
       throw Error("Crédits insuffisants");
     const id = crypto.randomUUID();
     await q(
@@ -179,8 +179,8 @@ export async function book(
       ],
     );
     if(simulation)await q("UPDATE money_bookings SET test_booking=1 WHERE id=$1",[id]);
-    await entry(q, owner, -d.credits, "Réservation", `booking:${id}`);
-    await serviceMessage(q,owner,id,"buyer","request","Nouvelle demande de prestation. Les crédits sont réservés en attendant la réponse du parrain.",0,`request:${id}`);
+    if(d.credits>0)await entry(q, owner, -d.credits, "Réservation", `booking:${id}`);
+    await serviceMessage(q,owner,id,"buyer","request",d.credits===0?"Nouvelle demande de prestation gratuite. Aucun crédit ne sera débité.":"Nouvelle demande de prestation. Les crédits sont réservés en attendant la réponse du parrain.",0,`request:${id}`);
     return id;
   });
 }
@@ -207,7 +207,7 @@ export async function bookingAction(
         id,
         "system",
         "accepted",
-        `Ta demande de prestation a été acceptée. Les ${b.credits} crédits réservés sont affectés à cette prestation. Vous pouvez échanger ici.`,
+        Number(b.credits)===0?"Ta demande de prestation gratuite a été acceptée. Vous pouvez échanger ici.":`Ta demande de prestation a été acceptée. Les ${b.credits} crédits réservés sont affectés à cette prestation. Vous pouvez échanger ici.`,
         0,
         `accept:${id}`,
       );
@@ -243,7 +243,7 @@ export async function bookingAction(
         action === "cancel" ? "cancelled" : "declined",
         id,
       ]);
-      await entry(q, buyer, Number(b.credits), "Restitution", `restore:${id}`);
+      if(Number(b.credits)>0)await entry(q, buyer, Number(b.credits), "Restitution", `restore:${id}`);
     } else if (action === "refund" && b.status === "completed") {
       if (
         (
@@ -257,7 +257,7 @@ export async function bookingAction(
           "Cette rémunération est réservée ou transférée dans un retrait. Vérifie le retrait avant de rembourser cette prestation.",
         );
       await q("UPDATE money_bookings SET status='refunded' WHERE id=$1", [id]);
-      await entry(
+      if(Number(b.credits)>0)await entry(
         q,
         buyer,
         Number(b.credits),
@@ -265,7 +265,7 @@ export async function bookingAction(
         `restore:${id}`,
       );
     } else throw Error("Transition impossible ou déjà effectuée");
-    if(["decline","cancel","refund"].includes(action))await serviceMessage(q,buyer,id,action==="cancel"?"buyer":"system",action,action==="decline"?`La demande a été refusée : ${reason}`:action==="cancel"?"La demande a été annulée. Les crédits ont été restitués.":"La prestation a été remboursée en crédits.",0,`${action}:${id}`);
+    if(["decline","cancel","refund"].includes(action))await serviceMessage(q,buyer,id,action==="cancel"?"buyer":"system",action,action==="decline"?`La demande a été refusée : ${reason}`:action==="cancel"?(Number(b.credits)===0?"La demande de prestation gratuite a été annulée.":"La demande a été annulée. Les crédits ont été restitués."):(Number(b.credits)===0?"La prestation gratuite a été clôturée sans mouvement de crédits.":"La prestation a été remboursée en crédits."),0,`${action}:${id}`);
     if (action === "decline" && reason)
       await q(
         "INSERT INTO money_service_requests(booking_id,reason,updated_at) VALUES($1,$2,$3) ON CONFLICT(booking_id) DO UPDATE SET reason=$2,updated_at=$3",
@@ -352,7 +352,7 @@ export async function confirmService(
       "buyer",
       "confirmation",
       yes
-        ? "Oui, la prestation est terminée. La rémunération du parrain est maintenant disponible."
+        ? (Number(b.credits)===0?"Oui, la prestation gratuite est terminée.":"Oui, la prestation est terminée. La rémunération du parrain est maintenant disponible.")
         : "Non, la prestation continue. Échangeons sur ce qu’il reste à faire.",
       revision,
       `confirm:${id}:${revision}`,

@@ -1,14 +1,12 @@
 export const memberRelease = {
-  id: "2026-11-25-profils-bannieres-navigation",
+  id: "2026-11-26-prestations-gratuites",
   discordAudience: "public",
-  title: "Tes profils Mentora, plus personnels et plus fluides",
+  title: "Les prestations gratuites arrivent",
   notes: [
-    "Nouveauté : personnalise ta bannière avec une image ou un GIF et ajoute ou modifie ta biographie directement sur ton profil.",
-    "Amélioration : des profils plus clairs, avec tes informations utiles et les prestations des Parrains en crédits.",
-    "Amélioration : clique sur une carte pour ouvrir le profil en plein écran, puis retrouve tes filtres et ta position au retour.",
-    "Correction : navigation plus fluide sur téléphone, sans rechargement complet de l’accueil entre la liste et les profils.",
+    "Nouveauté : les parrains peuvent proposer une prestation gratuite en choisissant 0 crédit.",
+    "Les membres peuvent demander ces prestations sans crédits, avec le même suivi et la confirmation de fin par les deux participants.",
   ],
-  guideUrl: "/?mobile=profile#profile",
-  guideLabel: "Personnaliser mon profil",
+  guideUrl: "/?mobile=marketplace#workspace",
+  guideLabel: "Découvrir les prestations",
 };
 export const retiredMemberReleaseIds = [] as string[];

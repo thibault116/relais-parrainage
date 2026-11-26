@@ -45,6 +45,21 @@ try{
  for(const code of [adminCreditOffer.id,"credits-v3-black-friday-510","credits-v3-standard-500"]){assert(!allowedPurchase(code,false));await assert.rejects(()=>checkout(buyer.id,code,crypto.randomUUID()),/indisponible/);}
  assert(allowedPurchase(adminCreditOffer.id,true));
  const data={title:"Audit dressing",description:"Analyse des annonces et conseils personnalisés.",category:"Autre",duration:0,calls:0,followup:"",availability:"À convenir",credits:100,capacity:1,published:true};
+
+ // Public free services: no balance, no debit, no remuneration, normal two-party completion.
+ const freeData={...data,credits:0,capacity:3};
+ const freeResponse=await moneyPOST(req(mentor,{action:"save",service:freeData},"http://localhost:3000/api/admin/monetization"));assert.equal(freeResponse.status,200);const freeId=(await freeResponse.json()).id;
+ assert.equal((await moneyPOST(req(mentor,{action:"save",service:{...freeData,credits:-1}},"http://localhost:3000/api/admin/monetization"))).status,400);
+ assert.equal(await balance(query,buyer.id),0);
+ const freeKey=crypto.randomUUID(),freeBooking=await book(buyer.id,freeId,freeKey,"","À convenir");assert.equal(await book(buyer.id,freeId,freeKey,"","À convenir"),freeBooking);
+ await bookingAction(mentor.id,freeBooking,"accept");assert.equal((await manualBankOverview(mentor.id)).pendingCents,0);await bookingAction(mentor.id,freeBooking,"complete");await confirmService(buyer.id,freeBooking,1,true);
+ assert.equal((await query("SELECT payout_cents FROM money_bookings WHERE id=$1",[freeBooking]))[0].payout_cents,0);assert.equal((await manualBankOverview(mentor.id)).availableCents,0);assert.equal((await query(eligibleSql,[mentor.id])).length,0);
+ const freeCancelled=await book(buyer.id,freeId,crypto.randomUUID(),"","À convenir");await bookingAction(buyer.id,freeCancelled,"cancel");
+ const freeDeclined=await book(buyer.id,freeId,crypto.randomUUID(),"","À convenir");await bookingAction(mentor.id,freeDeclined,"decline","Indisponible cette semaine.");
+ assert.equal(await balance(query,buyer.id),0);assert.equal((await query("SELECT id FROM money_ledger WHERE owner_id=$1",[buyer.id])).length,0);
+ assert(String((await query("SELECT body FROM money_service_messages WHERE booking_id=$1 AND kind='accepted'",[freeBooking]))[0].body).includes('gratuite'));
+ await query("UPDATE money_services SET archived=1 WHERE id=$1",[freeId]);
+ console.log("PASS public free service creation, zero-balance booking and replay, accept/two-party completion, cancel/decline, no credit ledger or withdrawable remuneration; negative prices refused");
  const service=await saveService(mentor.id,data),hidden=await saveService(mentor.id,{...data,published:false});
  const cat=await(await catalog(read(buyer))).json();assert.equal(cat.services.length,1);assert.equal(cat.services[0].id,service);assert(!cat.services.some((s:any)=>s.id===hidden));
  assert.equal((await moneyPOST(req(buyer,{action:"save",service:data},"http://localhost:3000/api/admin/monetization"))).status,403);

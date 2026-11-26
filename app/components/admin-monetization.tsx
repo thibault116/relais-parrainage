@@ -1,4 +1,5 @@
 "use client";
+import {serviceCreditLabel} from "@/lib/monetization/catalog";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus, FileText, ArrowLeft, Check, MessageCircle, Pencil, Trash2 } from "lucide-react";
 import { Wallet } from "./wallet";
@@ -484,13 +485,13 @@ export function AdminMonetization({
                   </>
                 )}
                 <label>
-                  Nombre de crédits
+                  Nombre de crédits (0 = gratuit)
                   <input
                     type="number"
                     required
-                    min={1}
+                    min={0}
                     max={maxServiceCredits}
-                    value={form.credits || ""}
+                    value={form.credits}
                     onChange={(e) => field("credits", Number(e.target.value))}
                   />
                 </label>
@@ -498,7 +499,7 @@ export function AdminMonetization({
                   Jauge du prix
                   <input
                     type="range"
-                    min={1}
+                    min={0}
                     max={1000}
                     step={1}
                     value={creditsSlider(form.credits)}
@@ -507,7 +508,7 @@ export function AdminMonetization({
                     }
                   />
                 </label>
-                <p className="service-euro-preview">Ta rémunération prévue : {euro(Math.round(form.credits*data.payoutRate))}.</p>
+                <p className="service-euro-preview">{form.credits===0?"Prestation gratuite":<>Ta rémunération prévue : {euro(Math.round(form.credits*data.payoutRate))}.</>}</p>
                 <label className="service-visibility-toggle">
                   <input
                     type="checkbox"
@@ -557,7 +558,7 @@ export function AdminMonetization({
                   )}
                   <p className="mentor-service-description">{s.data.description}</p>
                   <p className="mentor-service-price">
-                    {s.data.credits.toLocaleString("fr-FR")} crédits ·{" "}
+                    {serviceCreditLabel(s.data.credits)} ·{" "}
                     {euro(Math.round(s.data.credits * data.payoutRate))} pour
                     toi
                   </p>
@@ -644,7 +645,7 @@ export function AdminMonetization({
                     {b.snapshot.title}
                     <small>{statuses[b.status] || b.status}</small>
                   </span>
-                  <strong>{b.credits} crédits</strong>{data.mode==="test"&&b.status==="completed"&&<button className="commerce-row" disabled={busy} onClick={()=>void send({action:"booking",id:b.id,transition:"refund"})}>Restituer les crédits de test</button>}
+                  <strong>{serviceCreditLabel(b.credits)}</strong>{data.mode==="test"&&b.status==="completed"&&<button className="commerce-row" disabled={busy} onClick={()=>void send({action:"booking",id:b.id,transition:"refund"})}>Restituer les crédits de test</button>}
                 </article>
               ))}
             </div>

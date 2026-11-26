@@ -8,10 +8,11 @@ export const creditPricingVersion = "v2";
 export const creditPurchaseCents = 2;
 export const creditPayoutCents = 1.6;
 export const maxServiceCredits = 50000;
+export const serviceCreditLabel = (credits:number) => credits===0 ? "Gratuit" : `${credits.toLocaleString("fr-FR")} crédits`;
 export const servicePriceCents = (credits: number) =>
   Math.round(credits * creditPurchaseCents);
 export function sliderCredits(position: number) {
-  return position <= 100
+  return position <= 0 ? 0 : position <= 100
     ? Math.max(1, Math.round(position * 10))
     : Math.round(1000 * Math.pow(50, (position - 100) / 900));
 }
